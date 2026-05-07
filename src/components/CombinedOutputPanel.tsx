@@ -1,7 +1,12 @@
 'use client';
 
 import { getDisplayTitle } from "../lib/items";
-import { useState, type KeyboardEvent, type RefObject } from "react";
+import {
+  useEffect,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
 import type { MarkdownItem } from "../types/markdown";
 import type { AppTheme, ViewMode } from "../lib/preferences";
 import ReactMarkdown from "react-markdown";
@@ -27,23 +32,32 @@ export function CombinedOutputPanel({
   scrollContainerRef,
   onSelect,
 }: CombinedOutputPanelProps) {
-  const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const [selectedPreviewCardId, setSelectedPreviewCardId] = useState<
+    string | null
+  >(null);
   const isCardsMode = viewMode === "cards";
+  const selectedPreviewItem =
+    isCardsMode && selectedPreviewCardId
+      ? items.find((item) => item.id === selectedPreviewCardId)
+      : null;
 
-  const toggleExpandedCard = (itemId: string) => {
-    setExpandedCardIds((current) => {
-      const next = new Set(current);
+  useEffect(() => {
+    if (!isCardsMode) {
+      setSelectedPreviewCardId(null);
+      return;
+    }
 
-      if (next.has(itemId)) {
-        next.delete(itemId);
-      } else {
-        next.add(itemId);
-      }
+    if (
+      selectedPreviewCardId &&
+      !items.some((item) => item.id === selectedPreviewCardId)
+    ) {
+      setSelectedPreviewCardId(null);
+    }
+  }, [isCardsMode, items, selectedPreviewCardId]);
 
-      return next;
-    });
+  const handleOpenPreviewCard = (item: MarkdownItem) => {
+    setSelectedPreviewCardId(item.id);
+    onSelect(item);
   };
 
   const handleCardKeyDown = (
@@ -55,7 +69,7 @@ export function CombinedOutputPanel({
     }
 
     event.preventDefault();
-    onSelect(item);
+    handleOpenPreviewCard(item);
   };
 
   return (
@@ -78,13 +92,30 @@ export function CombinedOutputPanel({
         >
           Coluna direita
         </p>
-        <h2
-          className={`m-0 text-[2.1rem] font-semibold tracking-[-0.03em] ${
-            theme === "dark" ? "text-slate-50" : "text-slate-950"
-          }`}
-        >
-          {isCardsMode ? "Preview em cards" : "Preview renderizado"}
-        </h2>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2
+            className={`m-0 text-[2.1rem] font-semibold tracking-[-0.03em] ${
+              theme === "dark" ? "text-slate-50" : "text-slate-950"
+            }`}
+          >
+            {isCardsMode && !selectedPreviewItem
+              ? "Preview em cards"
+              : "Preview renderizado"}
+          </h2>
+          {selectedPreviewItem ? (
+            <button
+              type="button"
+              onClick={() => setSelectedPreviewCardId(null)}
+              className={`inline-flex items-center justify-center self-start rounded-md border px-3 py-2 text-xs font-semibold transition sm:self-auto ${
+                theme === "dark"
+                  ? "border-slate-700 bg-slate-900/70 text-slate-200 hover:border-slate-600 hover:bg-slate-800"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              Voltar aos cards
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div
@@ -102,10 +133,48 @@ export function CombinedOutputPanel({
               Carregando conteudo...
             </p>
           </div>
+        ) : selectedPreviewItem ? (
+          <article
+            className={`markdown-preview w-full rounded-[1.35rem] border px-6 py-7 sm:px-8 sm:py-9 ${
+              theme === "dark"
+                ? "border-slate-800/65 bg-[#0c1219]"
+                : "border-slate-200 bg-white shadow-sm"
+            }`}
+          >
+            <section
+              id={`preview-item-${selectedPreviewItem.id}`}
+              data-preview-item-id={selectedPreviewItem.id}
+              className="scroll-mt-6"
+            >
+              <div className="mb-4 flex items-center gap-3">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${
+                    theme === "dark"
+                      ? "bg-slate-800 text-slate-400"
+                      : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {String(items.findIndex((item) => item.id === selectedPreviewItem.id) + 1).padStart(2, "0")}
+                </span>
+                <p
+                  className={`m-0 text-xs font-medium uppercase tracking-[0.22em] ${
+                    theme === "dark" ? "text-slate-500" : "text-slate-400"
+                  }`}
+                >
+                  {getDisplayTitle(selectedPreviewItem, 72)}
+                </p>
+              </div>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw]}
+              >
+                {selectedPreviewItem.content}
+              </ReactMarkdown>
+            </section>
+          </article>
         ) : items.length > 0 && isCardsMode ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {items.map((item, index) => {
-              const isExpanded = expandedCardIds.has(item.id);
               const displayTitle = getDisplayTitle(item, 72);
 
               return (
@@ -116,7 +185,7 @@ export function CombinedOutputPanel({
                   role="button"
                   tabIndex={0}
                   aria-label={`Selecionar card ${displayTitle}`}
-                  onClick={() => onSelect(item)}
+                  onClick={() => handleOpenPreviewCard(item)}
                   onKeyDown={(event) => handleCardKeyDown(event, item)}
                   className={`group flex min-h-[320px] scroll-mt-6 flex-col overflow-hidden rounded-[1.1rem] border text-left transition ${
                     item.id === activeItemId ? "preview-item-active" : ""
@@ -173,11 +242,7 @@ export function CombinedOutputPanel({
                   </div>
 
                   <div className="relative flex-1 px-4 py-4">
-                    <div
-                      className={`markdown-preview markdown-preview--card ${
-                        isExpanded ? "" : "max-h-[260px] overflow-hidden"
-                      }`}
-                    >
+                    <div className="markdown-preview markdown-preview--card max-h-[260px] overflow-hidden">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         rehypePlugins={[rehypeRaw]}
@@ -185,19 +250,17 @@ export function CombinedOutputPanel({
                         {item.content}
                       </ReactMarkdown>
                     </div>
-                    {isExpanded ? null : (
-                      <div
-                        className={`pointer-events-none absolute inset-x-0 bottom-0 h-16 ${
-                          theme === "dark"
-                            ? "bg-gradient-to-t from-[#0c1219] to-transparent"
-                            : "bg-gradient-to-t from-white to-transparent"
-                        }`}
-                      />
-                    )}
+                    <div
+                      className={`pointer-events-none absolute inset-x-0 bottom-0 h-16 ${
+                        theme === "dark"
+                          ? "bg-gradient-to-t from-[#0c1219] to-transparent"
+                          : "bg-gradient-to-t from-white to-transparent"
+                      }`}
+                    />
                   </div>
 
                   <div
-                    className={`mt-auto flex items-center justify-between gap-3 border-t px-4 py-3 ${
+                    className={`mt-auto border-t px-4 py-3 ${
                       theme === "dark"
                         ? "border-slate-800/80 text-slate-500"
                         : "border-slate-200 text-slate-500"
@@ -213,20 +276,6 @@ export function CombinedOutputPanel({
                       {" · "}
                       {item.content.length} chars
                     </p>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        toggleExpandedCard(item.id);
-                      }}
-                      className={`shrink-0 rounded-md border px-2 py-1 text-[11px] font-semibold transition ${
-                        theme === "dark"
-                          ? "border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-600 hover:bg-slate-800"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                      }`}
-                    >
-                      {isExpanded ? "Recolher" : "Mostrar completo"}
-                    </button>
                   </div>
                 </article>
               );

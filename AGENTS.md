@@ -208,6 +208,31 @@
 - Não alterar formatação geral do projeto sem necessidade.
 - Preservar comportamento existente salvo instrução contrária.
 - Antes de sugerir mudança grande, explicar trade-offs.
+- Sugerir mensagens de commit sempre em português do Brasil.
+- Mensagens de commit devem ser curtas, claras e objetivas.
+- Preferir commits descritivos e semanticamente organizados.
+- Preferir padrão:
+  - `feat: adiciona ...`
+  - `fix: corrige ...`
+  - `refactor: melhora ...`
+  - `test: adiciona ...`
+  - `chore: ajusta ...`
+  - `docs: atualiza ...`
+- Evitar commits genéricos ou inúteis como:
+  - `ajustes`
+  - `fix bug`
+  - `update`
+  - `melhorias`
+  - `alterações`
+  - `teste`
+- Quando possível, mencionar contexto funcional no commit:
+  - módulo
+  - fluxo
+  - tela
+  - comportamento alterado
+- Evitar mensagens excessivamente longas.
+- Evitar misturar múltiplos objetivos no mesmo commit.
+- Em implementações relevantes, sugerir uma mensagem de commit pronta ao final da resposta.
 
 ## Quando Revisar Código
 

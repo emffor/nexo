@@ -300,11 +300,12 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /selecionar card segundo/i }),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /mostrar completo/i }))
-      .toHaveLength(2);
+    expect(
+      screen.queryByRole("button", { name: /mostrar completo/i }),
+    ).not.toBeInTheDocument();
   });
 
-  it("expande e recolhe um card no modo cards", async () => {
+  it("abre um card em preview maximizado e volta para o grid", async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -317,16 +318,22 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: /modo indice/i }));
     await user.click(screen.getByRole("button", { name: /modo cards/i }));
-    await user.click(screen.getByRole("button", { name: /mostrar completo/i }));
+    await user.click(
+      screen.getByRole("button", { name: /selecionar card card longo/i }),
+    );
 
     expect(
-      screen.getByRole("button", { name: /recolher/i }),
+      screen.getByRole("button", { name: /voltar aos cards/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/preview renderizado/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /selecionar card card longo/i }),
+    ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /recolher/i }));
+    await user.click(screen.getByRole("button", { name: /voltar aos cards/i }));
 
     expect(
-      screen.getByRole("button", { name: /mostrar completo/i }),
+      screen.getByRole("button", { name: /selecionar card card longo/i }),
     ).toBeInTheDocument();
   });
 });
