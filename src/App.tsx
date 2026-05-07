@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "./components/AppShell";
@@ -30,13 +30,11 @@ export default function App() {
   const [editingItem, setEditingItem] = useState<MarkdownItem | null>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [isScrollSyncEnabled, setIsScrollSyncEnabled] = useState(false);
-  const [isCompactMode, setIsCompactMode] = useState(readStoredCompactMode);
-  const [isOutlineMode, setIsOutlineMode] = useState(readStoredOutlineMode);
-  const [fontScale, setFontScale] = useState(readStoredFontScale);
-  const [isPreviewMaximized, setIsPreviewMaximized] = useState(
-    readStoredPreviewMaximized,
-  );
-  const [theme, setTheme] = useState<AppTheme>(readStoredTheme);
+  const [isCompactMode, setIsCompactMode] = useState(false);
+  const [isOutlineMode, setIsOutlineMode] = useState(false);
+  const [fontScale, setFontScale] = useState(FONT_SCALE.default);
+  const [isPreviewMaximized, setIsPreviewMaximized] = useState(false);
+  const [theme, setTheme] = useState<AppTheme>("dark");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const leftScrollRef = useRef<HTMLDivElement | null>(null);
   const rightScrollRef = useRef<HTMLDivElement | null>(null);
@@ -54,6 +52,26 @@ export default function App() {
   const { messages, addToast, dismissToast } = useToast();
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [deletingItem, setDeletingItem] = useState<MarkdownItem | null>(null);
+
+  useEffect(() => {
+    setIsCompactMode(readStoredCompactMode());
+  }, []);
+
+  useEffect(() => {
+    setIsOutlineMode(readStoredOutlineMode());
+  }, []);
+
+  useEffect(() => {
+    setFontScale(readStoredFontScale());
+  }, []);
+
+  useEffect(() => {
+    setIsPreviewMaximized(readStoredPreviewMaximized());
+  }, []);
+
+  useEffect(() => {
+    setTheme(readStoredTheme());
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -247,7 +265,11 @@ export default function App() {
     }
   }, [items, addToast]);
 
-  const isMac = navigator.userAgent.includes("Mac");
+  const [isMac, setIsMac] = useState(false);
+
+  useEffect(() => {
+    setIsMac(navigator.userAgent.includes("Mac"));
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

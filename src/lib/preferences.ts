@@ -8,12 +8,17 @@ export const STORAGE_KEYS = {
 
 export type AppTheme = 'dark' | 'light';
 
-export const FONT_SCALE = {
+export const FONT_SCALE: {
+  min: number;
+  max: number;
+  step: number;
+  default: number;
+} = {
   min: 0.7,
   max: 1.35,
   step: 0.1,
   default: 1,
-} as const;
+};
 
 export function clampFontScale(value: number): number {
   return Math.min(FONT_SCALE.max, Math.max(FONT_SCALE.min, Number(value.toFixed(2))));
