@@ -1,0 +1,399 @@
+'use client';
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AppShell } from "./components/AppShell";
+import { AddMarkdownModal } from "./components/AddMarkdownModal";
+import { ConfirmModal } from "./components/ConfirmModal";
+import { CombinedOutputPanel } from "./components/CombinedOutputPanel";
+import { SortableCardsPanel } from "./components/SortableCardsPanel";
+import { ToastContainer } from "./components/Toast";
+import { useMarkdownBoard } from "./hooks/useMarkdownBoard";
+import { useToast } from "./hooks/useToast";
+import { createBackupText, parseBackupText } from "./lib/backup";
+import { buildCombinedContent, getDisplayTitle } from "./lib/items";
+import {
+  type AppTheme,
+  clampFontScale,
+  FONT_SCALE,
+  readStoredCompactMode,
+  readStoredFontScale,
+  readStoredOutlineMode,
+  readStoredPreviewMaximized,
+  readStoredTheme,
+  STORAGE_KEYS,
+} from "./lib/preferences";
+import type { MarkdownItem } from "./types/markdown";
+
+export default function App() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editingItem, setEditingItem] = useState<MarkdownItem | null>(null);
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [isScrollSyncEnabled, setIsScrollSyncEnabled] = useState(false);
+  const [isCompactMode, setIsCompactMode] = useState(readStoredCompactMode);
+  const [isOutlineMode, setIsOutlineMode] = useState(readStoredOutlineMode);
+  const [fontScale, setFontScale] = useState(readStoredFontScale);
+  const [isPreviewMaximized, setIsPreviewMaximized] = useState(
+    readStoredPreviewMaximized,
+  );
+  const [theme, setTheme] = useState<AppTheme>(readStoredTheme);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const leftScrollRef = useRef<HTMLDivElement | null>(null);
+  const rightScrollRef = useRef<HTMLDivElement | null>(null);
+  const syncSourceRef = useRef<"left" | "right" | null>(null);
+  const {
+    items,
+    addItem,
+    updateItem,
+    deleteItem,
+    reorderItems,
+    clearItems,
+    replaceItems,
+    isLoading,
+  } = useMarkdownBoard();
+  const { messages, addToast, dismissToast } = useToast();
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [deletingItem, setDeletingItem] = useState<MarkdownItem | null>(null);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      STORAGE_KEYS.compactMode,
+      String(isCompactMode),
+    );
+  }, [isCompactMode]);
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEYS.fontScale, String(fontScale));
+  }, [fontScale]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      STORAGE_KEYS.outlineMode,
+      String(isOutlineMode),
+    );
+  }, [isOutlineMode]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      STORAGE_KEYS.previewMaximized,
+      String(isPreviewMaximized),
+    );
+  }, [isPreviewMaximized]);
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEYS.theme, theme);
+    document.body.setAttribute("data-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    if (items.length === 0) {
+      setActiveItemId(null);
+      return;
+    }
+
+    if (!activeItemId || !items.some((item) => item.id === activeItemId)) {
+      setActiveItemId(items[0].id);
+    }
+  }, [activeItemId, items]);
+
+  useEffect(() => {
+    if (!isScrollSyncEnabled || isPreviewMaximized) {
+      syncSourceRef.current = null;
+      return;
+    }
+
+    const leftElement = leftScrollRef.current;
+    const rightElement = rightScrollRef.current;
+
+    if (!leftElement || !rightElement) {
+      return;
+    }
+
+    const syncScroll = (
+      source: HTMLDivElement,
+      target: HTMLDivElement,
+      sourceName: "left" | "right",
+    ) => {
+      if (syncSourceRef.current && syncSourceRef.current !== sourceName) {
+        return;
+      }
+
+      syncSourceRef.current = sourceName;
+
+      const maxSourceScroll = source.scrollHeight - source.clientHeight;
+      const maxTargetScroll = target.scrollHeight - target.clientHeight;
+      const ratio =
+        maxSourceScroll > 0 ? source.scrollTop / maxSourceScroll : 0;
+      target.scrollTop = maxTargetScroll > 0 ? ratio * maxTargetScroll : 0;
+
+      window.requestAnimationFrame(() => {
+        syncSourceRef.current = null;
+      });
+    };
+
+    const handleLeftScroll = () =>
+      syncScroll(leftElement, rightElement, "left");
+    const handleRightScroll = () =>
+      syncScroll(rightElement, leftElement, "right");
+
+    leftElement.addEventListener("scroll", handleLeftScroll, { passive: true });
+    rightElement.addEventListener("scroll", handleRightScroll, {
+      passive: true,
+    });
+
+    return () => {
+      leftElement.removeEventListener("scroll", handleLeftScroll);
+      rightElement.removeEventListener("scroll", handleRightScroll);
+    };
+  }, [isPreviewMaximized, isScrollSyncEnabled, items.length, isOutlineMode]);
+
+  const handleSave = async (content: string, title?: string) => {
+    setIsSaving(true);
+
+    try {
+      if (editingItem) {
+        await updateItem(editingItem.id, content, title);
+        addToast("Card atualizado com sucesso");
+      } else {
+        await addItem(content, title);
+        addToast("Novo card adicionado");
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleClearAll = () => {
+    if (items.length === 0) {
+      return;
+    }
+    setConfirmClearAll(true);
+  };
+
+  const executeClearAll = async () => {
+    setConfirmClearAll(false);
+    const snapshot = [...items];
+    await clearItems();
+    addToast("Todos os cards foram removidos", "info", {
+      label: "Desfazer",
+      onClick: () => {
+        void replaceItems(snapshot);
+      },
+    });
+  };
+
+  const handleExport = () => {
+    const backupText = createBackupText(items);
+    const blob = new Blob([backupText], { type: "text/plain;charset=utf-8" });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "organizar-markdown-backup.txt";
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+    addToast(`Backup exportado com ${items.length} card(s)`);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      const rawText = await file.text();
+      const importedItems = parseBackupText(rawText);
+      await replaceItems(importedItems);
+      addToast(`${importedItems.length} card(s) importado(s) com sucesso`);
+    } catch {
+      addToast("Nao foi possivel importar este arquivo.", "error");
+    } finally {
+      event.target.value = "";
+    }
+  };
+
+  const handleDeleteItem = (item: MarkdownItem) => {
+    setDeletingItem(item);
+  };
+
+  const executeDeleteItem = async () => {
+    if (!deletingItem) {
+      return;
+    }
+    const itemId = deletingItem.id;
+    setDeletingItem(null);
+    await deleteItem(itemId);
+    addToast("Card removido", "info");
+  };
+
+  const handleCopyAll = useCallback(async () => {
+    if (items.length === 0) {
+      addToast("Nenhum card para copiar", "error");
+      return;
+    }
+    try {
+      const combined = buildCombinedContent(items);
+      await navigator.clipboard.writeText(combined);
+      addToast("Markdown copiado para a area de transferencia");
+    } catch {
+      addToast("Nao foi possivel copiar para a area de transferencia", "error");
+    }
+  }, [items, addToast]);
+
+  const isMac = navigator.userAgent.includes("Mac");
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const mod = event.ctrlKey || event.metaKey;
+      if (mod && event.key === "n") {
+        event.preventDefault();
+        setIsModalOpen(true);
+      }
+      if (mod && event.shiftKey && event.key.toLowerCase() === "c") {
+        event.preventDefault();
+        void handleCopyAll();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleCopyAll]);
+
+  const handleSelectItem = (item: MarkdownItem) => {
+    setActiveItemId(item.id);
+    document.getElementById(`preview-item-${item.id}`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
+  return (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,text/plain,application/json"
+        className="hidden"
+        onChange={handleImportFile}
+      />
+
+      <AppShell
+        itemsCount={items.length}
+        isCompactMode={isCompactMode}
+        isPreviewMaximized={isPreviewMaximized}
+        isOutlineMode={isOutlineMode}
+        isScrollSyncEnabled={isScrollSyncEnabled}
+        theme={theme}
+        fontScale={fontScale}
+        onOpenModal={() => setIsModalOpen(true)}
+        onToggleCompactMode={() => setIsCompactMode((current) => !current)}
+        onTogglePreviewMaximized={() =>
+          setIsPreviewMaximized((current) => !current)
+        }
+        onToggleOutlineMode={() => setIsOutlineMode((current) => !current)}
+        onToggleScrollSync={() => setIsScrollSyncEnabled((current) => !current)}
+        onToggleTheme={() =>
+          setTheme((current) => (current === "dark" ? "light" : "dark"))
+        }
+        onClearAll={handleClearAll}
+        onDecreaseFont={() =>
+          setFontScale((current) => clampFontScale(current - FONT_SCALE.step))
+        }
+        onIncreaseFont={() =>
+          setFontScale((current) => clampFontScale(current + FONT_SCALE.step))
+        }
+        onExport={handleExport}
+        onImport={handleImportClick}
+        onCopyAll={() => {
+          void handleCopyAll();
+        }}
+        isMac={isMac}
+        leftPanel={
+          <SortableCardsPanel
+            items={items}
+            isLoading={isLoading}
+            isOutlineMode={isOutlineMode}
+            activeItemId={activeItemId}
+            scrollContainerRef={leftScrollRef}
+            theme={theme}
+            onReorder={reorderItems}
+            onSelect={handleSelectItem}
+            onEdit={(item) => {
+              setEditingItem(item);
+              setIsModalOpen(true);
+            }}
+            onDelete={(item) => {
+              void handleDeleteItem(item);
+            }}
+          />
+        }
+        rightPanel={
+          <CombinedOutputPanel
+            items={items}
+            isLoading={isLoading}
+            theme={theme}
+            activeItemId={activeItemId}
+            scrollContainerRef={rightScrollRef}
+          />
+        }
+      />
+
+      <AddMarkdownModal
+        open={isModalOpen}
+        isSaving={isSaving}
+        mode={editingItem ? "edit" : "create"}
+        initialValue={editingItem?.content ?? ""}
+        initialTitle={editingItem?.title ?? ""}
+        theme={theme}
+        isMac={isMac}
+        onClose={() => {
+          if (!isSaving) {
+            setIsModalOpen(false);
+            setEditingItem(null);
+          }
+        }}
+        onSave={handleSave}
+      />
+
+      <ConfirmModal
+        open={confirmClearAll}
+        title="Remover todos os cards"
+        description="Deseja remover todos os cards salvos? Essa acao nao pode ser desfeita."
+        confirmLabel="Remover tudo"
+        cancelLabel="Cancelar"
+        variant="danger"
+        theme={theme}
+        onConfirm={() => {
+          void executeClearAll();
+        }}
+        onCancel={() => setConfirmClearAll(false)}
+      />
+
+      <ConfirmModal
+        open={deletingItem !== null}
+        title="Remover card"
+        description={`Deseja remover o card "${deletingItem ? getDisplayTitle(deletingItem, 40) : ""}"?`}
+        confirmLabel="Remover"
+        cancelLabel="Cancelar"
+        variant="danger"
+        theme={theme}
+        onConfirm={() => {
+          void executeDeleteItem();
+        }}
+        onCancel={() => setDeletingItem(null)}
+      />
+
+      <ToastContainer
+        messages={messages}
+        theme={theme}
+        onDismiss={dismissToast}
+      />
+    </>
+  );
+}
