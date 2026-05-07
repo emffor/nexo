@@ -106,10 +106,20 @@ export function SortableCard({
               onClick={() => onSelect(item)}
               title={getDisplayTitle(item, 56)}
               aria-label={`Ir para ${getDisplayTitle(item, 56)}`}
-              className={`flex h-11 w-full cursor-grab items-center justify-center rounded-md border px-2 text-[11px] font-bold tracking-[0.18em] transition active:cursor-grabbing ${outlineButtonClass}`}
+              className={`relative flex h-11 w-full cursor-grab items-center justify-center rounded-md border px-2 text-[11px] font-bold tracking-[0.18em] transition active:cursor-grabbing ${outlineButtonClass}`}
               {...attributes}
               {...listeners}
             >
+              <span
+                className={`absolute left-1.5 top-1.5 rounded-[0.25rem] px-1 font-mono text-[8px] font-semibold leading-3 tracking-[0.12em] ${
+                  theme === "dark"
+                    ? "bg-slate-800 text-slate-500"
+                    : "bg-slate-100 text-slate-400"
+                }`}
+                aria-hidden="true"
+              >
+                {String(position + 1).padStart(2, "0")}
+              </span>
               <span className="truncate">
                 {item.title?.trim()
                   ? getDisplayTitle(item, 20)
