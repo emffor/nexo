@@ -228,4 +228,17 @@ describe("App", () => {
     ).toBeInTheDocument();
     expect(scrollSpy).toHaveBeenCalled();
   });
+
+  it("mantem o modo indice apos recarregar a aplicacao", async () => {
+    window.localStorage.setItem("organizar-markdown:outline-mode", "true");
+
+    render(<App />);
+
+    expect(
+      await screen.findByRole("button", { name: /restaurar cards/i }),
+    ).toBeInTheDocument();
+    expect(window.localStorage.getItem("organizar-markdown:outline-mode")).toBe(
+      "true",
+    );
+  });
 });

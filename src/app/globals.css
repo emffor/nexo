@@ -5,6 +5,19 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    min-height: 100%;
+    background: #0a0f16;
+  }
+
+  html[data-theme="light"] {
+    background: #f3efe7;
+  }
+
+  html[data-theme="dark"] {
+    background: #0a0f16;
+  }
+
   :root {
     color: #111827;
   }

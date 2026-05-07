@@ -35,6 +35,7 @@ export default function App() {
   const [fontScale, setFontScale] = useState(FONT_SCALE.default);
   const [isPreviewMaximized, setIsPreviewMaximized] = useState(false);
   const [theme, setTheme] = useState<AppTheme>("dark");
+  const [arePreferencesLoaded, setArePreferencesLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const leftScrollRef = useRef<HTMLDivElement | null>(null);
   const rightScrollRef = useRef<HTMLDivElement | null>(null);
@@ -71,37 +72,59 @@ export default function App() {
 
   useEffect(() => {
     setTheme(readStoredTheme());
+    setArePreferencesLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!arePreferencesLoaded) {
+      return;
+    }
+
     window.localStorage.setItem(
       STORAGE_KEYS.compactMode,
       String(isCompactMode),
     );
-  }, [isCompactMode]);
+  }, [arePreferencesLoaded, isCompactMode]);
 
   useEffect(() => {
+    if (!arePreferencesLoaded) {
+      return;
+    }
+
     window.localStorage.setItem(STORAGE_KEYS.fontScale, String(fontScale));
-  }, [fontScale]);
+  }, [arePreferencesLoaded, fontScale]);
 
   useEffect(() => {
+    if (!arePreferencesLoaded) {
+      return;
+    }
+
     window.localStorage.setItem(
       STORAGE_KEYS.outlineMode,
       String(isOutlineMode),
     );
-  }, [isOutlineMode]);
+  }, [arePreferencesLoaded, isOutlineMode]);
 
   useEffect(() => {
+    if (!arePreferencesLoaded) {
+      return;
+    }
+
     window.localStorage.setItem(
       STORAGE_KEYS.previewMaximized,
       String(isPreviewMaximized),
     );
-  }, [isPreviewMaximized]);
+  }, [arePreferencesLoaded, isPreviewMaximized]);
 
   useEffect(() => {
+    if (!arePreferencesLoaded) {
+      return;
+    }
+
     window.localStorage.setItem(STORAGE_KEYS.theme, theme);
+    document.documentElement.setAttribute("data-theme", theme);
     document.body.setAttribute("data-theme", theme);
-  }, [theme]);
+  }, [arePreferencesLoaded, theme]);
 
   useEffect(() => {
     if (items.length === 0) {
