@@ -65,11 +65,15 @@ export function AppShell({
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
   const isIndexMode = viewMode === "index";
   const isCardsMode = viewMode === "cards";
+  const isFlowMode = viewMode === "flow";
+  const isFullWidthMode = isCardsMode || isFlowMode;
   const viewModeLabel =
     viewMode === "normal"
       ? "Modo indice"
       : viewMode === "index"
         ? "Modo cards"
+        : viewMode === "cards"
+          ? "Modo fluxo"
         : "Modo normal";
 
   return (
@@ -159,7 +163,7 @@ export function AppShell({
           <button
             type="button"
             onClick={onToggleScrollSync}
-            disabled={isCardsMode}
+            disabled={isFullWidthMode}
             className={`toolbar-button ${
               isScrollSyncEnabled ? "toolbar-button--primary" : ""
             } disabled:cursor-not-allowed disabled:opacity-45`}
@@ -218,14 +222,14 @@ export function AppShell({
         className={`grid flex-1 ${
           isPreviewMaximized
             ? "grid-cols-1"
-            : isCardsMode
+            : isFullWidthMode
               ? "grid-cols-1"
               : isIndexMode
               ? `lg:grid-cols-[120px_minmax(0,1fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
               : `lg:grid-cols-[minmax(280px,0.33fr)_minmax(0,0.67fr)] ${isCompactMode ? "gap-2" : "gap-6"}`
         }`}
       >
-        {isPreviewMaximized || isCardsMode ? null : leftPanel}
+        {isPreviewMaximized || isFullWidthMode ? null : leftPanel}
         {rightPanel}
       </section>
     </main>

@@ -4,11 +4,12 @@ export const STORAGE_KEYS = {
   previewMaximized: 'organizar-markdown:preview-maximized',
   outlineMode: 'organizar-markdown:outline-mode',
   viewMode: 'organizar-markdown:view-mode',
+  flowLinksCustomized: 'organizar-markdown:flow-links-customized',
   theme: 'organizar-markdown:theme',
 } as const;
 
 export type AppTheme = 'dark' | 'light';
-export type ViewMode = 'normal' | 'index' | 'cards';
+export type ViewMode = 'normal' | 'index' | 'cards' | 'flow';
 
 export const FONT_SCALE: {
   min: number;
@@ -71,11 +72,24 @@ export function readStoredViewMode(): ViewMode {
 
   const rawValue = window.localStorage.getItem(STORAGE_KEYS.viewMode);
 
-  if (rawValue === 'index' || rawValue === 'cards' || rawValue === 'normal') {
+  if (
+    rawValue === 'index' ||
+    rawValue === 'cards' ||
+    rawValue === 'normal' ||
+    rawValue === 'flow'
+  ) {
     return rawValue;
   }
 
   return readStoredOutlineMode() ? 'index' : 'normal';
+}
+
+export function readStoredFlowLinksCustomized(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return window.localStorage.getItem(STORAGE_KEYS.flowLinksCustomized) === 'true';
 }
 
 export function readStoredTheme(): AppTheme {

@@ -2,24 +2,27 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { db } from '../lib/db';
+import { sanitizeFlowLinks } from '../lib/flow';
 import {
   buildCombinedContent,
   isContentBlank,
   normalizeMarkdownContent,
   reorderMarkdownItems,
 } from '../lib/items';
-import type { MarkdownItem } from '../types/markdown';
+import type { FlowLink, MarkdownItem } from '../types/markdown';
 
 export interface UseMarkdownBoardResult {
   items: MarkdownItem[];
+  flowLinks: FlowLink[];
   combinedContent: string;
   isLoading: boolean;
   addItem: (content: string, title?: string) => Promise<void>;
   updateItem: (itemId: string, content: string, title?: string) => Promise<void>;
   deleteItem: (itemId: string) => Promise<void>;
   reorderItems: (activeId: string, overId: string) => Promise<void>;
+  replaceFlowLinks: (nextLinks: FlowLink[]) => Promise<void>;
   clearItems: () => Promise<void>;
-  replaceItems: (nextItems: MarkdownItem[]) => Promise<void>;
+  replaceItems: (nextItems: MarkdownItem[], nextLinks?: FlowLink[]) => Promise<void>;
 }
 
 async function loadItems(): Promise<MarkdownItem[]> {
@@ -51,6 +54,7 @@ async function loadItems(): Promise<MarkdownItem[]> {
 
 export function useMarkdownBoard(): UseMarkdownBoardResult {
   const [items, setItems] = useState<MarkdownItem[]>([]);
+  const [flowLinks, setFlowLinks] = useState<FlowLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -58,12 +62,14 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
 
     const hydrate = async () => {
       const storedItems = await loadItems();
+      const storedFlowLinks = await db.flowLinks.toArray();
 
       if (!isMounted) {
         return;
       }
 
       setItems(storedItems);
+      setFlowLinks(sanitizeFlowLinks(storedFlowLinks, storedItems));
       setIsLoading(false);
     };
 
@@ -130,10 +136,20 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
     const remaining = items
       .filter((item) => item.id !== itemId)
       .map((item, index) => ({ ...item, order: index, updatedAt: now }));
+    const remainingLinks = flowLinks.filter(
+      (link) => link.sourceId !== itemId && link.targetId !== itemId,
+    );
 
     setItems(remaining);
-    await db.transaction('rw', db.items, async () => {
+    setFlowLinks(remainingLinks);
+    await db.transaction('rw', db.items, db.flowLinks, async () => {
       await db.items.delete(itemId);
+      await db.flowLinks
+        .where('sourceId')
+        .equals(itemId)
+        .or('targetId')
+        .equals(itemId)
+        .delete();
       if (remaining.length > 0) {
         await db.items.bulkPut(remaining);
       }
@@ -153,34 +169,58 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
     });
   };
 
-  const clearItems = async () => {
-    setItems([]);
-    await db.items.clear();
+  const replaceFlowLinks = async (nextLinks: FlowLink[]) => {
+    const sanitizedLinks = sanitizeFlowLinks(nextLinks, items);
+
+    setFlowLinks(sanitizedLinks);
+    await db.transaction('rw', db.flowLinks, async () => {
+      await db.flowLinks.clear();
+      if (sanitizedLinks.length > 0) {
+        await db.flowLinks.bulkPut(sanitizedLinks);
+      }
+    });
   };
 
-  const replaceItems = async (nextItems: MarkdownItem[]) => {
+  const clearItems = async () => {
+    setItems([]);
+    setFlowLinks([]);
+    await db.transaction('rw', db.items, db.flowLinks, async () => {
+      await db.items.clear();
+      await db.flowLinks.clear();
+    });
+  };
+
+  const replaceItems = async (nextItems: MarkdownItem[], nextLinks: FlowLink[] = []) => {
     const normalizedItems = nextItems.map((item) => ({
       ...item,
       content: normalizeMarkdownContent(item.content),
     }));
+    const sanitizedLinks = sanitizeFlowLinks(nextLinks, normalizedItems);
 
     setItems(normalizedItems);
-    await db.transaction('rw', db.items, async () => {
+    setFlowLinks(sanitizedLinks);
+    await db.transaction('rw', db.items, db.flowLinks, async () => {
       await db.items.clear();
+      await db.flowLinks.clear();
       if (normalizedItems.length > 0) {
         await db.items.bulkPut(normalizedItems);
+      }
+      if (sanitizedLinks.length > 0) {
+        await db.flowLinks.bulkPut(sanitizedLinks);
       }
     });
   };
 
   return {
     items,
+    flowLinks,
     combinedContent,
     isLoading,
     addItem,
     updateItem,
     deleteItem,
     reorderItems,
+    replaceFlowLinks,
     clearItems,
     replaceItems,
   };
