@@ -322,6 +322,60 @@
     color: #0f172a;
   }
 
+  .markdown-preview--card {
+    font-size: calc(0.86rem * var(--font-scale, 1));
+  }
+
+  .markdown-preview--card h1 {
+    font-size: calc(1.28rem * var(--font-scale, 1));
+    letter-spacing: 0;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.65rem;
+  }
+
+  .markdown-preview--card h2 {
+    font-size: calc(1.12rem * var(--font-scale, 1));
+    margin-top: 1.2rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .markdown-preview--card h3 {
+    font-size: calc(1rem * var(--font-scale, 1));
+    margin-top: 1rem;
+  }
+
+  .markdown-preview--card p,
+  .markdown-preview--card li,
+  .markdown-preview--card blockquote {
+    font-size: calc(0.86rem * var(--font-scale, 1));
+    line-height: 1.65;
+  }
+
+  .markdown-preview--card p,
+  .markdown-preview--card ul,
+  .markdown-preview--card ol,
+  .markdown-preview--card blockquote,
+  .markdown-preview--card pre,
+  .markdown-preview--card table,
+  .markdown-preview--card hr {
+    margin-bottom: 0.9rem;
+  }
+
+  .markdown-preview--card ul,
+  .markdown-preview--card ol {
+    padding-left: 1.2rem;
+  }
+
+  .markdown-preview--card pre {
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .markdown-preview--card code {
+    border-radius: 0.4rem;
+    font-size: calc(0.86em * var(--font-scale, 1));
+  }
+
   .preview-item-active {
     animation: preview-highlight 1.2s ease-out;
   }

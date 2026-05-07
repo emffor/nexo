@@ -1,9 +1,9 @@
 'use client';
 
 import { getDisplayTitle } from "../lib/items";
-import { type RefObject } from "react";
+import { useState, type KeyboardEvent, type RefObject } from "react";
 import type { MarkdownItem } from "../types/markdown";
-import type { AppTheme } from "../lib/preferences";
+import type { AppTheme, ViewMode } from "../lib/preferences";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
@@ -12,17 +12,52 @@ interface CombinedOutputPanelProps {
   items: MarkdownItem[];
   isLoading: boolean;
   theme: AppTheme;
+  viewMode: ViewMode;
   activeItemId?: string | null;
   scrollContainerRef?: RefObject<HTMLDivElement>;
+  onSelect: (item: MarkdownItem) => void;
 }
 
 export function CombinedOutputPanel({
   items,
   isLoading,
   theme,
+  viewMode,
   activeItemId,
   scrollContainerRef,
+  onSelect,
 }: CombinedOutputPanelProps) {
+  const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const isCardsMode = viewMode === "cards";
+
+  const toggleExpandedCard = (itemId: string) => {
+    setExpandedCardIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+
+      return next;
+    });
+  };
+
+  const handleCardKeyDown = (
+    event: KeyboardEvent<HTMLElement>,
+    item: MarkdownItem,
+  ) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    onSelect(item);
+  };
+
   return (
     <section
       className={`flex min-h-[420px] flex-col overflow-hidden rounded-[1.75rem] border lg:min-h-0 ${
@@ -48,7 +83,7 @@ export function CombinedOutputPanel({
             theme === "dark" ? "text-slate-50" : "text-slate-950"
           }`}
         >
-          Preview renderizado
+          {isCardsMode ? "Preview em cards" : "Preview renderizado"}
         </h2>
       </div>
 
@@ -66,6 +101,136 @@ export function CombinedOutputPanel({
             >
               Carregando conteudo...
             </p>
+          </div>
+        ) : items.length > 0 && isCardsMode ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {items.map((item, index) => {
+              const isExpanded = expandedCardIds.has(item.id);
+              const displayTitle = getDisplayTitle(item, 72);
+
+              return (
+                <article
+                  key={item.id}
+                  id={`preview-item-${item.id}`}
+                  data-preview-item-id={item.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Selecionar card ${displayTitle}`}
+                  onClick={() => onSelect(item)}
+                  onKeyDown={(event) => handleCardKeyDown(event, item)}
+                  className={`group flex min-h-[320px] scroll-mt-6 flex-col overflow-hidden rounded-[1.1rem] border text-left transition ${
+                    item.id === activeItemId ? "preview-item-active" : ""
+                  } ${
+                    theme === "dark"
+                      ? item.id === activeItemId
+                        ? "border-teal-400/55 bg-[#0f1b20] shadow-[0_0_0_1px_rgba(45,212,191,0.14)]"
+                        : "border-slate-800/80 bg-[#0c1219] hover:border-slate-700"
+                      : item.id === activeItemId
+                        ? "border-teal-300 bg-teal-50/70 shadow-sm"
+                        : "border-slate-200 bg-white shadow-sm hover:border-slate-300"
+                  }`}
+                >
+                  <div
+                    className={`border-b px-4 py-3 ${
+                      theme === "dark"
+                        ? "border-slate-800/80 bg-slate-950/20"
+                        : "border-slate-200 bg-slate-50"
+                    }`}
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <span
+                        className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                          theme === "dark"
+                            ? "bg-slate-800 text-slate-400"
+                            : "bg-white text-slate-500"
+                        }`}
+                      >
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${
+                          theme === "dark"
+                            ? "bg-emerald-400/10 text-emerald-300"
+                            : "bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            theme === "dark" ? "bg-emerald-300" : "bg-emerald-500"
+                          }`}
+                          aria-hidden="true"
+                        />
+                        {item.id === activeItemId ? "Selecionado" : "Card"}
+                      </span>
+                    </div>
+                    <h3
+                      className={`m-0 line-clamp-2 text-sm font-semibold leading-5 ${
+                        theme === "dark" ? "text-slate-100" : "text-slate-950"
+                      }`}
+                    >
+                      {displayTitle}
+                    </h3>
+                  </div>
+
+                  <div className="relative flex-1 px-4 py-4">
+                    <div
+                      className={`markdown-preview markdown-preview--card ${
+                        isExpanded ? "" : "max-h-[260px] overflow-hidden"
+                      }`}
+                    >
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeRaw]}
+                      >
+                        {item.content}
+                      </ReactMarkdown>
+                    </div>
+                    {isExpanded ? null : (
+                      <div
+                        className={`pointer-events-none absolute inset-x-0 bottom-0 h-16 ${
+                          theme === "dark"
+                            ? "bg-gradient-to-t from-[#0c1219] to-transparent"
+                            : "bg-gradient-to-t from-white to-transparent"
+                        }`}
+                      />
+                    )}
+                  </div>
+
+                  <div
+                    className={`mt-auto flex items-center justify-between gap-3 border-t px-4 py-3 ${
+                      theme === "dark"
+                        ? "border-slate-800/80 text-slate-500"
+                        : "border-slate-200 text-slate-500"
+                    }`}
+                  >
+                    <p className="m-0 min-w-0 truncate text-[11px]">
+                      Atualizado em{" "}
+                      {new Intl.DateTimeFormat("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      }).format(new Date(item.updatedAt))}
+                      {" · "}
+                      {item.content.length} chars
+                    </p>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleExpandedCard(item.id);
+                      }}
+                      className={`shrink-0 rounded-md border px-2 py-1 text-[11px] font-semibold transition ${
+                        theme === "dark"
+                          ? "border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-600 hover:bg-slate-800"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                      }`}
+                    >
+                      {isExpanded ? "Recolher" : "Mostrar completo"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : items.length > 0 ? (
           <article

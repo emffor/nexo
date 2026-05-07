@@ -13,13 +13,14 @@ import { createBackupText, parseBackupText } from "./lib/backup";
 import { buildCombinedContent, getDisplayTitle } from "./lib/items";
 import {
   type AppTheme,
+  type ViewMode,
   clampFontScale,
   FONT_SCALE,
   readStoredCompactMode,
   readStoredFontScale,
-  readStoredOutlineMode,
   readStoredPreviewMaximized,
   readStoredTheme,
+  readStoredViewMode,
   STORAGE_KEYS,
 } from "./lib/preferences";
 import type { MarkdownItem } from "./types/markdown";
@@ -31,7 +32,7 @@ export default function App() {
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [isScrollSyncEnabled, setIsScrollSyncEnabled] = useState(false);
   const [isCompactMode, setIsCompactMode] = useState(false);
-  const [isOutlineMode, setIsOutlineMode] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("normal");
   const [fontScale, setFontScale] = useState(FONT_SCALE.default);
   const [isPreviewMaximized, setIsPreviewMaximized] = useState(false);
   const [theme, setTheme] = useState<AppTheme>("dark");
@@ -59,7 +60,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    setIsOutlineMode(readStoredOutlineMode());
+    setViewMode(readStoredViewMode());
   }, []);
 
   useEffect(() => {
@@ -100,10 +101,10 @@ export default function App() {
     }
 
     window.localStorage.setItem(
-      STORAGE_KEYS.outlineMode,
-      String(isOutlineMode),
+      STORAGE_KEYS.viewMode,
+      viewMode,
     );
-  }, [arePreferencesLoaded, isOutlineMode]);
+  }, [arePreferencesLoaded, viewMode]);
 
   useEffect(() => {
     if (!arePreferencesLoaded) {
@@ -138,7 +139,7 @@ export default function App() {
   }, [activeItemId, items]);
 
   useEffect(() => {
-    if (!isScrollSyncEnabled || isPreviewMaximized) {
+    if (!isScrollSyncEnabled || isPreviewMaximized || viewMode === "cards") {
       syncSourceRef.current = null;
       return;
     }
@@ -186,7 +187,7 @@ export default function App() {
       leftElement.removeEventListener("scroll", handleLeftScroll);
       rightElement.removeEventListener("scroll", handleRightScroll);
     };
-  }, [isPreviewMaximized, isScrollSyncEnabled, items.length, isOutlineMode]);
+  }, [isPreviewMaximized, isScrollSyncEnabled, items.length, viewMode]);
 
   const handleSave = async (content: string, title?: string) => {
     setIsSaving(true);
@@ -318,6 +319,20 @@ export default function App() {
     });
   };
 
+  const handleCycleViewMode = () => {
+    setViewMode((current) => {
+      if (current === "normal") {
+        return "index";
+      }
+
+      if (current === "index") {
+        return "cards";
+      }
+
+      return "normal";
+    });
+  };
+
   return (
     <>
       <input
@@ -332,7 +347,7 @@ export default function App() {
         itemsCount={items.length}
         isCompactMode={isCompactMode}
         isPreviewMaximized={isPreviewMaximized}
-        isOutlineMode={isOutlineMode}
+        viewMode={viewMode}
         isScrollSyncEnabled={isScrollSyncEnabled}
         theme={theme}
         fontScale={fontScale}
@@ -341,7 +356,7 @@ export default function App() {
         onTogglePreviewMaximized={() =>
           setIsPreviewMaximized((current) => !current)
         }
-        onToggleOutlineMode={() => setIsOutlineMode((current) => !current)}
+        onCycleViewMode={handleCycleViewMode}
         onToggleScrollSync={() => setIsScrollSyncEnabled((current) => !current)}
         onToggleTheme={() =>
           setTheme((current) => (current === "dark" ? "light" : "dark"))
@@ -363,7 +378,7 @@ export default function App() {
           <SortableCardsPanel
             items={items}
             isLoading={isLoading}
-            isOutlineMode={isOutlineMode}
+            isOutlineMode={viewMode === "index"}
             activeItemId={activeItemId}
             scrollContainerRef={leftScrollRef}
             theme={theme}
@@ -383,8 +398,10 @@ export default function App() {
             items={items}
             isLoading={isLoading}
             theme={theme}
+            viewMode={viewMode}
             activeItemId={activeItemId}
             scrollContainerRef={rightScrollRef}
+            onSelect={handleSelectItem}
           />
         }
       />

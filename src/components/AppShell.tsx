@@ -2,20 +2,20 @@
 
 import { useState, type ReactNode } from "react";
 
-import type { AppTheme } from "../lib/preferences";
+import type { AppTheme, ViewMode } from "../lib/preferences";
 
 interface AppShellProps {
   itemsCount: number;
   isCompactMode: boolean;
   isPreviewMaximized: boolean;
-  isOutlineMode: boolean;
+  viewMode: ViewMode;
   isScrollSyncEnabled: boolean;
   theme: AppTheme;
   fontScale: number;
   onOpenModal: () => void;
   onToggleCompactMode: () => void;
   onTogglePreviewMaximized: () => void;
-  onToggleOutlineMode: () => void;
+  onCycleViewMode: () => void;
   onToggleScrollSync: () => void;
   onToggleTheme: () => void;
   onClearAll: () => void;
@@ -42,14 +42,14 @@ export function AppShell({
   itemsCount,
   isCompactMode,
   isPreviewMaximized,
-  isOutlineMode,
+  viewMode,
   isScrollSyncEnabled,
   theme,
   fontScale,
   onOpenModal,
   onToggleCompactMode,
   onTogglePreviewMaximized,
-  onToggleOutlineMode,
+  onCycleViewMode,
   onToggleScrollSync,
   onToggleTheme,
   onClearAll,
@@ -63,6 +63,14 @@ export function AppShell({
   rightPanel,
 }: AppShellProps) {
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
+  const isIndexMode = viewMode === "index";
+  const isCardsMode = viewMode === "cards";
+  const viewModeLabel =
+    viewMode === "normal"
+      ? "Modo indice"
+      : viewMode === "index"
+        ? "Modo cards"
+        : "Modo normal";
 
   return (
     <main
@@ -143,17 +151,18 @@ export function AppShell({
           </button>
           <button
             type="button"
-            onClick={onToggleOutlineMode}
-            className="toolbar-button"
+            onClick={onCycleViewMode}
+            className={`toolbar-button ${viewMode !== "normal" ? "toolbar-button--primary" : ""}`}
           >
-            {isOutlineMode ? "Restaurar cards" : "Modo indice"}
+            {viewModeLabel}
           </button>
           <button
             type="button"
             onClick={onToggleScrollSync}
+            disabled={isCardsMode}
             className={`toolbar-button ${
               isScrollSyncEnabled ? "toolbar-button--primary" : ""
-            }`}
+            } disabled:cursor-not-allowed disabled:opacity-45`}
           >
             {isScrollSyncEnabled ? "Scroll sync ligado" : "Scroll sync"}
           </button>
@@ -209,12 +218,14 @@ export function AppShell({
         className={`grid flex-1 ${
           isPreviewMaximized
             ? "grid-cols-1"
-            : isOutlineMode
+            : isCardsMode
+              ? "grid-cols-1"
+              : isIndexMode
               ? `lg:grid-cols-[120px_minmax(0,1fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
               : `lg:grid-cols-[minmax(280px,0.33fr)_minmax(0,0.67fr)] ${isCompactMode ? "gap-2" : "gap-6"}`
         }`}
       >
-        {isPreviewMaximized ? null : leftPanel}
+        {isPreviewMaximized || isCardsMode ? null : leftPanel}
         {rightPanel}
       </section>
     </main>

@@ -3,10 +3,12 @@ export const STORAGE_KEYS = {
   fontScale: 'organizar-markdown:font-scale',
   previewMaximized: 'organizar-markdown:preview-maximized',
   outlineMode: 'organizar-markdown:outline-mode',
+  viewMode: 'organizar-markdown:view-mode',
   theme: 'organizar-markdown:theme',
 } as const;
 
 export type AppTheme = 'dark' | 'light';
+export type ViewMode = 'normal' | 'index' | 'cards';
 
 export const FONT_SCALE: {
   min: number;
@@ -60,6 +62,20 @@ export function readStoredOutlineMode(): boolean {
   }
 
   return window.localStorage.getItem(STORAGE_KEYS.outlineMode) === 'true';
+}
+
+export function readStoredViewMode(): ViewMode {
+  if (typeof window === 'undefined') {
+    return 'normal';
+  }
+
+  const rawValue = window.localStorage.getItem(STORAGE_KEYS.viewMode);
+
+  if (rawValue === 'index' || rawValue === 'cards' || rawValue === 'normal') {
+    return rawValue;
+  }
+
+  return readStoredOutlineMode() ? 'index' : 'normal';
 }
 
 export function readStoredTheme(): AppTheme {

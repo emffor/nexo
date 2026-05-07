@@ -224,21 +224,109 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /ir para segundo/i }));
 
     expect(
-      screen.getByRole("button", { name: /restaurar cards/i }),
+      screen.getByRole("button", { name: /modo cards/i }),
     ).toBeInTheDocument();
     expect(scrollSpy).toHaveBeenCalled();
   });
 
-  it("mantem o modo indice apos recarregar a aplicacao", async () => {
+  it("alterna entre os modos normal, indice e cards", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+
+    expect(
+      screen.getByRole("button", { name: /modo cards/i }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /modo cards/i }));
+
+    expect(
+      screen.getByRole("button", { name: /modo normal/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/cards em ordem/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /modo normal/i }));
+
+    expect(
+      screen.getByRole("button", { name: /modo indice/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("mantem compatibilidade com o modo indice antigo ao recarregar", async () => {
     window.localStorage.setItem("organizar-markdown:outline-mode", "true");
 
     render(<App />);
 
     expect(
-      await screen.findByRole("button", { name: /restaurar cards/i }),
+      await screen.findByRole("button", { name: /modo cards/i }),
     ).toBeInTheDocument();
-    expect(window.localStorage.getItem("organizar-markdown:outline-mode")).toBe(
-      "true",
+    expect(window.localStorage.getItem("organizar-markdown:view-mode")).toBe(
+      "index",
     );
+  });
+
+  it("persiste o modo cards apos alternar a visualizacao", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+    await user.click(screen.getByRole("button", { name: /modo cards/i }));
+
+    expect(window.localStorage.getItem("organizar-markdown:view-mode")).toBe(
+      "cards",
+    );
+  });
+
+  it("renderiza cards de markdown no grid do preview", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.type(screen.getByLabelText(/conteudo/i), "# Primeiro");
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.type(screen.getByLabelText(/conteudo/i), "## Segundo");
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+
+    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+    await user.click(screen.getByRole("button", { name: /modo cards/i }));
+
+    expect(screen.getByText(/preview em cards/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /selecionar card primeiro/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /selecionar card segundo/i }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /mostrar completo/i }))
+      .toHaveLength(2);
+  });
+
+  it("expande e recolhe um card no modo cards", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.type(
+      screen.getByLabelText(/conteudo/i),
+      "# Card longo\n\nTexto em markdown para validar expansao.",
+    );
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+
+    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+    await user.click(screen.getByRole("button", { name: /modo cards/i }));
+    await user.click(screen.getByRole("button", { name: /mostrar completo/i }));
+
+    expect(
+      screen.getByRole("button", { name: /recolher/i }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /recolher/i }));
+
+    expect(
+      screen.getByRole("button", { name: /mostrar completo/i }),
+    ).toBeInTheDocument();
   });
 });
