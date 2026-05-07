@@ -402,6 +402,7 @@ export default function App() {
             activeItemId={activeItemId}
             scrollContainerRef={rightScrollRef}
             onSelect={handleSelectItem}
+            onReorder={reorderItems}
           />
         }
       />

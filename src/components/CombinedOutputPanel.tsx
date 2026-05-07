@@ -1,10 +1,28 @@
 'use client';
 
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { getDisplayTitle } from "../lib/items";
 import {
   useEffect,
+  useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
   type RefObject,
 } from "react";
 import type { MarkdownItem } from "../types/markdown";
@@ -12,6 +30,153 @@ import type { AppTheme, ViewMode } from "../lib/preferences";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+
+interface PreviewGridCardProps {
+  item: MarkdownItem;
+  position: number;
+  theme: AppTheme;
+  isActive: boolean;
+  onClick: (event: MouseEvent<HTMLElement>, item: MarkdownItem) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLElement>, item: MarkdownItem) => void;
+}
+
+function PreviewGridCard({
+  item,
+  position,
+  theme,
+  isActive,
+  onClick,
+  onKeyDown,
+}: PreviewGridCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: item.id,
+  });
+  const displayTitle = getDisplayTitle(item, 72);
+  const { role: _role, tabIndex: _tabIndex, ...sortableAttributes } = attributes;
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    ...(isDragging
+      ? {
+          zIndex: 50,
+          scale: "1.015",
+          opacity: 0.92,
+          boxShadow: "0 14px 34px rgba(0,0,0,0.28)",
+        }
+      : {}),
+  };
+
+  return (
+    <article
+      ref={setNodeRef}
+      style={style}
+      id={`preview-item-${item.id}`}
+      data-preview-item-id={item.id}
+      role="button"
+      tabIndex={0}
+      aria-label={`Selecionar card ${displayTitle}`}
+      onClick={(event) => onClick(event, item)}
+      onKeyDown={(event) => onKeyDown(event, item)}
+      className={`group flex min-h-[236px] scroll-mt-6 cursor-grab flex-col overflow-hidden rounded-xl border text-left transition active:cursor-grabbing ${
+        isActive ? "preview-item-active" : ""
+      } ${
+        isDragging
+          ? theme === "dark"
+            ? "border-teal-400/60 bg-[#0f1b20]"
+            : "border-teal-300 bg-teal-50"
+          : theme === "dark"
+            ? isActive
+              ? "border-teal-400/55 bg-[#0f1b20] shadow-[0_0_0_1px_rgba(45,212,191,0.14)]"
+              : "border-slate-800/80 bg-[#0c1219] hover:border-slate-700"
+            : isActive
+              ? "border-teal-300 bg-teal-50/70 shadow-sm"
+              : "border-slate-200 bg-white shadow-sm hover:border-slate-300"
+      }`}
+      {...sortableAttributes}
+      {...listeners}
+    >
+      <div
+        className={`border-b px-3 py-2.5 ${
+          theme === "dark"
+            ? "border-slate-800/80 bg-slate-950/20"
+            : "border-slate-200 bg-slate-50"
+        }`}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <span
+            className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] ${
+              theme === "dark"
+                ? "bg-slate-800 text-slate-400"
+                : "bg-white text-slate-500"
+            }`}
+          >
+            {String(position + 1).padStart(2, "0")}
+          </span>
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              isActive
+                ? theme === "dark"
+                  ? "bg-teal-300"
+                  : "bg-teal-500"
+                : theme === "dark"
+                  ? "bg-slate-600"
+                  : "bg-slate-300"
+            }`}
+            aria-hidden="true"
+          />
+        </div>
+        <h3
+          className={`m-0 mt-2 line-clamp-1 text-[13px] font-semibold leading-5 ${
+            theme === "dark" ? "text-slate-100" : "text-slate-950"
+          }`}
+        >
+          {displayTitle}
+        </h3>
+      </div>
+
+      <div className="relative flex-1 px-3 py-3">
+        <div className="markdown-preview markdown-preview--card max-h-[154px] overflow-hidden">
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+            {item.content}
+          </ReactMarkdown>
+        </div>
+        <div
+          className={`pointer-events-none absolute inset-x-0 bottom-0 h-16 ${
+            theme === "dark"
+              ? "bg-gradient-to-t from-[#0c1219] to-transparent"
+              : "bg-gradient-to-t from-white to-transparent"
+          }`}
+        />
+      </div>
+
+      <div
+        className={`mt-auto border-t px-3 py-2 ${
+          theme === "dark"
+            ? "border-slate-800/80 text-slate-500"
+            : "border-slate-200 text-slate-500"
+        }`}
+      >
+        <p className="m-0 min-w-0 truncate text-[10px]">
+          Atualizado em{" "}
+          {new Intl.DateTimeFormat("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          }).format(new Date(item.updatedAt))}
+          {" · "}
+          {item.content.length} chars
+        </p>
+      </div>
+    </article>
+  );
+}
 
 interface CombinedOutputPanelProps {
   items: MarkdownItem[];
@@ -21,6 +186,7 @@ interface CombinedOutputPanelProps {
   activeItemId?: string | null;
   scrollContainerRef?: RefObject<HTMLDivElement>;
   onSelect: (item: MarkdownItem) => void;
+  onReorder: (activeId: string, overId: string) => Promise<void>;
 }
 
 export function CombinedOutputPanel({
@@ -31,10 +197,12 @@ export function CombinedOutputPanel({
   activeItemId,
   scrollContainerRef,
   onSelect,
+  onReorder,
 }: CombinedOutputPanelProps) {
   const [selectedPreviewCardId, setSelectedPreviewCardId] = useState<
     string | null
   >(null);
+  const shouldIgnoreNextClickRef = useRef(false);
   const isCardsMode = viewMode === "cards";
   const selectedPreviewItem =
     isCardsMode && selectedPreviewCardId
@@ -55,9 +223,44 @@ export function CombinedOutputPanel({
     }
   }, [isCardsMode, items, selectedPreviewCardId]);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
   const handleOpenPreviewCard = (item: MarkdownItem) => {
     setSelectedPreviewCardId(item.id);
     onSelect(item);
+  };
+
+  const handlePreviewCardClick = (
+    event: MouseEvent<HTMLElement>,
+    item: MarkdownItem,
+  ) => {
+    if (shouldIgnoreNextClickRef.current) {
+      event.preventDefault();
+      shouldIgnoreNextClickRef.current = false;
+      return;
+    }
+
+    handleOpenPreviewCard(item);
+  };
+
+  const handlePreviewCardDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    shouldIgnoreNextClickRef.current = true;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    await onReorder(String(active.id), String(over.id));
   };
 
   const handleCardKeyDown = (
@@ -173,111 +376,30 @@ export function CombinedOutputPanel({
             </section>
           </article>
         ) : items.length > 0 && isCardsMode ? (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {items.map((item, index) => {
-              const displayTitle = getDisplayTitle(item, 72);
-
-              return (
-                <article
-                  key={item.id}
-                  id={`preview-item-${item.id}`}
-                  data-preview-item-id={item.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Selecionar card ${displayTitle}`}
-                  onClick={() => handleOpenPreviewCard(item)}
-                  onKeyDown={(event) => handleCardKeyDown(event, item)}
-                  className={`group flex min-h-[236px] scroll-mt-6 flex-col overflow-hidden rounded-xl border text-left transition ${
-                    item.id === activeItemId ? "preview-item-active" : ""
-                  } ${
-                    theme === "dark"
-                      ? item.id === activeItemId
-                        ? "border-teal-400/55 bg-[#0f1b20] shadow-[0_0_0_1px_rgba(45,212,191,0.14)]"
-                        : "border-slate-800/80 bg-[#0c1219] hover:border-slate-700"
-                      : item.id === activeItemId
-                        ? "border-teal-300 bg-teal-50/70 shadow-sm"
-                        : "border-slate-200 bg-white shadow-sm hover:border-slate-300"
-                  }`}
-                >
-                  <div
-                    className={`border-b px-3 py-2.5 ${
-                      theme === "dark"
-                        ? "border-slate-800/80 bg-slate-950/20"
-                        : "border-slate-200 bg-slate-50"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] ${
-                          theme === "dark"
-                            ? "bg-slate-800 text-slate-400"
-                            : "bg-white text-slate-500"
-                        }`}
-                      >
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          item.id === activeItemId
-                            ? theme === "dark"
-                              ? "bg-teal-300"
-                              : "bg-teal-500"
-                            : theme === "dark"
-                              ? "bg-slate-600"
-                              : "bg-slate-300"
-                        }`}
-                        aria-hidden="true"
-                      />
-                    </div>
-                    <h3
-                      className={`m-0 mt-2 line-clamp-1 text-[13px] font-semibold leading-5 ${
-                        theme === "dark" ? "text-slate-100" : "text-slate-950"
-                      }`}
-                    >
-                      {displayTitle}
-                    </h3>
-                  </div>
-
-                  <div className="relative flex-1 px-3 py-3">
-                    <div className="markdown-preview markdown-preview--card max-h-[154px] overflow-hidden">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        rehypePlugins={[rehypeRaw]}
-                      >
-                        {item.content}
-                      </ReactMarkdown>
-                    </div>
-                    <div
-                      className={`pointer-events-none absolute inset-x-0 bottom-0 h-16 ${
-                        theme === "dark"
-                          ? "bg-gradient-to-t from-[#0c1219] to-transparent"
-                          : "bg-gradient-to-t from-white to-transparent"
-                      }`}
-                    />
-                  </div>
-
-                  <div
-                    className={`mt-auto border-t px-3 py-2 ${
-                      theme === "dark"
-                        ? "border-slate-800/80 text-slate-500"
-                        : "border-slate-200 text-slate-500"
-                    }`}
-                  >
-                    <p className="m-0 min-w-0 truncate text-[10px]">
-                      Atualizado em{" "}
-                      {new Intl.DateTimeFormat("pt-BR", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      }).format(new Date(item.updatedAt))}
-                      {" · "}
-                      {item.content.length} chars
-                    </p>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handlePreviewCardDragEnd}
+          >
+            <SortableContext
+              items={items.map((item) => item.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {items.map((item, index) => (
+                  <PreviewGridCard
+                    key={item.id}
+                    item={item}
+                    position={index}
+                    theme={theme}
+                    isActive={item.id === activeItemId}
+                    onClick={handlePreviewCardClick}
+                    onKeyDown={handleCardKeyDown}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         ) : items.length > 0 ? (
           <article
             className={`markdown-preview w-full rounded-[1.35rem] border px-6 py-7 sm:px-8 sm:py-9 ${
