@@ -323,32 +323,32 @@
   }
 
   .markdown-preview--card {
-    font-size: calc(0.86rem * var(--font-scale, 1));
+    font-size: calc(0.78rem * var(--font-scale, 1));
   }
 
   .markdown-preview--card h1 {
-    font-size: calc(1.28rem * var(--font-scale, 1));
+    font-size: calc(1.02rem * var(--font-scale, 1));
     letter-spacing: 0;
-    margin-bottom: 0.85rem;
-    padding-bottom: 0.65rem;
+    margin-bottom: 0.55rem;
+    padding-bottom: 0.45rem;
   }
 
   .markdown-preview--card h2 {
-    font-size: calc(1.12rem * var(--font-scale, 1));
-    margin-top: 1.2rem;
-    padding-bottom: 0.5rem;
+    font-size: calc(0.95rem * var(--font-scale, 1));
+    margin-top: 0.85rem;
+    padding-bottom: 0.4rem;
   }
 
   .markdown-preview--card h3 {
-    font-size: calc(1rem * var(--font-scale, 1));
-    margin-top: 1rem;
+    font-size: calc(0.88rem * var(--font-scale, 1));
+    margin-top: 0.75rem;
   }
 
   .markdown-preview--card p,
   .markdown-preview--card li,
   .markdown-preview--card blockquote {
-    font-size: calc(0.86rem * var(--font-scale, 1));
-    line-height: 1.65;
+    font-size: calc(0.78rem * var(--font-scale, 1));
+    line-height: 1.48;
   }
 
   .markdown-preview--card p,
@@ -358,22 +358,23 @@
   .markdown-preview--card pre,
   .markdown-preview--card table,
   .markdown-preview--card hr {
-    margin-bottom: 0.9rem;
+    margin-bottom: 0.58rem;
   }
 
   .markdown-preview--card ul,
   .markdown-preview--card ol {
-    padding-left: 1.2rem;
+    padding-left: 1rem;
   }
 
   .markdown-preview--card pre {
-    border-radius: 0.75rem;
-    padding: 0.75rem;
+    border-radius: 0.65rem;
+    padding: 0.55rem;
   }
 
   .markdown-preview--card code {
     border-radius: 0.4rem;
-    font-size: calc(0.86em * var(--font-scale, 1));
+    font-size: calc(0.82em * var(--font-scale, 1));
+    padding: 0.1rem 0.3rem;
   }
 
   .preview-item-active {

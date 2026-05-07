@@ -120,7 +120,7 @@ export function CombinedOutputPanel({
 
       <div
         ref={scrollContainerRef}
-        className={`flex-1 overflow-y-auto p-5 sm:p-7 ${theme === "dark" ? "bg-[#0b1118]" : "bg-slate-50/80"}`}
+        className={`flex-1 overflow-y-auto p-4 sm:p-5 ${theme === "dark" ? "bg-[#0b1118]" : "bg-slate-50/80"}`}
       >
         {isLoading ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
@@ -173,7 +173,7 @@ export function CombinedOutputPanel({
             </section>
           </article>
         ) : items.length > 0 && isCardsMode ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {items.map((item, index) => {
               const displayTitle = getDisplayTitle(item, 72);
 
@@ -187,7 +187,7 @@ export function CombinedOutputPanel({
                   aria-label={`Selecionar card ${displayTitle}`}
                   onClick={() => handleOpenPreviewCard(item)}
                   onKeyDown={(event) => handleCardKeyDown(event, item)}
-                  className={`group flex min-h-[320px] scroll-mt-6 flex-col overflow-hidden rounded-[1.1rem] border text-left transition ${
+                  className={`group flex min-h-[236px] scroll-mt-6 flex-col overflow-hidden rounded-xl border text-left transition ${
                     item.id === activeItemId ? "preview-item-active" : ""
                   } ${
                     theme === "dark"
@@ -200,15 +200,15 @@ export function CombinedOutputPanel({
                   }`}
                 >
                   <div
-                    className={`border-b px-4 py-3 ${
+                    className={`border-b px-3 py-2.5 ${
                       theme === "dark"
                         ? "border-slate-800/80 bg-slate-950/20"
                         : "border-slate-200 bg-slate-50"
                     }`}
                   >
-                    <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="flex items-center justify-between gap-3">
                       <span
-                        className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                        className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] ${
                           theme === "dark"
                             ? "bg-slate-800 text-slate-400"
                             : "bg-white text-slate-500"
@@ -217,23 +217,20 @@ export function CombinedOutputPanel({
                         {String(index + 1).padStart(2, "0")}
                       </span>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${
-                          theme === "dark"
-                            ? "bg-emerald-400/10 text-emerald-300"
-                            : "bg-emerald-50 text-emerald-700"
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          item.id === activeItemId
+                            ? theme === "dark"
+                              ? "bg-teal-300"
+                              : "bg-teal-500"
+                            : theme === "dark"
+                              ? "bg-slate-600"
+                              : "bg-slate-300"
                         }`}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            theme === "dark" ? "bg-emerald-300" : "bg-emerald-500"
-                          }`}
-                          aria-hidden="true"
-                        />
-                        {item.id === activeItemId ? "Selecionado" : "Card"}
-                      </span>
+                        aria-hidden="true"
+                      />
                     </div>
                     <h3
-                      className={`m-0 line-clamp-2 text-sm font-semibold leading-5 ${
+                      className={`m-0 mt-2 line-clamp-1 text-[13px] font-semibold leading-5 ${
                         theme === "dark" ? "text-slate-100" : "text-slate-950"
                       }`}
                     >
@@ -241,8 +238,8 @@ export function CombinedOutputPanel({
                     </h3>
                   </div>
 
-                  <div className="relative flex-1 px-4 py-4">
-                    <div className="markdown-preview markdown-preview--card max-h-[260px] overflow-hidden">
+                  <div className="relative flex-1 px-3 py-3">
+                    <div className="markdown-preview markdown-preview--card max-h-[154px] overflow-hidden">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         rehypePlugins={[rehypeRaw]}
@@ -260,13 +257,13 @@ export function CombinedOutputPanel({
                   </div>
 
                   <div
-                    className={`mt-auto border-t px-4 py-3 ${
+                    className={`mt-auto border-t px-3 py-2 ${
                       theme === "dark"
                         ? "border-slate-800/80 text-slate-500"
                         : "border-slate-200 text-slate-500"
                     }`}
                   >
-                    <p className="m-0 min-w-0 truncate text-[11px]">
+                    <p className="m-0 min-w-0 truncate text-[10px]">
                       Atualizado em{" "}
                       {new Intl.DateTimeFormat("pt-BR", {
                         day: "2-digit",
