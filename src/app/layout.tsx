@@ -1,9 +1,13 @@
-import type { Metadata } from 'next';
-import './globals.css';
+import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'Organizar Markdown',
-  description: 'Cole blocos em markdown, reordene os cards e gere a versão final.',
+  title: "Organizar Markdown",
+  description:
+    "Cole blocos em markdown, reordene os cards e gere a versão final.",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
