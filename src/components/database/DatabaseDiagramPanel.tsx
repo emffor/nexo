@@ -1,11 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import Konva from "konva";
 
 import type { AppTheme } from "../../lib/preferences";
+import {
+  isValidDbmlColumnIdentifier,
+  isValidDbmlIdentifier,
+} from "../../lib/dbml";
 import {
   DB_HEADER_HEIGHT,
   DB_ROW_HEIGHT,
@@ -29,6 +40,12 @@ interface DatabaseDiagramPanelProps {
   theme: AppTheme;
   state: DatabaseDiagramVisualState;
   onStateChange: (state: DatabaseDiagramVisualState) => void;
+  onRenameTable?: (tableName: string, nextName: string) => boolean;
+  onRenameColumn?: (
+    tableName: string,
+    columnName: string,
+    nextName: string,
+  ) => boolean;
   resetSignal?: number;
 }
 
@@ -36,8 +53,21 @@ const MIN_SCALE = 0.4;
 const MAX_SCALE = 1.8;
 const SCALE_STEP = 1.05;
 const INITIAL_VIEWPORT: DatabaseDiagramViewport = { x: 0, y: 0, scale: 1 };
+const EDITOR_WIDTH = 280;
 
 Konva.pixelRatio = 1;
+
+type InteractionMode = "select" | "pan";
+
+type ActiveEditor =
+  | { type: "table"; tableId: string; draft: string; error: string | null }
+  | {
+      type: "column";
+      tableId: string;
+      columnName: string;
+      draft: string;
+      error: string | null;
+    };
 
 function columnYCenter(columnIndex: number): number {
   return DB_HEADER_HEIGHT + columnIndex * DB_ROW_HEIGHT + DB_ROW_HEIGHT / 2;
@@ -86,12 +116,32 @@ function buildOrthogonalPath(
   ];
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function isRelationEndpoint(
+  relation: DatabaseRelation | undefined,
+  tableId: string,
+  columnName: string,
+): boolean {
+  if (!relation) {
+    return false;
+  }
+  return (
+    (relation.fromTable === tableId && relation.fromColumn === columnName) ||
+    (relation.toTable === tableId && relation.toColumn === columnName)
+  );
+}
+
 export default function DatabaseDiagramPanel({
   tables,
   relations,
   theme,
   state,
   onStateChange,
+  onRenameTable,
+  onRenameColumn,
   resetSignal = 0,
 }: DatabaseDiagramPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -102,6 +152,14 @@ export default function DatabaseDiagramPanel({
   const [viewportScale, setViewportScale] = useState(
     state.viewport?.scale ?? INITIAL_VIEWPORT.scale,
   );
+  const [interactionMode, setInteractionMode] =
+    useState<InteractionMode>("select");
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [selectedRelationId, setSelectedRelationId] = useState<string | null>(
+    null,
+  );
+  const [activeEditor, setActiveEditor] = useState<ActiveEditor | null>(null);
+  const [recordsTableId, setRecordsTableId] = useState<string | null>(null);
 
   useEffect(() => {
     stateRef.current = state;
@@ -147,6 +205,19 @@ export default function DatabaseDiagramPanel({
       onStateChange({ ...state, positions: filtered });
     }
   }, [tables, state, onStateChange]);
+
+  useEffect(() => {
+    const validIds = new Set(tables.map((table) => table.id));
+    if (selectedTableId && !validIds.has(selectedTableId)) {
+      setSelectedTableId(null);
+    }
+    if (recordsTableId && !validIds.has(recordsTableId)) {
+      setRecordsTableId(null);
+    }
+    if (activeEditor && !validIds.has(activeEditor.tableId)) {
+      setActiveEditor(null);
+    }
+  }, [activeEditor, recordsTableId, selectedTableId, tables]);
 
   // aplicar viewport
   useEffect(() => {
@@ -277,23 +348,213 @@ export default function DatabaseDiagramPanel({
     [onStateChange, size.height, size.width],
   );
 
+  const handleFitToContent = useCallback(() => {
+    const stage = stageRef.current;
+    if (!stage || tables.length === 0) {
+      return;
+    }
+    const current = stateRef.current;
+    const bounds = tables.reduce(
+      (acc, table) => {
+        const pos = current.positions[table.id];
+        if (!pos) {
+          return acc;
+        }
+        const height = computeDatabaseTableHeight(table.columns.length);
+        return {
+          minX: Math.min(acc.minX, pos.x),
+          minY: Math.min(acc.minY, pos.y),
+          maxX: Math.max(acc.maxX, pos.x + DB_TABLE_WIDTH),
+          maxY: Math.max(acc.maxY, pos.y + height),
+        };
+      },
+      {
+        minX: Number.POSITIVE_INFINITY,
+        minY: Number.POSITIVE_INFINITY,
+        maxX: Number.NEGATIVE_INFINITY,
+        maxY: Number.NEGATIVE_INFINITY,
+      },
+    );
+    if (!Number.isFinite(bounds.minX) || !Number.isFinite(bounds.maxX)) {
+      return;
+    }
+
+    const padding = 72;
+    const contentWidth = Math.max(1, bounds.maxX - bounds.minX);
+    const contentHeight = Math.max(1, bounds.maxY - bounds.minY);
+    const nextScale = clamp(
+      Math.min(
+        (size.width - padding * 2) / contentWidth,
+        (size.height - padding * 2) / contentHeight,
+      ),
+      MIN_SCALE,
+      MAX_SCALE,
+    );
+    const next = {
+      x: (size.width - contentWidth * nextScale) / 2 - bounds.minX * nextScale,
+      y:
+        (size.height - contentHeight * nextScale) / 2 -
+        bounds.minY * nextScale,
+      scale: nextScale,
+    };
+    stage.scale({ x: next.scale, y: next.scale });
+    stage.position({ x: next.x, y: next.y });
+    stage.batchDraw();
+    setViewportScale(next.scale);
+    onStateChange({ ...current, viewport: next });
+  }, [onStateChange, size.height, size.width, tables]);
+
+  const openTableEditor = useCallback((table: DatabaseTable) => {
+    setSelectedTableId(table.id);
+    setSelectedRelationId(null);
+    setActiveEditor({
+      type: "table",
+      tableId: table.id,
+      draft: table.name,
+      error: null,
+    });
+  }, []);
+
+  const openColumnEditor = useCallback(
+    (table: DatabaseTable, columnName: string) => {
+      setSelectedTableId(table.id);
+      setSelectedRelationId(null);
+      setActiveEditor({
+        type: "column",
+        tableId: table.id,
+        columnName,
+        draft: columnName,
+        error: null,
+      });
+    },
+    [],
+  );
+
+  const handleSubmitEditor = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!activeEditor) {
+        return;
+      }
+      const table = tables.find((entry) => entry.id === activeEditor.tableId);
+      if (!table) {
+        setActiveEditor(null);
+        return;
+      }
+
+      const nextName = activeEditor.draft.trim();
+      if (activeEditor.type === "table") {
+        if (!isValidDbmlIdentifier(nextName)) {
+          setActiveEditor({ ...activeEditor, error: "Nome de tabela inválido" });
+          return;
+        }
+        if (
+          nextName !== table.name &&
+          tables.some((entry) => entry.name === nextName)
+        ) {
+          setActiveEditor({ ...activeEditor, error: "Tabela já existe" });
+          return;
+        }
+        const renamed = onRenameTable?.(table.name, nextName) ?? false;
+        if (!renamed && nextName !== table.name) {
+          setActiveEditor({
+            ...activeEditor,
+            error: "Não foi possível atualizar o DBML",
+          });
+          return;
+        }
+      } else {
+        if (!isValidDbmlColumnIdentifier(nextName)) {
+          setActiveEditor({ ...activeEditor, error: "Nome de coluna inválido" });
+          return;
+        }
+        if (
+          nextName !== activeEditor.columnName &&
+          table.columns.some((column) => column.name === nextName)
+        ) {
+          setActiveEditor({ ...activeEditor, error: "Coluna já existe" });
+          return;
+        }
+        const renamed =
+          onRenameColumn?.(table.name, activeEditor.columnName, nextName) ??
+          false;
+        if (!renamed && nextName !== activeEditor.columnName) {
+          setActiveEditor({
+            ...activeEditor,
+            error: "Não foi possível atualizar o DBML",
+          });
+          return;
+        }
+      }
+      setActiveEditor(null);
+    },
+    [activeEditor, onRenameColumn, onRenameTable, tables],
+  );
+
   const isDark = theme === "dark";
-  const stageBg = isDark ? "#0b0f17" : "#f8fafc";
-  const tableBg = isDark ? "#0f172a" : "#ffffff";
-  const tableBorder = isDark ? "#1e293b" : "#cbd5e1";
-  const headerBg = isDark ? "#1e3a8a" : "#3b82f6";
+  const stageBg = isDark ? "#080d15" : "#f7f7f7";
+  const tableBg = isDark ? "#101827" : "#ffffff";
+  const tableBorder = isDark ? "#1f2d3d" : "#d8dde4";
+  const headerBg = isDark ? "#244394" : "#2f6f9f";
   const headerText = "#ffffff";
-  const rowText = isDark ? "#e2e8f0" : "#0f172a";
-  const typeText = isDark ? "#94a3b8" : "#64748b";
-  const edgeColor = isDark ? "#94a3b8" : "#64748b";
-  const badgeBg = isDark ? "#1e293b" : "#e2e8f0";
-  const badgeText = isDark ? "#cbd5e1" : "#475569";
+  const rowText = isDark ? "#d8dee9" : "#263238";
+  const typeText = isDark ? "#8f9bad" : "#66727f";
+  const edgeColor = isDark ? "#93a4b7" : "#a7adb5";
+  const selectedEdgeColor = "#3b82f6";
+  const badgeBg = isDark ? "#243247" : "#e8ecef";
+  const badgeText = isDark ? "#d7e1ef" : "#4a5562";
+  const rowHighlight = isDark ? "#17263c" : "#dceff7";
+  const selectedBorder = "#60a5fa";
 
   const tableLookup = useMemo(() => {
     const map = new Map<string, DatabaseTable>();
     tables.forEach((t) => map.set(t.id, t));
     return map;
   }, [tables]);
+
+  const selectedRelation = useMemo(
+    () => relations.find((relation) => relation.id === selectedRelationId),
+    [relations, selectedRelationId],
+  );
+
+  const activeEditorTable = activeEditor
+    ? tableLookup.get(activeEditor.tableId)
+    : undefined;
+  const activeEditorColumnIndex =
+    activeEditor?.type === "column" && activeEditorTable
+      ? activeEditorTable.columns.findIndex(
+          (column) => column.name === activeEditor.columnName,
+        )
+      : -1;
+  const activeEditorPosition =
+    activeEditor && activeEditorTable
+      ? state.positions[activeEditorTable.id]
+      : undefined;
+  const viewport = state.viewport ?? INITIAL_VIEWPORT;
+  const editorLeft = activeEditorPosition
+    ? clamp(
+        activeEditorPosition.x * viewport.scale +
+          viewport.x +
+          DB_TABLE_WIDTH * viewport.scale +
+          12,
+        12,
+        Math.max(12, size.width - EDITOR_WIDTH - 12),
+      )
+    : 12;
+  const editorTop = activeEditorPosition
+    ? clamp(
+        activeEditorPosition.y * viewport.scale +
+          viewport.y +
+          (activeEditor?.type === "column" && activeEditorColumnIndex >= 0
+            ? columnYCenter(activeEditorColumnIndex) * viewport.scale - 24
+            : 12),
+        12,
+        Math.max(12, size.height - 190),
+      )
+    : 12;
+  const recordsTable = recordsTableId
+    ? tableLookup.get(recordsTableId)
+    : undefined;
 
   return (
     <div
@@ -307,11 +568,18 @@ export default function DatabaseDiagramPanel({
         ref={stageRef}
         width={size.width}
         height={size.height}
-        draggable
+        draggable={interactionMode === "pan"}
         onDragEnd={handleStageDragEnd}
         onWheel={handleWheel}
+        onClick={(event) => {
+          if (event.target === event.target.getStage()) {
+            setActiveEditor(null);
+            setSelectedTableId(null);
+            setSelectedRelationId(null);
+          }
+        }}
       >
-        <Layer listening={false}>
+        <Layer>
           {relations.map((rel) => {
             const fromTable = tableLookup.get(rel.fromTable);
             const toTable = tableLookup.get(rel.toTable);
@@ -346,17 +614,62 @@ export default function DatabaseDiagramPanel({
               toAnchor,
               toSide,
             );
+            const isSelected = selectedRelationId === rel.id;
             return (
-              <Line
-                key={rel.id}
-                points={points}
-                stroke={edgeColor}
-                strokeWidth={1.5}
-                lineCap="round"
-                lineJoin="round"
-                perfectDrawEnabled={false}
-                shadowForStrokeEnabled={false}
-              />
+              <Group key={rel.id}>
+                <Line
+                  points={points}
+                  stroke={isSelected ? selectedEdgeColor : edgeColor}
+                  strokeWidth={isSelected ? 2.25 : 1.5}
+                  lineCap="round"
+                  lineJoin="round"
+                  perfectDrawEnabled={false}
+                  shadowForStrokeEnabled={false}
+                  hitStrokeWidth={14}
+                  onClick={(event) => {
+                    event.cancelBubble = true;
+                    setSelectedRelationId(rel.id);
+                    setSelectedTableId(null);
+                    setActiveEditor(null);
+                  }}
+                  onMouseEnter={(event) => {
+                    const stage = event.target.getStage();
+                    if (stage) {
+                      stage.container().style.cursor = "pointer";
+                    }
+                  }}
+                  onMouseLeave={(event) => {
+                    const stage = event.target.getStage();
+                    if (stage) {
+                      stage.container().style.cursor = "default";
+                    }
+                  }}
+                />
+                <Text
+                  x={fromAnchor.x + (fromSide === "right" ? 8 : -42)}
+                  y={fromAnchor.y - 19}
+                  width={36}
+                  align={fromSide === "right" ? "left" : "right"}
+                  text={rel.cardinalityLabelFrom ?? ""}
+                  fontSize={11}
+                  fontFamily="Inter, system-ui, sans-serif"
+                  fill={isSelected ? selectedEdgeColor : edgeColor}
+                  listening={false}
+                  perfectDrawEnabled={false}
+                />
+                <Text
+                  x={toAnchor.x + (toSide === "right" ? 8 : -42)}
+                  y={toAnchor.y - 19}
+                  width={36}
+                  align={toSide === "right" ? "left" : "right"}
+                  text={rel.cardinalityLabelTo ?? ""}
+                  fontSize={11}
+                  fontFamily="Inter, system-ui, sans-serif"
+                  fill={isSelected ? selectedEdgeColor : edgeColor}
+                  listening={false}
+                  perfectDrawEnabled={false}
+                />
+              </Group>
             );
           })}
         </Layer>
@@ -368,12 +681,18 @@ export default function DatabaseDiagramPanel({
               return null;
             }
             const height = computeDatabaseTableHeight(table.columns.length);
+            const isTableSelected = selectedTableId === table.id;
             return (
               <Group
                 key={table.id}
                 x={pos.x}
                 y={pos.y}
                 draggable
+                onClick={(event) => {
+                  event.cancelBubble = true;
+                  setSelectedTableId(table.id);
+                  setSelectedRelationId(null);
+                }}
                 onDragEnd={(event) => handleTableDragEnd(table.id, event)}
                 onMouseEnter={(event) => {
                   const stage = event.target.getStage();
@@ -393,11 +712,11 @@ export default function DatabaseDiagramPanel({
                   height={height}
                   cornerRadius={6}
                   fill={tableBg}
-                  stroke={tableBorder}
-                  strokeWidth={1}
+                  stroke={isTableSelected ? selectedBorder : tableBorder}
+                  strokeWidth={isTableSelected ? 1.5 : 1}
                   shadowColor={isDark ? "#000" : "#94a3b8"}
-                  shadowBlur={6}
-                  shadowOpacity={isDark ? 0.4 : 0.15}
+                  shadowBlur={isTableSelected ? 10 : 6}
+                  shadowOpacity={isTableSelected ? 0.28 : isDark ? 0.4 : 0.15}
                   shadowOffsetY={2}
                   perfectDrawEnabled={false}
                 />
@@ -411,22 +730,87 @@ export default function DatabaseDiagramPanel({
                 <Text
                   x={12}
                   y={9}
-                  width={DB_TABLE_WIDTH - 24}
+                  width={DB_TABLE_WIDTH - (table.records ? 72 : 24)}
                   text={table.name}
                   fontSize={13}
                   fontStyle="600"
                   fontFamily="Inter, system-ui, sans-serif"
                   fill={headerText}
                   ellipsis
-                  listening={false}
+                  onClick={(event) => {
+                    event.cancelBubble = true;
+                    openTableEditor(table);
+                  }}
+                  onMouseEnter={(event) => {
+                    const stage = event.target.getStage();
+                    if (stage) {
+                      stage.container().style.cursor = "text";
+                    }
+                  }}
+                  onMouseLeave={(event) => {
+                    const stage = event.target.getStage();
+                    if (stage) {
+                      stage.container().style.cursor = "default";
+                    }
+                  }}
                   perfectDrawEnabled={false}
                 />
+                {table.records && table.records.rows.length > 0 ? (
+                  <Text
+                    x={DB_TABLE_WIDTH - 52}
+                    y={9}
+                    width={40}
+                    align="right"
+                    text="REC"
+                    fontSize={10}
+                    fontStyle="700"
+                    fontFamily="Inter, system-ui, sans-serif"
+                    fill="#dbeafe"
+                    onClick={(event) => {
+                      event.cancelBubble = true;
+                      setRecordsTableId(table.id);
+                    }}
+                    perfectDrawEnabled={false}
+                  />
+                ) : null}
                 {table.columns.map((column, colIdx) => {
                   const y = DB_HEADER_HEIGHT + colIdx * DB_ROW_HEIGHT;
                   const isLastRow = colIdx === table.columns.length - 1;
                   const flagsX = DB_TABLE_WIDTH - 12;
+                  const badges = [
+                    column.isPrimaryKey ? "PK" : null,
+                    column.isForeignKey ? "FK" : null,
+                    column.isNotNull ? "NN" : null,
+                  ].filter((badge): badge is string => badge !== null);
+                  const isHighlighted = isRelationEndpoint(
+                    selectedRelation,
+                    table.id,
+                    column.name,
+                  );
+                  const isColumnEditing =
+                    activeEditor?.type === "column" &&
+                    activeEditor.tableId === table.id &&
+                    activeEditor.columnName === column.name;
+                  const reservedBadgeWidth =
+                    badges.length > 0 ? badges.length * 26 - 4 : 0;
                   return (
-                    <Group key={column.id} y={y} listening={false}>
+                    <Group
+                      key={column.id}
+                      y={y}
+                      onClick={(event) => {
+                        event.cancelBubble = true;
+                        openColumnEditor(table, column.name);
+                      }}
+                    >
+                      {(isHighlighted || isColumnEditing) && (
+                        <Rect
+                          width={DB_TABLE_WIDTH}
+                          height={DB_ROW_HEIGHT}
+                          fill={rowHighlight}
+                          opacity={isColumnEditing ? 0.9 : 0.7}
+                          perfectDrawEnabled={false}
+                        />
+                      )}
                       {!isLastRow && (
                         <Line
                           points={[
@@ -449,20 +833,24 @@ export default function DatabaseDiagramPanel({
                         fontStyle={column.isPrimaryKey ? "600" : "400"}
                         fontFamily="Inter, system-ui, sans-serif"
                         fill={rowText}
+                        onMouseEnter={(event) => {
+                          const stage = event.target.getStage();
+                          if (stage) {
+                            stage.container().style.cursor = "text";
+                          }
+                        }}
+                        onMouseLeave={(event) => {
+                          const stage = event.target.getStage();
+                          if (stage) {
+                            stage.container().style.cursor = "default";
+                          }
+                        }}
                         perfectDrawEnabled={false}
                       />
                       <Text
                         x={DB_TABLE_WIDTH / 2}
                         y={(DB_ROW_HEIGHT - 12) / 2}
-                        width={
-                          DB_TABLE_WIDTH / 2 -
-                          16 -
-                          (column.isPrimaryKey && column.isNotNull
-                            ? 52
-                            : column.isPrimaryKey || column.isNotNull
-                              ? 26
-                              : 0)
-                        }
+                        width={DB_TABLE_WIDTH / 2 - 16 - reservedBadgeWidth}
                         align="right"
                         text={column.type}
                         fontSize={11}
@@ -471,9 +859,15 @@ export default function DatabaseDiagramPanel({
                         ellipsis
                         perfectDrawEnabled={false}
                       />
-                      {column.isPrimaryKey && (
+                      {badges.map((badge, badgeIndex) => (
                         <Group
-                          x={flagsX - (column.isNotNull ? 50 : 22)}
+                          key={badge}
+                          x={
+                            flagsX -
+                            badges.length * 22 -
+                            (badges.length - 1) * 4 +
+                            badgeIndex * 26
+                          }
                           y={(DB_ROW_HEIGHT - 14) / 2}
                         >
                           <Rect
@@ -488,7 +882,7 @@ export default function DatabaseDiagramPanel({
                             y={2}
                             width={22}
                             align="center"
-                            text="PK"
+                            text={badge}
                             fontSize={9}
                             fontStyle="700"
                             fontFamily="Inter, system-ui, sans-serif"
@@ -496,30 +890,7 @@ export default function DatabaseDiagramPanel({
                             perfectDrawEnabled={false}
                           />
                         </Group>
-                      )}
-                      {column.isNotNull && (
-                        <Group x={flagsX - 22} y={(DB_ROW_HEIGHT - 14) / 2}>
-                          <Rect
-                            width={22}
-                            height={14}
-                            cornerRadius={3}
-                            fill={badgeBg}
-                            perfectDrawEnabled={false}
-                          />
-                          <Text
-                            x={0}
-                            y={2}
-                            width={22}
-                            align="center"
-                            text="NN"
-                            fontSize={9}
-                            fontStyle="700"
-                            fontFamily="Inter, system-ui, sans-serif"
-                            fill={badgeText}
-                            perfectDrawEnabled={false}
-                          />
-                        </Group>
-                      )}
+                      ))}
                     </Group>
                   );
                 })}
@@ -539,8 +910,159 @@ export default function DatabaseDiagramPanel({
         </div>
       ) : null}
 
+      {activeEditor && activeEditorTable ? (
+        <form
+          onSubmit={handleSubmitEditor}
+          className={`absolute z-50 rounded-lg border p-3 shadow-xl ${
+            isDark
+              ? "border-white/10 bg-slate-950 text-slate-100 shadow-black/40"
+              : "border-slate-200 bg-white text-slate-900 shadow-slate-300/60"
+          }`}
+          style={{ left: editorLeft, top: editorTop, width: EDITOR_WIDTH }}
+        >
+          <label
+            htmlFor="database-editor-name"
+            className="mb-2 block text-[11px] font-semibold text-slate-500"
+          >
+            {activeEditor.type === "table" ? "Table Name" : "Column Name"}
+          </label>
+          <input
+            id="database-editor-name"
+            value={activeEditor.draft}
+            autoFocus
+            onChange={(event) =>
+              setActiveEditor({
+                ...activeEditor,
+                draft: event.target.value,
+                error: null,
+              })
+            }
+            className={`w-full rounded-md border px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-400 ${
+              isDark
+                ? "border-slate-700 bg-slate-900 text-slate-100"
+                : "border-slate-300 bg-white text-slate-900"
+            }`}
+          />
+          {activeEditor.error ? (
+            <p className="mt-2 text-xs text-rose-500">{activeEditor.error}</p>
+          ) : null}
+          <div className="mt-3 flex items-center justify-between gap-2">
+            {activeEditor.type === "table" &&
+            activeEditorTable.records &&
+            activeEditorTable.records.rows.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setRecordsTableId(activeEditorTable.id)}
+                className={`rounded-md px-2 py-1 text-xs font-medium ${
+                  isDark
+                    ? "bg-slate-800 text-slate-200 hover:bg-slate-700"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                Ver records
+              </button>
+            ) : (
+              <span />
+            )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveEditor(null)}
+                className={`rounded-md px-2 py-1 text-xs ${
+                  isDark
+                    ? "text-slate-300 hover:bg-white/10"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="rounded-md bg-blue-600 px-2 py-1 text-xs font-semibold text-white hover:bg-blue-500"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </form>
+      ) : null}
+
+      {recordsTable?.records ? (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/35 p-6">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="database-records-title"
+            className={`max-h-full w-full max-w-4xl overflow-hidden rounded-xl border shadow-2xl ${
+              isDark
+                ? "border-white/10 bg-slate-950 text-slate-100"
+                : "border-slate-200 bg-white text-slate-900"
+            }`}
+          >
+            <div
+              className={`flex items-center justify-between border-b px-4 py-3 ${
+                isDark ? "border-white/10" : "border-slate-200"
+              }`}
+            >
+              <h2 id="database-records-title" className="text-sm font-semibold">
+                Records de {recordsTable.name}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setRecordsTableId(null)}
+                className={`rounded-md px-2 py-1 text-sm ${
+                  isDark
+                    ? "hover:bg-white/10"
+                    : "hover:bg-slate-100"
+                }`}
+              >
+                Fechar
+              </button>
+            </div>
+            <div className="max-h-[65vh] overflow-auto p-4">
+              <table className="min-w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr>
+                    {recordsTable.records.columns.map((column) => (
+                      <th
+                        key={column.name}
+                        className={`border px-3 py-2 font-semibold ${
+                          isDark
+                            ? "border-slate-800 bg-slate-900"
+                            : "border-slate-200 bg-slate-50"
+                        }`}
+                      >
+                        {column.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {recordsTable.records.rows.map((row, rowIndex) => (
+                    <tr key={rowIndex}>
+                      {recordsTable.records?.columns.map((column, colIndex) => (
+                        <td
+                          key={`${rowIndex}-${column.name}`}
+                          className={`border px-3 py-2 ${
+                            isDark
+                              ? "border-slate-800"
+                              : "border-slate-200"
+                          }`}
+                        >
+                          {row[colIndex] ?? "(null)"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div
-        className={`absolute bottom-4 right-4 z-40 flex flex-col items-center overflow-hidden rounded-lg border shadow-lg ${
+        className={`absolute bottom-4 left-4 z-40 flex items-center overflow-hidden rounded-lg border shadow-lg ${
           isDark
             ? "border-white/10 bg-ink/85 text-slate-100 shadow-black/30"
             : "border-slate-200 bg-white/95 text-slate-800 shadow-slate-300/40"
@@ -548,18 +1070,18 @@ export default function DatabaseDiagramPanel({
       >
         <button
           type="button"
-          onClick={() => handleZoom(1)}
-          disabled={viewportScale >= MAX_SCALE}
-          className={`flex h-8 w-8 items-center justify-center text-base font-semibold transition ${
+          onClick={() => handleZoom(-1)}
+          disabled={viewportScale <= MIN_SCALE}
+          className={`flex h-9 w-9 items-center justify-center text-base font-semibold transition ${
             isDark ? "hover:bg-white/10" : "hover:bg-slate-100"
           } disabled:cursor-not-allowed disabled:opacity-40`}
-          aria-label="Aumentar zoom"
-          title="Aumentar zoom"
+          aria-label="Diminuir zoom"
+          title="Diminuir zoom"
         >
-          +
+          -
         </button>
         <div
-          className={`border-y px-2 py-1 text-[10px] font-semibold tabular-nums ${
+          className={`border-x px-3 py-2 text-[11px] font-semibold tabular-nums ${
             isDark ? "border-white/10" : "border-slate-200"
           }`}
         >
@@ -567,15 +1089,44 @@ export default function DatabaseDiagramPanel({
         </div>
         <button
           type="button"
-          onClick={() => handleZoom(-1)}
-          disabled={viewportScale <= MIN_SCALE}
-          className={`flex h-8 w-8 items-center justify-center text-base font-semibold transition ${
+          onClick={() => handleZoom(1)}
+          disabled={viewportScale >= MAX_SCALE}
+          className={`flex h-9 w-9 items-center justify-center text-base font-semibold transition ${
             isDark ? "hover:bg-white/10" : "hover:bg-slate-100"
           } disabled:cursor-not-allowed disabled:opacity-40`}
-          aria-label="Diminuir zoom"
-          title="Diminuir zoom"
+          aria-label="Aumentar zoom"
+          title="Aumentar zoom"
         >
-          -
+          +
+        </button>
+        <button
+          type="button"
+          onClick={handleFitToContent}
+          className={`border-l px-3 py-2 text-xs font-semibold transition ${
+            isDark
+              ? "border-white/10 hover:bg-white/10"
+              : "border-slate-200 hover:bg-slate-100"
+          }`}
+        >
+          Ajustar
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setInteractionMode((current) =>
+              current === "pan" ? "select" : "pan",
+            )
+          }
+          aria-pressed={interactionMode === "pan"}
+          className={`border-l px-3 py-2 text-xs font-semibold transition ${
+            interactionMode === "pan"
+              ? "bg-blue-600 text-white"
+              : isDark
+                ? "border-white/10 hover:bg-white/10"
+                : "border-slate-200 hover:bg-slate-100"
+          }`}
+        >
+          {interactionMode === "pan" ? "Pan" : "Selecionar"}
         </button>
       </div>
     </div>

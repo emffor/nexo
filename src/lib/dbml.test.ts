@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseDbml } from './dbml';
+import { parseDbml, renameDbmlColumn, renameDbmlTable } from './dbml';
 
 describe('parseDbml', () => {
   it('parseia tabelas com colunas e flags', () => {
@@ -30,6 +30,7 @@ describe('parseDbml', () => {
     `);
 
     expect(result.relations.map((r) => r.kind)).toEqual(['many', 'one', 'oneToOne']);
+    expect(result.relations.map((r) => r.cardinalityLabelTo)).toEqual(['0..1', '*', '1']);
     expect(result.relations[0]).toMatchObject({
       fromTable: 'a',
       fromColumn: 'id',
@@ -112,5 +113,94 @@ describe('parseDbml', () => {
 
     expect(result.tables).toHaveLength(1);
     expect(result.tables[0].columns[0].name).toBe('id');
+  });
+
+  it('parseia refs nomeadas e marca chave estrangeira', () => {
+    const result = parseDbml(`
+      Table users { id integer [pk] }
+      Table posts { user_id integer [not null] }
+      Ref user_posts: posts.user_id > users.id
+    `);
+
+    expect(result.relations[0]).toMatchObject({
+      id: 'user_posts',
+      name: 'user_posts',
+      cardinalityLabelFrom: '*',
+      cardinalityLabelTo: '0..1',
+    });
+    expect(result.tables[1].columns[0]).toMatchObject({
+      name: 'user_id',
+      isForeignKey: true,
+      references: [{ table: 'users', column: 'id' }],
+    });
+  });
+
+  it('parseia records e associa a tabela', () => {
+    const result = parseDbml(`
+      Table users {
+        id integer [pk]
+        username varchar
+      }
+
+      Records users(id, username) {
+        1, 'Ada'
+        2, 'Grace'
+      }
+    `);
+
+    expect(result.records).toHaveLength(1);
+    expect(result.records[0].columns.map((column) => column.name)).toEqual([
+      'id',
+      'username',
+    ]);
+    expect(result.records[0].rows).toEqual([
+      ['1', 'Ada'],
+      ['2', 'Grace'],
+    ]);
+    expect(result.tables[0].records?.rows).toHaveLength(2);
+  });
+
+  it('renomeia tabela atualizando refs e records', () => {
+    const content = `
+      Table users {
+        id integer [pk]
+      }
+      Table posts {
+        user_id integer
+      }
+      Ref user_posts: posts.user_id > users.id
+      Records users(id) {
+        1
+      }
+    `;
+
+    const renamed = renameDbmlTable(content, 'users', 'accounts');
+
+    expect(renamed).toContain('Table accounts');
+    expect(renamed).toContain('posts.user_id > accounts.id');
+    expect(renamed).toContain('Records accounts(id)');
+    expect(renamed).not.toContain('Table users');
+  });
+
+  it('renomeia coluna atualizando refs e records', () => {
+    const content = `
+      Table users {
+        id integer [pk]
+      }
+      Table posts {
+        user_id integer
+      }
+      Ref user_posts: posts.user_id > users.id
+      Records posts(user_id) {
+        1
+      }
+    `;
+
+    const renamed = renameDbmlColumn(content, 'posts', 'user_id', 'author_id');
+
+    expect(renamed).toContain('author_id integer');
+    expect(renamed).toContain('posts.author_id > users.id');
+    expect(renamed).toContain('Records posts(author_id)');
+    expect(renamed).not.toContain('user_id integer');
   });
 });

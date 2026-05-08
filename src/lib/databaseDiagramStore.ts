@@ -20,6 +20,22 @@ function buildDefault(): DatabaseDiagramRecord {
   };
 }
 
+async function saveDatabaseDiagramPatch(
+  patch: Partial<DatabaseDiagramRecord>,
+): Promise<DatabaseDiagramRecord> {
+  return db.transaction('rw', db.databaseDiagrams, async () => {
+    const existing = (await db.databaseDiagrams.get(MAIN_ID)) ?? buildDefault();
+    const next: DatabaseDiagramRecord = {
+      ...existing,
+      ...patch,
+      id: MAIN_ID,
+      updatedAt: new Date().toISOString(),
+    };
+    await db.databaseDiagrams.put(next);
+    return next;
+  });
+}
+
 export async function getDatabaseDiagram(): Promise<DatabaseDiagramRecord> {
   const existing = await db.databaseDiagrams.get(MAIN_ID);
   if (existing) {
@@ -34,39 +50,19 @@ export async function getDatabaseDiagram(): Promise<DatabaseDiagramRecord> {
 }
 
 export async function saveDatabaseDiagramContent(content: string): Promise<void> {
-  const existing = (await db.databaseDiagrams.get(MAIN_ID)) ?? buildDefault();
-  const next: DatabaseDiagramRecord = {
-    ...existing,
-    content,
-    updatedAt: new Date().toISOString(),
-  };
-  await db.databaseDiagrams.put(next);
+  await saveDatabaseDiagramPatch({ content });
 }
 
 export async function saveDatabaseDiagramState(
   state: DatabaseDiagramVisualState,
 ): Promise<void> {
-  const existing = (await db.databaseDiagrams.get(MAIN_ID)) ?? buildDefault();
-  const next: DatabaseDiagramRecord = {
-    ...existing,
-    state,
-    updatedAt: new Date().toISOString(),
-  };
-  await db.databaseDiagrams.put(next);
+  await saveDatabaseDiagramPatch({ state });
 }
 
 export async function saveDatabaseDiagramRecord(
   record: Partial<DatabaseDiagramRecord> & { content: string },
 ): Promise<DatabaseDiagramRecord> {
-  const existing = (await db.databaseDiagrams.get(MAIN_ID)) ?? buildDefault();
-  const next: DatabaseDiagramRecord = {
-    ...existing,
-    ...record,
-    id: MAIN_ID,
-    updatedAt: new Date().toISOString(),
-  };
-  await db.databaseDiagrams.put(next);
-  return next;
+  return saveDatabaseDiagramPatch(record);
 }
 
 export async function clearDatabaseDiagram(): Promise<void> {

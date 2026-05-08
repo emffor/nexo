@@ -21,5 +21,6 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 afterEach(async () => {
   cleanup();
   await db.items.clear();
+  await db.databaseDiagrams.clear();
   window.localStorage.clear();
 });

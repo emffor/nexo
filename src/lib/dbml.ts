@@ -1,76 +1,37 @@
 import type {
   DatabaseColumn,
   DatabaseDiagramParseResult,
+  DatabaseRecordColumn,
+  DatabaseRecordSet,
   DatabaseRelation,
   DatabaseRelationKind,
+  DatabaseSourceRange,
   DatabaseTable,
 } from '../types/database';
 
-const IGNORED_BLOCK_KEYWORDS = new Set([
-  'enum',
-  'tablegroup',
-  'project',
-  'note',
-  'indexes',
-  'records',
-]);
+const IGNORED_TABLE_BLOCK_KEYWORDS = new Set(['indexes', 'note']);
 
-function stripLineComment(line: string): string {
-  const idx = line.indexOf('//');
-  return idx === -1 ? line : line.slice(0, idx);
+interface ParsedLine {
+  text: string;
+  start: number;
 }
 
-function removeBlockComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, '');
+interface TrimmedLine {
+  text: string;
+  start: number;
 }
 
-function unquote(value: string): string {
-  if (
-    (value.startsWith('"') && value.endsWith('"')) ||
-    (value.startsWith("'") && value.endsWith("'"))
-  ) {
-    return value.slice(1, -1);
-  }
-  return value;
+interface CommaPart {
+  value: string;
+  start: number;
+  end: number;
 }
 
-function parseFlags(rawFlags: string): { isPrimaryKey: boolean; isNotNull: boolean } {
-  const inner = rawFlags.trim();
-  if (!inner) {
-    return { isPrimaryKey: false, isNotNull: false };
-  }
-  const normalized = inner.toLowerCase();
-  // separar por vírgula no nível 0
-  const parts: string[] = [];
-  let depth = 0;
-  let buf = '';
-  for (const ch of normalized) {
-    if (ch === '(' || ch === '[' || ch === '{') {
-      depth += 1;
-    } else if (ch === ')' || ch === ']' || ch === '}') {
-      depth -= 1;
-    }
-    if (ch === ',' && depth === 0) {
-      parts.push(buf.trim());
-      buf = '';
-    } else {
-      buf += ch;
-    }
-  }
-  if (buf.trim()) {
-    parts.push(buf.trim());
-  }
-
-  let isPrimaryKey = false;
-  let isNotNull = false;
-  for (const part of parts) {
-    if (part === 'pk' || part === 'primary key') {
-      isPrimaryKey = true;
-    } else if (part === 'not null') {
-      isNotNull = true;
-    }
-  }
-  return { isPrimaryKey, isNotNull };
+interface ParsedEndpoint {
+  table: string;
+  column: string;
+  tableRange?: DatabaseSourceRange;
+  columnRange?: DatabaseSourceRange;
 }
 
 interface ColumnLineParse {
@@ -78,26 +39,210 @@ interface ColumnLineParse {
   error: string | null;
 }
 
-function parseColumnLine(line: string, tableId: string, index: number): ColumnLineParse {
-  // formato: name type [flags...]
-  const flagStart = line.indexOf('[');
-  let head = line;
-  let flagsRaw = '';
-  if (flagStart !== -1) {
-    const flagEnd = line.lastIndexOf(']');
-    if (flagEnd > flagStart) {
-      flagsRaw = line.slice(flagStart + 1, flagEnd);
-      head = line.slice(0, flagStart).trim();
+function maskWithSpaces(value: string): string {
+  return value.replace(/[^\r\n]/g, ' ');
+}
+
+function maskComments(content: string): string {
+  const withoutBlocks = content.replace(/\/\*[\s\S]*?\*\//g, maskWithSpaces);
+  return withoutBlocks.replace(/\/\/[^\r\n]*/g, maskWithSpaces);
+}
+
+function splitLinesWithStart(content: string, baseStart = 0): ParsedLine[] {
+  const parts = content.split(/(\r\n|\n|\r)/);
+  const lines: ParsedLine[] = [];
+  let offset = baseStart;
+
+  for (let index = 0; index < parts.length; index += 2) {
+    const text = parts[index] ?? '';
+    const newline = parts[index + 1] ?? '';
+    if (text === '' && newline === '' && index === parts.length - 1) {
+      break;
+    }
+    lines.push({ text, start: offset });
+    offset += text.length + newline.length;
+  }
+
+  return lines;
+}
+
+function trimLine(line: ParsedLine): TrimmedLine | null {
+  const first = line.text.search(/\S/);
+  if (first === -1) {
+    return null;
+  }
+  const end = line.text.search(/\s*$/);
+  const textEnd = end === -1 ? line.text.length : end;
+  return {
+    text: line.text.slice(first, textEnd),
+    start: line.start + first,
+  };
+}
+
+function unquote(value: string): string {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function readToken(value: string): string | null {
+  return value.match(/^("[^"]+"|'[^']+'|\S+)/)?.[0] ?? null;
+}
+
+function splitTopLevelCommaWithRanges(
+  value: string,
+  baseStart = 0,
+): CommaPart[] {
+  const parts: CommaPart[] = [];
+  let quote: '"' | "'" | null = null;
+  let depth = 0;
+  let start = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const ch = value[index];
+    if (quote) {
+      if (ch === quote && value[index - 1] !== '\\') {
+        quote = null;
+      }
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      continue;
+    }
+    if (ch === '(' || ch === '[' || ch === '{') {
+      depth += 1;
+      continue;
+    }
+    if (ch === ')' || ch === ']' || ch === '}') {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+    if (ch === ',' && depth === 0) {
+      parts.push({
+        value: value.slice(start, index),
+        start: baseStart + start,
+        end: baseStart + index,
+      });
+      start = index + 1;
     }
   }
 
-  const tokens = head.trim().split(/\s+/).filter(Boolean);
-  if (tokens.length < 2) {
-    return { column: null, error: `Coluna inválida: "${line}"` };
+  parts.push({
+    value: value.slice(start),
+    start: baseStart + start,
+    end: baseStart + value.length,
+  });
+
+  return parts
+    .map((part) => {
+      const leading = part.value.search(/\S/);
+      if (leading === -1) {
+        return null;
+      }
+      const trailing = part.value.search(/\s*$/);
+      const end = trailing === -1 ? part.value.length : trailing;
+      return {
+        value: part.value.slice(leading, end),
+        start: part.start + leading,
+        end: part.start + end,
+      };
+    })
+    .filter((part): part is CommaPart => part !== null);
+}
+
+function splitTopLevelComma(value: string): string[] {
+  return splitTopLevelCommaWithRanges(value).map((part) => part.value.trim());
+}
+
+function parseFlags(rawFlags: string): {
+  isPrimaryKey: boolean;
+  isNotNull: boolean;
+  note?: string;
+} {
+  let isPrimaryKey = false;
+  let isNotNull = false;
+  let note: string | undefined;
+
+  for (const rawPart of splitTopLevelComma(rawFlags)) {
+    const part = rawPart.trim();
+    const lower = part.toLowerCase();
+    if (lower === 'pk' || lower === 'primary key') {
+      isPrimaryKey = true;
+    } else if (lower === 'not null') {
+      isNotNull = true;
+    } else if (lower.startsWith('note:')) {
+      note = unquote(part.slice(part.indexOf(':') + 1));
+    }
   }
-  const name = unquote(tokens[0]);
-  const type = tokens.slice(1).join(' ');
-  const { isPrimaryKey, isNotNull } = parseFlags(flagsRaw);
+
+  return { isPrimaryKey, isNotNull, note };
+}
+
+function countBraceDelta(value: string): number {
+  let delta = 0;
+  for (const ch of value) {
+    if (ch === '{') {
+      delta += 1;
+    } else if (ch === '}') {
+      delta -= 1;
+    }
+  }
+  return delta;
+}
+
+function findMatchingBrace(content: string, openIndex: number): number {
+  let depth = 0;
+  for (let index = openIndex; index < content.length; index += 1) {
+    const ch = content[index];
+    if (ch === '{') {
+      depth += 1;
+    } else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+  return -1;
+}
+
+function parseColumnLine(
+  line: TrimmedLine,
+  tableId: string,
+  index: number,
+): ColumnLineParse {
+  const flagStart = line.text.indexOf('[');
+  let head = line.text;
+  let flagsRaw = '';
+
+  if (flagStart !== -1) {
+    const flagEnd = line.text.lastIndexOf(']');
+    if (flagEnd > flagStart) {
+      flagsRaw = line.text.slice(flagStart + 1, flagEnd);
+      head = line.text.slice(0, flagStart).trimEnd();
+    }
+  }
+
+  const nameToken = readToken(head.trimStart());
+  if (!nameToken) {
+    return { column: null, error: `Coluna inválida: "${line.text}"` };
+  }
+  const nameOffset = head.indexOf(nameToken);
+  const typeStartOffset = nameOffset + nameToken.length;
+  const type = head.slice(typeStartOffset).trim();
+  if (!type) {
+    return { column: null, error: `Coluna inválida: "${line.text}"` };
+  }
+
+  const typeOffset = head.indexOf(type, typeStartOffset);
+  const { isPrimaryKey, isNotNull, note } = parseFlags(flagsRaw);
+  const name = unquote(nameToken);
 
   return {
     column: {
@@ -106,215 +251,488 @@ function parseColumnLine(line: string, tableId: string, index: number): ColumnLi
       type,
       isPrimaryKey,
       isNotNull,
+      note,
+      sourceRange: {
+        start: line.start,
+        end: line.start + line.text.length,
+      },
+      nameSourceRange: {
+        start: line.start + nameOffset,
+        end: line.start + nameOffset + nameToken.length,
+      },
+      typeSourceRange: {
+        start: line.start + typeOffset,
+        end: line.start + typeOffset + type.length,
+      },
     },
     error: null,
   };
 }
 
-function parseRefLine(line: string): { relation: DatabaseRelation | null; error: string | null } {
-  // aceita: "Ref: a.x > b.y", "Ref name: a.x > b.y", "Ref { a.x > b.y }"
-  const colonIdx = line.indexOf(':');
-  let body = colonIdx !== -1 ? line.slice(colonIdx + 1) : line.replace(/^ref\s*/i, '');
-  body = body.trim();
-  if (body.startsWith('{') && body.endsWith('}')) {
-    body = body.slice(1, -1).trim();
-  }
-
-  const match = body.match(/([\w".]+)\s*([<>\-])\s*([\w".]+)/);
-  if (!match) {
-    return { relation: null, error: `Ref inválida: "${line}"` };
-  }
-  const [, leftRaw, operator, rightRaw] = match;
-  const left = leftRaw.split('.').map(unquote);
-  const right = rightRaw.split('.').map(unquote);
-  if (left.length !== 2 || right.length !== 2) {
-    return { relation: null, error: `Ref inválida: "${line}"` };
-  }
-
-  let kind: DatabaseRelationKind;
-  if (operator === '>') {
-    kind = 'many';
-  } else if (operator === '<') {
-    kind = 'one';
-  } else {
-    kind = 'oneToOne';
-  }
-
-  return {
-    relation: {
-      id: `${left.join('.')}-${operator}-${right.join('.')}`,
-      fromTable: left[0],
-      fromColumn: left[1],
-      toTable: right[0],
-      toColumn: right[1],
-      kind,
-    },
-    error: null,
-  };
-}
-
-export function parseDbml(content: string): DatabaseDiagramParseResult {
+function parseTables(masked: string, errors: string[]): DatabaseTable[] {
   const tables: DatabaseTable[] = [];
-  const relations: DatabaseRelation[] = [];
-  const errors: string[] = [];
+  const tableRegex = /\bTable\s+("[^"]+"|'[^']+'|[A-Za-z_][\w.]*)/gi;
+  let match: RegExpExecArray | null;
 
-  const cleaned = removeBlockComments(content)
-    .replace(/\{/g, '{\n')
-    .replace(/\}/g, '\n}\n');
-  const lines = cleaned.split(/\r?\n/);
-
-  let i = 0;
-  while (i < lines.length) {
-    const raw = lines[i];
-    const line = stripLineComment(raw).trim();
-    if (!line) {
-      i += 1;
+  while ((match = tableRegex.exec(masked)) !== null) {
+    const rawName = match[1];
+    const nameOffset = match[0].indexOf(rawName);
+    const nameStart = match.index + nameOffset;
+    const openBrace = masked.indexOf('{', tableRegex.lastIndex);
+    if (openBrace === -1) {
+      errors.push(`Tabela "${unquote(rawName)}" sem corpo`);
+      continue;
+    }
+    const closeBrace = findMatchingBrace(masked, openBrace);
+    if (closeBrace === -1) {
+      errors.push(`Tabela "${unquote(rawName)}" sem fechamento`);
       continue;
     }
 
-    const lower = line.toLowerCase();
-    const firstToken = lower.split(/\s|\{|\[|:/)[0];
+    const tableName = unquote(rawName);
+    const body = masked.slice(openBrace + 1, closeBrace);
+    const columns: DatabaseColumn[] = [];
+    let columnIndex = 0;
+    let skipDepth = 0;
 
-    // bloco a ignorar com chaves
-    if (IGNORED_BLOCK_KEYWORDS.has(firstToken)) {
-      // se a linha não abre bloco, descartamos só ela
-      if (!line.includes('{')) {
-        i += 1;
+    for (const rawLine of splitLinesWithStart(body, openBrace + 1)) {
+      const line = trimLine(rawLine);
+      if (!line) {
         continue;
       }
-      // pular até o fechamento balanceado
-      let depth = 0;
-      while (i < lines.length) {
-        const l = stripLineComment(lines[i]);
-        for (const ch of l) {
-          if (ch === '{') {
-            depth += 1;
-          } else if (ch === '}') {
-            depth -= 1;
-          }
-        }
-        i += 1;
-        if (depth <= 0) {
-          break;
-        }
-      }
-      continue;
-    }
-
-    if (firstToken === 'ref') {
-      // pode ser bloco multi-linha "Ref { ... }" ou linha única
-      if (line.includes('{') && !line.includes('}')) {
-        // coletar até "}"
-        let buffer = line;
-        i += 1;
-        while (i < lines.length) {
-          const l = stripLineComment(lines[i]);
-          buffer += ` ${l.trim()}`;
-          i += 1;
-          if (l.includes('}')) {
-            break;
-          }
-        }
-        const { relation, error } = parseRefLine(buffer);
-        if (relation) {
-          relations.push(relation);
-        } else if (error) {
-          errors.push(error);
-        }
+      if (skipDepth > 0) {
+        skipDepth += countBraceDelta(line.text);
         continue;
       }
-      const { relation, error } = parseRefLine(line);
-      if (relation) {
-        relations.push(relation);
+
+      const firstToken = line.text.toLowerCase().split(/\s|\{|\[|:/)[0];
+      if (IGNORED_TABLE_BLOCK_KEYWORDS.has(firstToken)) {
+        skipDepth = Math.max(0, countBraceDelta(line.text));
+        continue;
+      }
+
+      const { column, error } = parseColumnLine(line, tableName, columnIndex);
+      columnIndex += 1;
+      if (column) {
+        columns.push(column);
       } else if (error) {
         errors.push(error);
       }
-      i += 1;
-      continue;
     }
 
-    if (firstToken === 'table') {
-      // header pode ter "as alias" ou "[ ... ]"
-      const headerMatch = line.match(/^table\s+([^\s\{\[]+)/i);
-      if (!headerMatch) {
-        errors.push(`Tabela sem nome: "${line}"`);
-        i += 1;
-        continue;
-      }
-      const tableName = unquote(headerMatch[1]);
-      const tableId = tableName;
-
-      // avançar até "{"
-      let cursor = line;
-      while (!cursor.includes('{') && i + 1 < lines.length) {
-        i += 1;
-        cursor = stripLineComment(lines[i]).trim();
-      }
-      if (!cursor.includes('{')) {
-        errors.push(`Tabela "${tableName}" sem corpo`);
-        i += 1;
-        continue;
-      }
-
-      // a partir daqui, ler linhas até "}"
-      i += 1;
-      const columns: DatabaseColumn[] = [];
-      let columnIndex = 0;
-      while (i < lines.length) {
-        const inner = stripLineComment(lines[i]).trim();
-        if (!inner) {
-          i += 1;
-          continue;
-        }
-        if (inner.startsWith('}')) {
-          i += 1;
-          break;
-        }
-        // ignorar sub-blocos como Indexes { ... } ou Note { ... }
-        const innerLower = inner.toLowerCase();
-        const innerFirst = innerLower.split(/\s|\{|\[|:/)[0];
-        if (IGNORED_BLOCK_KEYWORDS.has(innerFirst)) {
-          if (inner.includes('{')) {
-            let depth = 0;
-            while (i < lines.length) {
-              const l = stripLineComment(lines[i]);
-              for (const ch of l) {
-                if (ch === '{') {
-                  depth += 1;
-                } else if (ch === '}') {
-                  depth -= 1;
-                }
-              }
-              i += 1;
-              if (depth <= 0) {
-                break;
-              }
-            }
-          } else {
-            i += 1;
-          }
-          continue;
-        }
-
-        const { column, error } = parseColumnLine(inner, tableId, columnIndex);
-        columnIndex += 1;
-        if (column) {
-          columns.push(column);
-        } else if (error) {
-          errors.push(error);
-        }
-        i += 1;
-      }
-      tables.push({ id: tableId, name: tableName, columns });
-      continue;
-    }
-
-    // linha desconhecida, ignorar com erro leve
-    errors.push(`Linha não suportada: "${line}"`);
-    i += 1;
+    tables.push({
+      id: tableName,
+      name: tableName,
+      columns,
+      sourceRange: { start: match.index, end: closeBrace + 1 },
+      nameSourceRange: {
+        start: nameStart,
+        end: nameStart + rawName.length,
+      },
+    });
+    tableRegex.lastIndex = closeBrace + 1;
   }
 
-  // filtrar relações cujas tabelas/colunas existem; manter mesmo que não existam?
-  // Aqui, mantemos todas para não esconder problemas; o renderer pode pular as órfãs.
-  return { tables, relations, errors };
+  return tables;
+}
+
+function parseRecordColumns(rawColumns: string, start: number): DatabaseRecordColumn[] {
+  return splitTopLevelCommaWithRanges(rawColumns, start).map((part) => ({
+    name: unquote(part.value),
+    sourceRange: { start: part.start, end: part.end },
+  }));
+}
+
+function parseRecordRows(body: string, bodyStart: number): string[][] {
+  const rows: string[][] = [];
+  for (const rawLine of splitLinesWithStart(body, bodyStart)) {
+    const line = trimLine(rawLine);
+    if (!line) {
+      continue;
+    }
+    const normalized = line.text.endsWith(',')
+      ? line.text.slice(0, -1)
+      : line.text;
+    rows.push(splitTopLevelComma(normalized).map(unquote));
+  }
+  return rows;
+}
+
+function parseRecords(masked: string): DatabaseRecordSet[] {
+  const records: DatabaseRecordSet[] = [];
+  const recordsRegex =
+    /\bRecords\s+("[^"]+"|'[^']+'|[A-Za-z_][\w.]*)\s*\(([^)]*)\)/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = recordsRegex.exec(masked)) !== null) {
+    const rawTableName = match[1];
+    const rawColumns = match[2];
+    const tableNameOffset = match[0].indexOf(rawTableName);
+    const columnsStart =
+      match.index + match[0].indexOf(rawColumns, tableNameOffset);
+    const tableNameStart = match.index + tableNameOffset;
+    const openBrace = masked.indexOf('{', recordsRegex.lastIndex);
+    if (openBrace === -1) {
+      continue;
+    }
+    const closeBrace = findMatchingBrace(masked, openBrace);
+    if (closeBrace === -1) {
+      continue;
+    }
+
+    records.push({
+      tableName: unquote(rawTableName),
+      columns: parseRecordColumns(rawColumns, columnsStart),
+      rows: parseRecordRows(masked.slice(openBrace + 1, closeBrace), openBrace + 1),
+      sourceRange: { start: match.index, end: closeBrace + 1 },
+      tableNameSourceRange: {
+        start: tableNameStart,
+        end: tableNameStart + rawTableName.length,
+      },
+    });
+    recordsRegex.lastIndex = closeBrace + 1;
+  }
+
+  return records;
+}
+
+function parseEndpoint(raw: string, rawStart: number): ParsedEndpoint | null {
+  const parts = raw.split('.');
+  if (parts.length < 2) {
+    return null;
+  }
+  const rawColumn = parts[parts.length - 1];
+  const rawTable = parts.slice(0, -1).join('.');
+  const columnStart = rawStart + rawTable.length + 1;
+
+  return {
+    table: parts.slice(0, -1).map(unquote).join('.'),
+    column: unquote(rawColumn),
+    tableRange: { start: rawStart, end: rawStart + rawTable.length },
+    columnRange: {
+      start: columnStart,
+      end: columnStart + rawColumn.length,
+    },
+  };
+}
+
+function relationKind(operator: string): DatabaseRelationKind {
+  if (operator === '>') {
+    return 'many';
+  }
+  if (operator === '<') {
+    return 'one';
+  }
+  return 'oneToOne';
+}
+
+function cardinalityLabels(operator: string): {
+  from: string;
+  to: string;
+} {
+  if (operator === '>') {
+    return { from: '*', to: '0..1' };
+  }
+  if (operator === '<') {
+    return { from: '0..1', to: '*' };
+  }
+  return { from: '1', to: '1' };
+}
+
+function buildRelation(args: {
+  name?: string;
+  leftRaw: string;
+  operator: string;
+  rightRaw: string;
+  leftStart: number;
+  rightStart: number;
+  sourceRange: DatabaseSourceRange;
+  index: number;
+}): DatabaseRelation | null {
+  const from = parseEndpoint(args.leftRaw, args.leftStart);
+  const to = parseEndpoint(args.rightRaw, args.rightStart);
+  if (!from || !to) {
+    return null;
+  }
+  const labels = cardinalityLabels(args.operator);
+  return {
+    id:
+      args.name ??
+      `${from.table}.${from.column}-${args.operator}-${to.table}.${to.column}-${args.index}`,
+    name: args.name,
+    fromTable: from.table,
+    fromColumn: from.column,
+    toTable: to.table,
+    toColumn: to.column,
+    kind: relationKind(args.operator),
+    cardinalityLabelFrom: labels.from,
+    cardinalityLabelTo: labels.to,
+    sourceRange: args.sourceRange,
+    fromTableSourceRange: from.tableRange,
+    fromColumnSourceRange: from.columnRange,
+    toTableSourceRange: to.tableRange,
+    toColumnSourceRange: to.columnRange,
+  };
+}
+
+function parseRelations(masked: string, errors: string[]): DatabaseRelation[] {
+  const relations: DatabaseRelation[] = [];
+  const directRefRegex =
+    /\bRef(?:\s+([A-Za-z_][\w]*))?\s*:\s*("[^"]+"|'[^']+'|[\w.]+)\s*([<>\-])\s*("[^"]+"|'[^']+'|[\w.]+)/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = directRefRegex.exec(masked)) !== null) {
+    const [, name, leftRaw, operator, rightRaw] = match;
+    const source = match[0];
+    const leftOffset = source.indexOf(leftRaw);
+    const rightOffset = source.indexOf(rightRaw, leftOffset + leftRaw.length);
+    const relation = buildRelation({
+      name,
+      leftRaw,
+      operator,
+      rightRaw,
+      leftStart: match.index + leftOffset,
+      rightStart: match.index + rightOffset,
+      sourceRange: { start: match.index, end: match.index + source.length },
+      index: relations.length,
+    });
+    if (relation) {
+      relations.push(relation);
+    } else {
+      errors.push(`Ref inválida: "${source.trim()}"`);
+    }
+  }
+
+  const blockRefRegex = /\bRef(?:\s+([A-Za-z_][\w]*))?\s*\{/gi;
+  const endpointRegex =
+    /("[^"]+"|'[^']+'|[\w.]+)\s*([<>\-])\s*("[^"]+"|'[^']+'|[\w.]+)/g;
+  while ((match = blockRefRegex.exec(masked)) !== null) {
+    const openBrace = masked.indexOf('{', match.index);
+    const closeBrace = findMatchingBrace(masked, openBrace);
+    if (openBrace === -1 || closeBrace === -1) {
+      continue;
+    }
+    const body = masked.slice(openBrace + 1, closeBrace);
+    let endpointMatch: RegExpExecArray | null;
+    while ((endpointMatch = endpointRegex.exec(body)) !== null) {
+      const [, leftRaw, operator, rightRaw] = endpointMatch;
+      const leftOffset = endpointMatch.index;
+      const rightOffset = body.indexOf(
+        rightRaw,
+        leftOffset + leftRaw.length,
+      );
+      const relation = buildRelation({
+        name: match[1],
+        leftRaw,
+        operator,
+        rightRaw,
+        leftStart: openBrace + 1 + leftOffset,
+        rightStart: openBrace + 1 + rightOffset,
+        sourceRange: {
+          start: openBrace + 1 + endpointMatch.index,
+          end: openBrace + 1 + endpointMatch.index + endpointMatch[0].length,
+        },
+        index: relations.length,
+      });
+      if (relation) {
+        relations.push(relation);
+      }
+    }
+    blockRefRegex.lastIndex = closeBrace + 1;
+  }
+
+  return relations;
+}
+
+function markForeignKeys(
+  tables: DatabaseTable[],
+  relations: DatabaseRelation[],
+): void {
+  const tableMap = new Map(tables.map((table) => [table.name, table]));
+
+  for (const relation of relations) {
+    const foreignSide =
+      relation.kind === 'one'
+        ? {
+            table: relation.toTable,
+            column: relation.toColumn,
+            targetTable: relation.fromTable,
+            targetColumn: relation.fromColumn,
+          }
+        : {
+            table: relation.fromTable,
+            column: relation.fromColumn,
+            targetTable: relation.toTable,
+            targetColumn: relation.toColumn,
+          };
+    const column = tableMap
+      .get(foreignSide.table)
+      ?.columns.find((entry) => entry.name === foreignSide.column);
+    if (!column) {
+      continue;
+    }
+    column.isForeignKey = true;
+    column.references = [
+      ...(column.references ?? []),
+      { table: foreignSide.targetTable, column: foreignSide.targetColumn },
+    ];
+  }
+}
+
+export function isValidDbmlIdentifier(value: string): boolean {
+  return /^[A-Za-z_][\w.]*$/.test(value.trim());
+}
+
+export function isValidDbmlColumnIdentifier(value: string): boolean {
+  return /^[A-Za-z_]\w*$/.test(value.trim());
+}
+
+function applyReplacements(
+  content: string,
+  replacements: { range: DatabaseSourceRange; value: string }[],
+): string {
+  const sorted = [...replacements].sort((a, b) => b.range.start - a.range.start);
+  let next = content;
+  let lastStart = Number.POSITIVE_INFINITY;
+
+  for (const replacement of sorted) {
+    if (replacement.range.end > lastStart) {
+      continue;
+    }
+    next =
+      next.slice(0, replacement.range.start) +
+      replacement.value +
+      next.slice(replacement.range.end);
+    lastStart = replacement.range.start;
+  }
+
+  return next;
+}
+
+export function renameDbmlTable(
+  content: string,
+  currentName: string,
+  nextName: string,
+): string {
+  const normalized = nextName.trim();
+  if (
+    !normalized ||
+    normalized === currentName ||
+    !isValidDbmlIdentifier(normalized)
+  ) {
+    return content;
+  }
+
+  const parsed = parseDbml(content);
+  const replacements: { range: DatabaseSourceRange; value: string }[] = [];
+
+  for (const table of parsed.tables) {
+    if (table.name === currentName && table.nameSourceRange) {
+      replacements.push({ range: table.nameSourceRange, value: normalized });
+    }
+  }
+  for (const record of parsed.records) {
+    if (record.tableName === currentName && record.tableNameSourceRange) {
+      replacements.push({
+        range: record.tableNameSourceRange,
+        value: normalized,
+      });
+    }
+  }
+  for (const relation of parsed.relations) {
+    if (relation.fromTable === currentName && relation.fromTableSourceRange) {
+      replacements.push({
+        range: relation.fromTableSourceRange,
+        value: normalized,
+      });
+    }
+    if (relation.toTable === currentName && relation.toTableSourceRange) {
+      replacements.push({
+        range: relation.toTableSourceRange,
+        value: normalized,
+      });
+    }
+  }
+
+  return applyReplacements(content, replacements);
+}
+
+export function renameDbmlColumn(
+  content: string,
+  tableName: string,
+  currentName: string,
+  nextName: string,
+): string {
+  const normalized = nextName.trim();
+  if (
+    !normalized ||
+    normalized === currentName ||
+    !isValidDbmlColumnIdentifier(normalized)
+  ) {
+    return content;
+  }
+
+  const parsed = parseDbml(content);
+  const replacements: { range: DatabaseSourceRange; value: string }[] = [];
+  const table = parsed.tables.find((entry) => entry.name === tableName);
+
+  for (const column of table?.columns ?? []) {
+    if (column.name === currentName && column.nameSourceRange) {
+      replacements.push({ range: column.nameSourceRange, value: normalized });
+    }
+  }
+  for (const record of parsed.records) {
+    if (record.tableName !== tableName) {
+      continue;
+    }
+    for (const column of record.columns) {
+      if (column.name === currentName && column.sourceRange) {
+        replacements.push({ range: column.sourceRange, value: normalized });
+      }
+    }
+  }
+  for (const relation of parsed.relations) {
+    if (
+      relation.fromTable === tableName &&
+      relation.fromColumn === currentName &&
+      relation.fromColumnSourceRange
+    ) {
+      replacements.push({
+        range: relation.fromColumnSourceRange,
+        value: normalized,
+      });
+    }
+    if (
+      relation.toTable === tableName &&
+      relation.toColumn === currentName &&
+      relation.toColumnSourceRange
+    ) {
+      replacements.push({
+        range: relation.toColumnSourceRange,
+        value: normalized,
+      });
+    }
+  }
+
+  return applyReplacements(content, replacements);
+}
+
+export function parseDbml(content: string): DatabaseDiagramParseResult {
+  const masked = maskComments(content);
+  const errors: string[] = [];
+  const tables = parseTables(masked, errors);
+  const records = parseRecords(masked);
+  const relations = parseRelations(masked, errors);
+  const tableMap = new Map(tables.map((table) => [table.name, table]));
+
+  for (const record of records) {
+    const table = tableMap.get(record.tableName);
+    if (table) {
+      table.records = record;
+    }
+  }
+
+  markForeignKeys(tables, relations);
+
+  return { tables, relations, records, errors };
 }

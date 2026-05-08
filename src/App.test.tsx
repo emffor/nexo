@@ -259,6 +259,16 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
+  it("abre o modo banco com editor DBML", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /modo banco/i }));
+
+    expect(await screen.findByLabelText(/editor dbml/i)).toBeInTheDocument();
+    expect(screen.getByText("DBML")).toBeInTheDocument();
+  });
+
   it("permite ocultar e exibir os cards laterais no modo diagrama", async () => {
     const user = userEvent.setup();
     render(<App />);

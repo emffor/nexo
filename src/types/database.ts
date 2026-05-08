@@ -1,31 +1,72 @@
+export interface DatabaseSourceRange {
+  start: number;
+  end: number;
+}
+
+export interface DatabaseReferenceTarget {
+  table: string;
+  column: string;
+}
+
 export interface DatabaseColumn {
   id: string;
   name: string;
   type: string;
   isPrimaryKey: boolean;
   isNotNull: boolean;
+  isForeignKey?: boolean;
+  references?: DatabaseReferenceTarget[];
+  note?: string;
+  sourceRange?: DatabaseSourceRange;
+  nameSourceRange?: DatabaseSourceRange;
+  typeSourceRange?: DatabaseSourceRange;
+}
+
+export interface DatabaseRecordColumn {
+  name: string;
+  sourceRange?: DatabaseSourceRange;
+}
+
+export interface DatabaseRecordSet {
+  tableName: string;
+  columns: DatabaseRecordColumn[];
+  rows: string[][];
+  sourceRange?: DatabaseSourceRange;
+  tableNameSourceRange?: DatabaseSourceRange;
 }
 
 export interface DatabaseTable {
   id: string;
   name: string;
   columns: DatabaseColumn[];
+  records?: DatabaseRecordSet;
+  sourceRange?: DatabaseSourceRange;
+  nameSourceRange?: DatabaseSourceRange;
 }
 
 export type DatabaseRelationKind = 'one' | 'many' | 'oneToOne';
 
 export interface DatabaseRelation {
   id: string;
+  name?: string;
   fromTable: string;
   fromColumn: string;
   toTable: string;
   toColumn: string;
   kind: DatabaseRelationKind;
+  cardinalityLabelFrom?: string;
+  cardinalityLabelTo?: string;
+  sourceRange?: DatabaseSourceRange;
+  fromTableSourceRange?: DatabaseSourceRange;
+  fromColumnSourceRange?: DatabaseSourceRange;
+  toTableSourceRange?: DatabaseSourceRange;
+  toColumnSourceRange?: DatabaseSourceRange;
 }
 
 export interface DatabaseDiagramParseResult {
   tables: DatabaseTable[];
   relations: DatabaseRelation[];
+  records: DatabaseRecordSet[];
   errors: string[];
 }
 

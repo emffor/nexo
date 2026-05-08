@@ -19,7 +19,7 @@ import {
   saveDatabaseDiagramRecord,
   saveDatabaseDiagramState,
 } from "./lib/databaseDiagramStore";
-import { parseDbml } from "./lib/dbml";
+import { parseDbml, renameDbmlColumn, renameDbmlTable } from "./lib/dbml";
 import {
   clearDiagramState,
   readDiagramState,
@@ -478,10 +478,7 @@ export default function App() {
     [databaseDiagram?.content],
   );
 
-  const handleDatabaseContentChange = useCallback((next: string) => {
-    setDatabaseDiagram((current) =>
-      current ? { ...current, content: next } : current,
-    );
+  const scheduleDatabaseContentSave = useCallback((next: string) => {
     if (databaseContentTimerRef.current) {
       clearTimeout(databaseContentTimerRef.current);
     }
@@ -490,11 +487,8 @@ export default function App() {
     }, 250);
   }, []);
 
-  const handleDatabaseStateChange = useCallback(
+  const scheduleDatabaseStateSave = useCallback(
     (next: DatabaseDiagramVisualState) => {
-      setDatabaseDiagram((current) =>
-        current ? { ...current, state: next } : current,
-      );
       if (databaseStateTimerRef.current) {
         clearTimeout(databaseStateTimerRef.current);
       }
@@ -503,6 +497,83 @@ export default function App() {
       }, 250);
     },
     [],
+  );
+
+  const handleDatabaseContentChange = useCallback(
+    (next: string) => {
+      setDatabaseDiagram((current) =>
+        current ? { ...current, content: next } : current,
+      );
+      scheduleDatabaseContentSave(next);
+    },
+    [scheduleDatabaseContentSave],
+  );
+
+  const handleDatabaseStateChange = useCallback(
+    (next: DatabaseDiagramVisualState) => {
+      setDatabaseDiagram((current) =>
+        current ? { ...current, state: next } : current,
+      );
+      scheduleDatabaseStateSave(next);
+    },
+    [scheduleDatabaseStateSave],
+  );
+
+  const handleRenameDatabaseTable = useCallback(
+    (tableName: string, nextName: string): boolean => {
+      if (!databaseDiagram) {
+        return false;
+      }
+      const nextContent = renameDbmlTable(
+        databaseDiagram.content,
+        tableName,
+        nextName,
+      );
+      if (nextContent === databaseDiagram.content && tableName !== nextName) {
+        return false;
+      }
+
+      let nextState = databaseDiagram.state;
+      const currentPosition = databaseDiagram.state.positions[tableName];
+      if (currentPosition && tableName !== nextName) {
+        const nextPositions = { ...databaseDiagram.state.positions };
+        delete nextPositions[tableName];
+        nextPositions[nextName] = currentPosition;
+        nextState = { ...databaseDiagram.state, positions: nextPositions };
+        scheduleDatabaseStateSave(nextState);
+      }
+
+      setDatabaseDiagram({
+        ...databaseDiagram,
+        content: nextContent,
+        state: nextState,
+      });
+      scheduleDatabaseContentSave(nextContent);
+      return true;
+    },
+    [databaseDiagram, scheduleDatabaseContentSave, scheduleDatabaseStateSave],
+  );
+
+  const handleRenameDatabaseColumn = useCallback(
+    (tableName: string, columnName: string, nextName: string): boolean => {
+      if (!databaseDiagram) {
+        return false;
+      }
+      const nextContent = renameDbmlColumn(
+        databaseDiagram.content,
+        tableName,
+        columnName,
+        nextName,
+      );
+      if (nextContent === databaseDiagram.content && columnName !== nextName) {
+        return false;
+      }
+
+      setDatabaseDiagram({ ...databaseDiagram, content: nextContent });
+      scheduleDatabaseContentSave(nextContent);
+      return true;
+    },
+    [databaseDiagram, scheduleDatabaseContentSave],
   );
 
   const handleResetDatabaseLayout = useCallback(() => {
@@ -658,6 +729,8 @@ export default function App() {
               theme={theme}
               state={databaseDiagram?.state ?? { positions: {} }}
               onStateChange={handleDatabaseStateChange}
+              onRenameTable={handleRenameDatabaseTable}
+              onRenameColumn={handleRenameDatabaseColumn}
               resetSignal={databaseResetSignal}
             />
           ) : viewMode === "diagram" ? (
