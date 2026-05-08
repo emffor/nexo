@@ -73,7 +73,7 @@ export function DiagramSidebar({
         </button>
       </div>
 
-      <div className="-mx-1 flex-1 overflow-y-auto pr-1">
+      <div className="app-scrollbar -mx-1 flex-1 overflow-y-auto pr-1">
         <ul className="m-0 flex list-none flex-col gap-1 p-0">
           {items.map((item, index) => {
             const status = item.status ?? "backlog";

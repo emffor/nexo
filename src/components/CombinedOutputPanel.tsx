@@ -330,7 +330,7 @@ export function CombinedOutputPanel({
 
       <div
         ref={scrollContainerRef}
-        className={`flex-1 overflow-y-auto p-4 sm:p-5 ${theme === "dark" ? "bg-[#0b1118]" : "bg-slate-50/80"}`}
+        className={`app-scrollbar flex-1 overflow-y-auto p-4 sm:p-5 ${theme === "dark" ? "bg-[#0b1118]" : "bg-slate-50/80"}`}
       >
         {isLoading ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">

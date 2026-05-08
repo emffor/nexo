@@ -148,9 +148,9 @@ export function SortableCardsPanel({
           >
             <div
               ref={scrollContainerRef}
-              className={`flex lg:flex-1 ${
+              className={`app-scrollbar flex lg:flex-1 ${
                 isOutlineMode
-                  ? "flex-col gap-1.5 overflow-y-auto"
+                  ? "flex-col gap-1.5 overflow-y-auto pr-1"
                   : "flex-col gap-2 overflow-y-auto pr-1"
               }`}
             >

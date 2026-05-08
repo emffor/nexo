@@ -106,6 +106,46 @@
     @apply inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-slate-300;
   }
 
+  .app-scrollbar {
+    scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+    scrollbar-width: thin;
+  }
+
+  .app-scrollbar::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.6);
+    background-clip: padding-box;
+  }
+
+  [data-theme="light"] .app-scrollbar {
+    scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+  }
+
+  [data-theme="light"] .app-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.3);
+    background-clip: padding-box;
+  }
+
+  [data-theme="light"] .app-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.5);
+    background-clip: padding-box;
+  }
+
   [data-layout-mode="compact"] > header {
     border-radius: 0;
   }
