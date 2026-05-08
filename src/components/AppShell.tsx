@@ -2,11 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
-import type {
-  AppTheme,
-  DiagramEdgeStyle,
-  ViewMode,
-} from "../lib/preferences";
+import type { AppTheme, DiagramEdgeStyle, ViewMode } from "../lib/preferences";
 
 interface AppShellProps {
   itemsCount: number;
@@ -120,9 +116,7 @@ export function AppShell({
       data-theme={theme}
       className={`flex w-full flex-col ${
         isDiagramMode ? "h-screen min-h-0 overflow-hidden" : "min-h-screen"
-      } ${
-        isCompactMode ? "px-2 py-0 sm:px-3" : "px-4 py-6 sm:px-6 lg:px-8"
-      }`}
+      } ${isCompactMode ? "px-2 py-0 sm:px-3" : "px-4 py-6 sm:px-6 lg:px-8"}`}
       style={{ ["--font-scale" as string]: String(fontScale) }}
     >
       <header
@@ -170,7 +164,7 @@ export function AppShell({
                   theme === "dark" ? "text-slate-50" : "text-slate-950"
                 }`}
               >
-                Organizador Markdown
+                Jira Markdown
               </h1>
               <p
                 className={`mt-1 max-w-2xl text-[13px] leading-snug ${
