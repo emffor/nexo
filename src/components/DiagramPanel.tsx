@@ -9,7 +9,7 @@ import {
 } from "react";
 import { Arrow, Circle, Group, Layer, Rect, Stage, Text } from "react-konva";
 import type { KonvaEventObject } from "konva/lib/Node";
-import type Konva from "konva";
+import Konva from "konva";
 
 import { getDisplayTitle } from "../lib/items";
 import {
@@ -43,9 +43,18 @@ interface PendingConnection {
   pointerY: number;
 }
 
+interface StageTransform {
+  x: number;
+  y: number;
+  scale: number;
+}
+
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 1.8;
 const SCALE_STEP = 1.05;
+const INITIAL_STAGE_TRANSFORM: StageTransform = { x: 0, y: 0, scale: 1 };
+
+Konva.pixelRatio = 1;
 
 function getNodeCenters(position: DiagramNodePosition): {
   right: { x: number; y: number };
@@ -78,7 +87,10 @@ export default function DiagramPanel({
   void _onChangeStatus;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
+  const nodesLayerRef = useRef<Konva.Layer | null>(null);
+  const dragLayerRef = useRef<Konva.Layer | null>(null);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stageTransformRef = useRef<StageTransform>(INITIAL_STAGE_TRANSFORM);
 
   const [size, setSize] = useState<{ width: number; height: number }>({
     width: 800,
@@ -88,13 +100,19 @@ export default function DiagramPanel({
     Record<string, DiagramNodePosition>
   >({});
   const [edges, setEdges] = useState<DiagramEdge[]>([]);
-  const [stagePos, setStagePos] = useState<{ x: number; y: number }>({
-    x: 0,
-    y: 0,
-  });
-  const [stageScale, setStageScale] = useState(1);
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
+
+  const applyStageTransform = useCallback((transform: StageTransform) => {
+    stageTransformRef.current = transform;
+    const stage = stageRef.current;
+    if (!stage) {
+      return;
+    }
+    stage.position({ x: transform.x, y: transform.y });
+    stage.scale({ x: transform.scale, y: transform.scale });
+    stage.batchDraw();
+  }, []);
 
   // hidratar estado salvo
   useEffect(() => {
@@ -161,8 +179,7 @@ export default function DiagramPanel({
         4,
       ),
     );
-    setStagePos({ x: 0, y: 0 });
-    setStageScale(1);
+    applyStageTransform(INITIAL_STAGE_TRANSFORM);
   }, [resetLayoutSignal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -188,27 +205,35 @@ export default function DiagramPanel({
     return () => observer.disconnect();
   }, []);
 
-  const handleNodeDragMove = useCallback(
-    (id: string, event: KonvaEventObject<DragEvent>) => {
-      const node = event.target;
-      setPositions((current) => ({
-        ...current,
-        [id]: { x: node.x(), y: node.y() },
-      }));
-    },
-    [],
-  );
-
   const handleNodeDragEnd = useCallback(
     (id: string, event: KonvaEventObject<DragEvent>) => {
       const node = event.target;
       const x = snapToGrid(node.x());
       const y = snapToGrid(node.y());
+      const nodesLayer = nodesLayerRef.current;
+      if (nodesLayer && node.getLayer() !== nodesLayer) {
+        node.moveTo(nodesLayer);
+      }
       node.position({ x, y });
+      nodesLayer?.batchDraw();
+      dragLayerRef.current?.batchDraw();
       setPositions((current) => ({
         ...current,
         [id]: { x, y },
       }));
+    },
+    [],
+  );
+
+  const handleNodeDragStart = useCallback(
+    (event: KonvaEventObject<DragEvent>) => {
+      const dragLayer = dragLayerRef.current;
+      if (!dragLayer) {
+        return;
+      }
+      event.target.moveTo(dragLayer);
+      nodesLayerRef.current?.batchDraw();
+      dragLayer.batchDraw();
     },
     [],
   );
@@ -327,9 +352,22 @@ export default function DiagramPanel({
       x: pointer.x - mousePointTo.x * newScale,
       y: pointer.y - mousePointTo.y * newScale,
     };
-    setStageScale(newScale);
-    setStagePos(newPos);
-  }, []);
+    applyStageTransform({ ...newPos, scale: newScale });
+  }, [applyStageTransform]);
+
+  const handleStageDragEnd = useCallback(
+    (event: KonvaEventObject<DragEvent>) => {
+      if (event.target !== event.target.getStage()) {
+        return;
+      }
+      stageTransformRef.current = {
+        x: event.target.x(),
+        y: event.target.y(),
+        scale: event.target.scaleX(),
+      };
+    },
+    [],
+  );
 
   const handleEdgeClick = useCallback((edgeId: string) => {
     setEdges((current) => current.filter((edge) => edge.id !== edgeId));
@@ -359,23 +397,13 @@ export default function DiagramPanel({
         ref={stageRef}
         width={size.width}
         height={size.height}
-        x={stagePos.x}
-        y={stagePos.y}
-        scaleX={stageScale}
-        scaleY={stageScale}
         draggable={!pending}
-        onDragEnd={(event) => {
-          if (event.target === event.target.getStage()) {
-            setStagePos({ x: event.target.x(), y: event.target.y() });
-          }
-        }}
+        onDragEnd={handleStageDragEnd}
         onMouseMove={handleStageMouseMove}
         onMouseUp={handleStageMouseUp}
         onWheel={handleWheel}
       >
-        <Layer listening={false}>{/* fundo decorativo (grid sutil) */}</Layer>
-
-        <Layer>
+        <Layer listening={edges.length > 0}>
           {edges.map((edge) => {
             const fromPos = positions[edge.from];
             const toPos = positions[edge.to];
@@ -403,6 +431,8 @@ export default function DiagramPanel({
                 stroke={isHover ? edgeHoverColor : edgeColor}
                 strokeWidth={isHover ? 2.5 : 1.8}
                 fill={isHover ? edgeHoverColor : edgeColor}
+                perfectDrawEnabled={false}
+                shadowForStrokeEnabled={false}
                 pointerLength={8}
                 pointerWidth={8}
                 hitStrokeWidth={14}
@@ -447,6 +477,8 @@ export default function DiagramPanel({
                     strokeWidth={2}
                     fill={portColor}
                     dash={[6, 4]}
+                    perfectDrawEnabled={false}
+                    shadowForStrokeEnabled={false}
                     pointerLength={8}
                     pointerWidth={8}
                     listening={false}
@@ -456,7 +488,7 @@ export default function DiagramPanel({
             : null}
         </Layer>
 
-        <Layer>
+        <Layer ref={nodesLayerRef}>
           {items.map((item) => {
             const pos = positions[item.id];
             if (!pos) {
@@ -472,7 +504,7 @@ export default function DiagramPanel({
                 x={pos.x}
                 y={pos.y}
                 draggable
-                onDragMove={(event) => handleNodeDragMove(item.id, event)}
+                onDragStart={handleNodeDragStart}
                 onDragEnd={(event) => handleNodeDragEnd(item.id, event)}
                 onClick={() => onSelectItem(item)}
                 onTap={() => onSelectItem(item)}
@@ -496,8 +528,11 @@ export default function DiagramPanel({
                   fill={palette.fill}
                   stroke={isActive ? "#2dd4bf" : palette.border}
                   strokeWidth={isActive ? 2.4 : 1.4}
+                  perfectDrawEnabled={false}
+                  shadowForStrokeEnabled={false}
+                  shadowEnabled={isActive}
                   shadowColor={isDark ? "#000" : "#94a3b8"}
-                  shadowBlur={isActive ? 12 : 6}
+                  shadowBlur={8}
                   shadowOpacity={isDark ? 0.45 : 0.25}
                   shadowOffsetY={2}
                 />
@@ -514,6 +549,8 @@ export default function DiagramPanel({
                   lineHeight={1.25}
                   ellipsis
                   wrap="word"
+                  listening={false}
+                  perfectDrawEnabled={false}
                 />
                 {/* port direita: pressione e arraste para conectar */}
                 <Circle
@@ -523,6 +560,7 @@ export default function DiagramPanel({
                   fill={portColor}
                   stroke={isDark ? "#0b0f17" : "#ffffff"}
                   strokeWidth={2}
+                  perfectDrawEnabled={false}
                   onMouseDown={(event) => handlePortMouseDown(item.id, event)}
                   onTouchStart={(event) => {
                     event.cancelBubble = true;
@@ -552,6 +590,8 @@ export default function DiagramPanel({
             );
           })}
         </Layer>
+
+        <Layer ref={dragLayerRef} listening={false} />
       </Stage>
 
       <DiagramLegend theme={theme} />

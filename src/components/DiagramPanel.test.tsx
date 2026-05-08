@@ -1,11 +1,13 @@
 import { render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { forwardRef, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { MarkdownItem } from '../types/markdown';
 
 vi.mock('react-konva', () => {
-  const passthrough = ({ children }: { children?: ReactNode }) => (
-    <div>{children}</div>
+  const passthrough = forwardRef<HTMLDivElement, { children?: ReactNode }>(
+    function Passthrough({ children }, ref) {
+      return <div ref={ref}>{children}</div>;
+    },
   );
 
   const textNode = ({ text }: { text?: string }) => <span>{text}</span>;
