@@ -12,7 +12,9 @@ interface DiagramSidebarProps {
   items: MarkdownItem[];
   theme: AppTheme;
   activeItemId: string | null;
+  hiddenItemIds: Set<string>;
   onSelectItem: (item: MarkdownItem) => void;
+  onToggleItemVisibility: (itemId: string) => void;
   onChangeStatus: (itemId: string, status: DiagramStatus | undefined) => void;
   onChangeObservation: (itemId: string, observation: string) => void;
   onResetLayout: () => void;
@@ -23,7 +25,9 @@ export function DiagramSidebar({
   items,
   theme,
   activeItemId,
+  hiddenItemIds,
   onSelectItem,
+  onToggleItemVisibility,
   onChangeObservation,
   onChangeStatus,
   onResetLayout,
@@ -75,11 +79,17 @@ export function DiagramSidebar({
             const status = item.status ?? "backlog";
             const palette = DIAGRAM_STATUS_PALETTE[status][theme];
             const isActive = item.id === activeItemId;
+            const isHidden = hiddenItemIds.has(item.id);
+            const displayTitle = getDisplayTitle(item, 60);
             return (
               <li key={item.id}>
                 <div
                   className={`flex flex-col gap-1.5 rounded-md border px-2 py-1.5 text-[12px] transition ${
-                    isActive
+                    isHidden
+                      ? theme === "dark"
+                        ? "border-white/5 bg-white/[0.01] opacity-55"
+                        : "border-slate-200 bg-slate-100 opacity-60"
+                      : isActive
                       ? theme === "dark"
                         ? "border-teal-400/60 bg-teal-400/10"
                         : "border-teal-500 bg-teal-50"
@@ -88,26 +98,33 @@ export function DiagramSidebar({
                         : "border-slate-200 bg-slate-50 hover:border-slate-300"
                   }`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => onSelectItem(item)}
-                    className={`flex items-center gap-2 text-left ${
-                      theme === "dark" ? "text-slate-100" : "text-slate-800"
-                    }`}
-                  >
-                    <span
-                      className={`inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded px-1 text-[10px] font-semibold ${
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={!isHidden}
+                      onChange={() => onToggleItemVisibility(item.id)}
+                      aria-label={`${isHidden ? "Exibir" : "Ocultar"} card ${displayTitle} no diagrama`}
+                      className="h-3.5 w-3.5 accent-teal-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onSelectItem(item)}
+                      className={`flex flex-1 items-center gap-2 text-left ${
+                        theme === "dark" ? "text-slate-100" : "text-slate-800"
+                      }`}
+                    >
+                      <span
+                        className={`inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded px-1 text-[10px] font-semibold ${
                         theme === "dark"
                           ? "bg-white/10 text-slate-300"
                           : "bg-slate-200 text-slate-600"
-                      }`}
-                    >
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <span className="flex-1 truncate">
-                      {getDisplayTitle(item, 60)}
-                    </span>
-                  </button>
+                        }`}
+                      >
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="flex-1 truncate">{displayTitle}</span>
+                    </button>
+                  </div>
                   <div className="flex items-center gap-1.5">
                     <span
                       className="inline-block h-2.5 w-2.5 rounded-full border"

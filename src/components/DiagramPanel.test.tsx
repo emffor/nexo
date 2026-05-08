@@ -92,4 +92,24 @@ describe('DiagramPanel', () => {
       screen.getByText(/adicione cards para visualizar o diagrama/i),
     ).toBeInTheDocument();
   });
+
+  it('oculta cards marcados como invisiveis', () => {
+    const items = [buildItem('a', 'Card Oculto')];
+
+    render(
+      <DiagramPanel
+        items={items}
+        theme="dark"
+        activeItemId={null}
+        hiddenItemIds={new Set(['a'])}
+        onSelectItem={() => {}}
+        onChangeStatus={() => {}}
+      />,
+    );
+
+    expect(screen.queryByText('Card Oculto')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/nenhum card visivel no diagrama/i),
+    ).toBeInTheDocument();
+  });
 });

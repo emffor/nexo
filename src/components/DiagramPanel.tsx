@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type RefObject,
@@ -36,6 +37,7 @@ interface DiagramPanelProps {
   items: MarkdownItem[];
   theme: AppTheme;
   activeItemId: string | null;
+  hiddenItemIds?: Set<string>;
   onSelectItem: (item: MarkdownItem) => void;
   onChangeStatus: (itemId: string, status: DiagramStatus | undefined) => void;
   scrollContainerRef?: RefObject<HTMLDivElement>;
@@ -143,6 +145,7 @@ export default function DiagramPanel({
   items,
   theme,
   activeItemId,
+  hiddenItemIds,
   onSelectItem,
   onChangeStatus: _onChangeStatus,
   scrollContainerRef,
@@ -181,6 +184,21 @@ export default function DiagramPanel({
     y: number;
   } | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const visibleItems = useMemo(
+    () => items.filter((item) => !hiddenItemIds?.has(item.id)),
+    [hiddenItemIds, items],
+  );
+  const visibleItemIds = useMemo(
+    () => new Set(visibleItems.map((item) => item.id)),
+    [visibleItems],
+  );
+  const visibleEdges = useMemo(
+    () =>
+      edges.filter(
+        (edge) => visibleItemIds.has(edge.from) && visibleItemIds.has(edge.to),
+      ),
+    [edges, visibleItemIds],
+  );
 
   const emitDiagramState = useCallback(
     (state: DiagramState) => {
@@ -461,7 +479,7 @@ export default function DiagramPanel({
 
   const findPortAtPoint = useCallback(
     (worldX: number, worldY: number): DiagramPort | null => {
-      for (const item of items) {
+      for (const item of visibleItems) {
         const pos = positions[item.id];
         if (!pos) {
           continue;
@@ -476,7 +494,7 @@ export default function DiagramPanel({
       }
       return null;
     },
-    [items, positions],
+    [positions, visibleItems],
   );
 
   const handlePortMouseDown = useCallback(
@@ -672,8 +690,8 @@ export default function DiagramPanel({
         onMouseUp={handleStageMouseUp}
         onWheel={handleWheel}
       >
-        <Layer listening={edges.length > 0}>
-          {edges.map((edge) => {
+        <Layer listening={visibleEdges.length > 0}>
+          {visibleEdges.map((edge) => {
             const fromPos = positions[edge.from];
             const toPos = positions[edge.to];
             if (!fromPos || !toPos) {
@@ -722,6 +740,9 @@ export default function DiagramPanel({
 
           {pending
             ? (() => {
+                if (!visibleItemIds.has(pending.fromId)) {
+                  return null;
+                }
                 const fromPos = positions[pending.fromId];
                 if (!fromPos) {
                   return null;
@@ -751,7 +772,7 @@ export default function DiagramPanel({
         </Layer>
 
         <Layer ref={nodesLayerRef}>
-          {items.map((item) => {
+          {visibleItems.map((item) => {
             const pos = positions[item.id];
             if (!pos) {
               return null;
@@ -892,13 +913,15 @@ export default function DiagramPanel({
 
       <DiagramLegend theme={theme} />
 
-      {items.length === 0 ? (
+      {items.length === 0 || visibleItems.length === 0 ? (
         <div
           className={`pointer-events-none absolute inset-0 flex items-center justify-center text-sm ${
             isDark ? "text-slate-400" : "text-slate-500"
           }`}
         >
-          Adicione cards para visualizar o diagrama.
+          {items.length === 0
+            ? "Adicione cards para visualizar o diagrama."
+            : "Nenhum card visivel no diagrama."}
         </div>
       ) : null}
 

@@ -34,6 +34,7 @@ import {
   FONT_SCALE,
   readStoredCompactMode,
   readStoredFontScale,
+  readStoredHiddenDiagramItemIds,
   readStoredPreviewMaximized,
   readStoredTheme,
   readStoredViewMode,
@@ -50,6 +51,10 @@ export default function App() {
   const [isScrollSyncEnabled, setIsScrollSyncEnabled] = useState(false);
   const [isCompactMode, setIsCompactMode] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("normal");
+  const [isDiagramSidebarVisible, setIsDiagramSidebarVisible] = useState(true);
+  const [hiddenDiagramItemIds, setHiddenDiagramItemIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [fontScale, setFontScale] = useState(FONT_SCALE.default);
   const [isPreviewMaximized, setIsPreviewMaximized] = useState(false);
   const [theme, setTheme] = useState<AppTheme>("dark");
@@ -96,6 +101,7 @@ export default function App() {
 
   useEffect(() => {
     setTheme(readStoredTheme());
+    setHiddenDiagramItemIds(readStoredHiddenDiagramItemIds());
     setArePreferencesLoaded(true);
   }, []);
 
@@ -148,15 +154,43 @@ export default function App() {
   }, [arePreferencesLoaded, theme]);
 
   useEffect(() => {
+    if (!arePreferencesLoaded) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      STORAGE_KEYS.hiddenDiagramItemIds,
+      JSON.stringify([...hiddenDiagramItemIds]),
+    );
+  }, [arePreferencesLoaded, hiddenDiagramItemIds]);
+
+  useEffect(() => {
     if (items.length === 0) {
       setActiveItemId(null);
+      if (!isLoading) {
+        setHiddenDiagramItemIds(new Set());
+      }
       return;
     }
 
     if (!activeItemId || !items.some((item) => item.id === activeItemId)) {
       setActiveItemId(items[0].id);
     }
-  }, [activeItemId, items]);
+  }, [activeItemId, isLoading, items]);
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    const validIds = new Set(items.map((item) => item.id));
+    setHiddenDiagramItemIds((current) => {
+      const next = new Set(
+        [...current].filter((itemId) => validIds.has(itemId)),
+      );
+      return next.size === current.size ? current : next;
+    });
+  }, [isLoading, items]);
 
   useEffect(() => {
     if (
@@ -369,6 +403,18 @@ export default function App() {
     setActiveItemId(item.id);
   };
 
+  const handleToggleDiagramItemVisibility = (itemId: string) => {
+    setHiddenDiagramItemIds((current) => {
+      const next = new Set(current);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
   const handleResetDiagramLayout = () => {
     setDiagramResetSignal((value) => value + 1);
     addToast("Layout do diagrama reorganizado", "info");
@@ -393,6 +439,7 @@ export default function App() {
         itemsCount={items.length}
         isCompactMode={isCompactMode}
         isPreviewMaximized={isPreviewMaximized}
+        isDiagramSidebarVisible={isDiagramSidebarVisible}
         viewMode={viewMode}
         isScrollSyncEnabled={isScrollSyncEnabled}
         theme={theme}
@@ -401,6 +448,9 @@ export default function App() {
         onToggleCompactMode={() => setIsCompactMode((current) => !current)}
         onTogglePreviewMaximized={() =>
           setIsPreviewMaximized((current) => !current)
+        }
+        onToggleDiagramSidebar={() =>
+          setIsDiagramSidebarVisible((current) => !current)
         }
         onSetViewMode={handleSetViewMode}
         onToggleScrollSync={() => setIsScrollSyncEnabled((current) => !current)}
@@ -426,7 +476,9 @@ export default function App() {
               items={items}
               theme={theme}
               activeItemId={activeItemId}
+              hiddenItemIds={hiddenDiagramItemIds}
               onSelectItem={handleSelectDiagramItem}
+              onToggleItemVisibility={handleToggleDiagramItemVisibility}
               onChangeStatus={(itemId, status) => {
                 void updateItemStatus(itemId, status);
               }}
@@ -462,6 +514,7 @@ export default function App() {
               items={items}
               theme={theme}
               activeItemId={activeItemId}
+              hiddenItemIds={hiddenDiagramItemIds}
               onSelectItem={handleSelectDiagramItem}
               onChangeStatus={(itemId, status) => {
                 void updateItemStatus(itemId, status);

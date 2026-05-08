@@ -259,6 +259,81 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
+  it("permite ocultar e exibir os cards laterais no modo diagrama", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
+
+    expect(screen.getByText(/cards no diagrama/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /ocultar cards/i }));
+
+    expect(screen.queryByText(/cards no diagrama/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /exibir cards/i }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /exibir cards/i }));
+
+    expect(screen.getByText(/cards no diagrama/i)).toBeInTheDocument();
+  });
+
+  it("permite ocultar e exibir cards individuais no canvas do diagrama", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.type(screen.getByLabelText(/conteudo/i), "# Card ocultavel");
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
+
+    const visibilityCheckbox = screen.getByRole("checkbox", {
+      name: /ocultar card card ocultavel no diagrama/i,
+    });
+
+    expect(visibilityCheckbox).toBeChecked();
+
+    await user.click(visibilityCheckbox);
+
+    expect(
+      screen.getByRole("checkbox", {
+        name: /exibir card card ocultavel no diagrama/i,
+      }),
+    ).not.toBeChecked();
+  });
+
+  it("persiste cards ocultos do diagrama ao remontar a aplicacao", async () => {
+    const user = userEvent.setup();
+    const firstRender = render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.type(screen.getByLabelText(/conteudo/i), "# Card persistido");
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /ocultar card card persistido no diagrama/i,
+      }),
+    );
+
+    expect(
+      window.localStorage.getItem(
+        "organizar-markdown:hidden-diagram-item-ids",
+      ),
+    ).toContain("[");
+
+    firstRender.unmount();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
+
+    expect(
+      await screen.findByRole("checkbox", {
+        name: /exibir card card persistido no diagrama/i,
+      }),
+    ).not.toBeChecked();
+  });
+
   it("mantem compatibilidade com o modo indice antigo ao recarregar", async () => {
     window.localStorage.setItem("organizar-markdown:outline-mode", "true");
 

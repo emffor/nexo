@@ -8,6 +8,7 @@ interface AppShellProps {
   itemsCount: number;
   isCompactMode: boolean;
   isPreviewMaximized: boolean;
+  isDiagramSidebarVisible: boolean;
   viewMode: ViewMode;
   isScrollSyncEnabled: boolean;
   theme: AppTheme;
@@ -15,6 +16,7 @@ interface AppShellProps {
   onOpenModal: () => void;
   onToggleCompactMode: () => void;
   onTogglePreviewMaximized: () => void;
+  onToggleDiagramSidebar: () => void;
   onSetViewMode: (mode: ViewMode) => void;
   onToggleScrollSync: () => void;
   onToggleTheme: () => void;
@@ -75,6 +77,7 @@ export function AppShell({
   itemsCount,
   isCompactMode,
   isPreviewMaximized,
+  isDiagramSidebarVisible,
   viewMode,
   isScrollSyncEnabled,
   theme,
@@ -82,6 +85,7 @@ export function AppShell({
   onOpenModal,
   onToggleCompactMode,
   onTogglePreviewMaximized,
+  onToggleDiagramSidebar,
   onSetViewMode,
   onToggleScrollSync,
   onToggleTheme,
@@ -99,7 +103,8 @@ export function AppShell({
   const isIndexMode = viewMode === "index";
   const isCardsMode = viewMode === "cards";
   const isDiagramMode = viewMode === "diagram";
-  const isFullWidthMode = isCardsMode;
+  const isDiagramFullWidth = isDiagramMode && !isDiagramSidebarVisible;
+  const isFullWidthMode = isCardsMode || isDiagramFullWidth;
 
   return (
     <main
@@ -228,6 +233,19 @@ export function AppShell({
             >
               {isScrollSyncEnabled ? "Scroll sync ligado" : "Scroll sync"}
             </button>
+            {isDiagramMode && (
+              <button
+                type="button"
+                onClick={onToggleDiagramSidebar}
+                aria-pressed={isDiagramSidebarVisible}
+                className={`toolbar-button border-transparent bg-transparent ${
+                  isDiagramSidebarVisible ? "toolbar-button--primary" : ""
+                }`}
+                title="Alternar cards laterais do diagrama"
+              >
+                {isDiagramSidebarVisible ? "Ocultar cards" : "Exibir cards"}
+              </button>
+            )}
           </ToolbarGroup>
 
           <ToolbarGroup label="Apar\u00eancia">

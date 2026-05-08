@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   outlineMode: 'organizar-markdown:outline-mode',
   viewMode: 'organizar-markdown:view-mode',
   theme: 'organizar-markdown:theme',
+  hiddenDiagramItemIds: 'organizar-markdown:hidden-diagram-item-ids',
 } as const;
 
 export type AppTheme = 'dark' | 'light';
@@ -90,4 +91,29 @@ export function readStoredTheme(): AppTheme {
 
   const rawValue = window.localStorage.getItem(STORAGE_KEYS.theme);
   return rawValue === 'light' ? 'light' : 'dark';
+}
+
+export function readStoredHiddenDiagramItemIds(): Set<string> {
+  if (typeof window === 'undefined') {
+    return new Set();
+  }
+
+  const rawValue = window.localStorage.getItem(
+    STORAGE_KEYS.hiddenDiagramItemIds,
+  );
+  if (!rawValue) {
+    return new Set();
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed)) {
+      return new Set();
+    }
+    return new Set(
+      parsed.filter((itemId): itemId is string => typeof itemId === 'string'),
+    );
+  } catch {
+    return new Set();
+  }
 }
