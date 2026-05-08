@@ -6,10 +6,12 @@ export const STORAGE_KEYS = {
   viewMode: 'organizar-markdown:view-mode',
   theme: 'organizar-markdown:theme',
   hiddenDiagramItemIds: 'organizar-markdown:hidden-diagram-item-ids',
+  diagramEdgeStyle: 'organizar-markdown:diagram-edge-style',
 } as const;
 
 export type AppTheme = 'dark' | 'light';
 export type ViewMode = 'normal' | 'index' | 'cards' | 'diagram';
+export type DiagramEdgeStyle = 'curve' | 'square';
 
 export const FONT_SCALE: {
   min: number;
@@ -116,4 +118,13 @@ export function readStoredHiddenDiagramItemIds(): Set<string> {
   } catch {
     return new Set();
   }
+}
+
+export function readStoredDiagramEdgeStyle(): DiagramEdgeStyle {
+  if (typeof window === 'undefined') {
+    return 'curve';
+  }
+
+  const rawValue = window.localStorage.getItem(STORAGE_KEYS.diagramEdgeStyle);
+  return rawValue === 'square' ? 'square' : 'curve';
 }

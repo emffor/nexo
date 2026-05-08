@@ -334,6 +334,33 @@ describe("App", () => {
     ).not.toBeChecked();
   });
 
+  it("permite alternar e persistir o estilo das linhas do diagrama", async () => {
+    const user = userEvent.setup();
+    const firstRender = render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
+
+    const edgeStyleButton = screen.getByRole("button", {
+      name: /linha curva/i,
+    });
+    await user.click(edgeStyleButton);
+
+    expect(
+      window.localStorage.getItem("organizar-markdown:diagram-edge-style"),
+    ).toBe("square");
+    expect(
+      screen.getByRole("button", { name: /linha quadrada/i }),
+    ).toBeInTheDocument();
+
+    firstRender.unmount();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
+
+    expect(
+      await screen.findByRole("button", { name: /linha quadrada/i }),
+    ).toBeInTheDocument();
+  });
+
   it("mantem compatibilidade com o modo indice antigo ao recarregar", async () => {
     window.localStorage.setItem("organizar-markdown:outline-mode", "true");
 

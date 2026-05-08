@@ -29,9 +29,11 @@ const DiagramPanel = dynamic(() => import("./components/DiagramPanel"), {
 });
 import {
   type AppTheme,
+  type DiagramEdgeStyle,
   type ViewMode,
   clampFontScale,
   FONT_SCALE,
+  readStoredDiagramEdgeStyle,
   readStoredCompactMode,
   readStoredFontScale,
   readStoredHiddenDiagramItemIds,
@@ -52,6 +54,8 @@ export default function App() {
   const [isCompactMode, setIsCompactMode] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("normal");
   const [isDiagramSidebarVisible, setIsDiagramSidebarVisible] = useState(true);
+  const [diagramEdgeStyle, setDiagramEdgeStyle] =
+    useState<DiagramEdgeStyle>("curve");
   const [hiddenDiagramItemIds, setHiddenDiagramItemIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -101,6 +105,7 @@ export default function App() {
 
   useEffect(() => {
     setTheme(readStoredTheme());
+    setDiagramEdgeStyle(readStoredDiagramEdgeStyle());
     setHiddenDiagramItemIds(readStoredHiddenDiagramItemIds());
     setArePreferencesLoaded(true);
   }, []);
@@ -152,6 +157,17 @@ export default function App() {
     document.documentElement.setAttribute("data-theme", theme);
     document.body.setAttribute("data-theme", theme);
   }, [arePreferencesLoaded, theme]);
+
+  useEffect(() => {
+    if (!arePreferencesLoaded) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      STORAGE_KEYS.diagramEdgeStyle,
+      diagramEdgeStyle,
+    );
+  }, [arePreferencesLoaded, diagramEdgeStyle]);
 
   useEffect(() => {
     if (!arePreferencesLoaded) {
@@ -440,6 +456,7 @@ export default function App() {
         isCompactMode={isCompactMode}
         isPreviewMaximized={isPreviewMaximized}
         isDiagramSidebarVisible={isDiagramSidebarVisible}
+        diagramEdgeStyle={diagramEdgeStyle}
         viewMode={viewMode}
         isScrollSyncEnabled={isScrollSyncEnabled}
         theme={theme}
@@ -452,6 +469,7 @@ export default function App() {
         onToggleDiagramSidebar={() =>
           setIsDiagramSidebarVisible((current) => !current)
         }
+        onSetDiagramEdgeStyle={setDiagramEdgeStyle}
         onSetViewMode={handleSetViewMode}
         onToggleScrollSync={() => setIsScrollSyncEnabled((current) => !current)}
         onToggleTheme={() =>
@@ -515,6 +533,7 @@ export default function App() {
               theme={theme}
               activeItemId={activeItemId}
               hiddenItemIds={hiddenDiagramItemIds}
+              edgeStyle={diagramEdgeStyle}
               onSelectItem={handleSelectDiagramItem}
               onChangeStatus={(itemId, status) => {
                 void updateItemStatus(itemId, status);

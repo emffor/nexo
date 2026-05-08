@@ -2,13 +2,18 @@
 
 import { useState, type ReactNode } from "react";
 
-import type { AppTheme, ViewMode } from "../lib/preferences";
+import type {
+  AppTheme,
+  DiagramEdgeStyle,
+  ViewMode,
+} from "../lib/preferences";
 
 interface AppShellProps {
   itemsCount: number;
   isCompactMode: boolean;
   isPreviewMaximized: boolean;
   isDiagramSidebarVisible: boolean;
+  diagramEdgeStyle: DiagramEdgeStyle;
   viewMode: ViewMode;
   isScrollSyncEnabled: boolean;
   theme: AppTheme;
@@ -17,6 +22,7 @@ interface AppShellProps {
   onToggleCompactMode: () => void;
   onTogglePreviewMaximized: () => void;
   onToggleDiagramSidebar: () => void;
+  onSetDiagramEdgeStyle: (style: DiagramEdgeStyle) => void;
   onSetViewMode: (mode: ViewMode) => void;
   onToggleScrollSync: () => void;
   onToggleTheme: () => void;
@@ -78,6 +84,7 @@ export function AppShell({
   isCompactMode,
   isPreviewMaximized,
   isDiagramSidebarVisible,
+  diagramEdgeStyle,
   viewMode,
   isScrollSyncEnabled,
   theme,
@@ -86,6 +93,7 @@ export function AppShell({
   onToggleCompactMode,
   onTogglePreviewMaximized,
   onToggleDiagramSidebar,
+  onSetDiagramEdgeStyle,
   onSetViewMode,
   onToggleScrollSync,
   onToggleTheme,
@@ -234,17 +242,33 @@ export function AppShell({
               {isScrollSyncEnabled ? "Scroll sync ligado" : "Scroll sync"}
             </button>
             {isDiagramMode && (
-              <button
-                type="button"
-                onClick={onToggleDiagramSidebar}
-                aria-pressed={isDiagramSidebarVisible}
-                className={`toolbar-button border-transparent bg-transparent ${
-                  isDiagramSidebarVisible ? "toolbar-button--primary" : ""
-                }`}
-                title="Alternar cards laterais do diagrama"
-              >
-                {isDiagramSidebarVisible ? "Ocultar cards" : "Exibir cards"}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSetDiagramEdgeStyle(
+                      diagramEdgeStyle === "curve" ? "square" : "curve",
+                    )
+                  }
+                  className="toolbar-button border-transparent bg-transparent"
+                  title="Alternar estilo das linhas do diagrama"
+                >
+                  {diagramEdgeStyle === "curve"
+                    ? "Linha curva"
+                    : "Linha quadrada"}
+                </button>
+                <button
+                  type="button"
+                  onClick={onToggleDiagramSidebar}
+                  aria-pressed={isDiagramSidebarVisible}
+                  className={`toolbar-button border-transparent bg-transparent ${
+                    isDiagramSidebarVisible ? "toolbar-button--primary" : ""
+                  }`}
+                  title="Alternar cards laterais do diagrama"
+                >
+                  {isDiagramSidebarVisible ? "Ocultar cards" : "Exibir cards"}
+                </button>
+              </>
             )}
           </ToolbarGroup>
 

@@ -21,7 +21,7 @@ import {
   snapToGrid,
 } from "../lib/diagramLayout";
 import { readDiagramState, writeDiagramState } from "../lib/diagramState";
-import type { AppTheme } from "../lib/preferences";
+import type { AppTheme, DiagramEdgeStyle } from "../lib/preferences";
 import { DIAGRAM_STATUS_PALETTE } from "../types/diagram";
 import type {
   DiagramEdge,
@@ -38,6 +38,7 @@ interface DiagramPanelProps {
   theme: AppTheme;
   activeItemId: string | null;
   hiddenItemIds?: Set<string>;
+  edgeStyle?: DiagramEdgeStyle;
   onSelectItem: (item: MarkdownItem) => void;
   onChangeStatus: (itemId: string, status: DiagramStatus | undefined) => void;
   scrollContainerRef?: RefObject<HTMLDivElement>;
@@ -104,7 +105,7 @@ function getPortPosition(
   return { x: position.x, y: position.y + DIAGRAM_NODE_HEIGHT / 2 };
 }
 
-function getEdgePoints(
+function getCurveEdgePoints(
   fromPosition: DiagramNodePosition,
   fromPort: DiagramPortSide,
   toPosition: DiagramNodePosition,
@@ -125,7 +126,92 @@ function getEdgePoints(
     y: to.y + toDirection.y * controlOffset,
   };
 
-  return [from.x, from.y, fromControl.x, fromControl.y, toControl.x, toControl.y, to.x, to.y];
+  return [
+    from.x,
+    from.y,
+    fromControl.x,
+    fromControl.y,
+    toControl.x,
+    toControl.y,
+    to.x,
+    to.y,
+  ];
+}
+
+function getSquareEdgePoints(
+  fromPosition: DiagramNodePosition,
+  fromPort: DiagramPortSide,
+  toPosition: DiagramNodePosition,
+  toPort: DiagramPortSide,
+): number[] {
+  const from = getPortPosition(fromPosition, fromPort);
+  const to = getPortPosition(toPosition, toPort);
+  const fromDirection = PORT_DIRECTIONS[fromPort];
+  const toDirection = PORT_DIRECTIONS[toPort];
+  const offset = 36;
+  const fromHandle = {
+    x: from.x + fromDirection.x * offset,
+    y: from.y + fromDirection.y * offset,
+  };
+  const toHandle = {
+    x: to.x + toDirection.x * offset,
+    y: to.y + toDirection.y * offset,
+  };
+  const fromIsVertical = fromDirection.y !== 0;
+  const toIsVertical = toDirection.y !== 0;
+
+  if (fromIsVertical && toIsVertical) {
+    const trackY = (fromHandle.y + toHandle.y) / 2;
+    return [
+      from.x,
+      from.y,
+      fromHandle.x,
+      fromHandle.y,
+      fromHandle.x,
+      trackY,
+      toHandle.x,
+      trackY,
+      toHandle.x,
+      toHandle.y,
+      to.x,
+      to.y,
+    ];
+  }
+
+  if (!fromIsVertical && !toIsVertical) {
+    const trackX = (fromHandle.x + toHandle.x) / 2;
+    return [
+      from.x,
+      from.y,
+      fromHandle.x,
+      fromHandle.y,
+      trackX,
+      fromHandle.y,
+      trackX,
+      toHandle.y,
+      toHandle.x,
+      toHandle.y,
+      to.x,
+      to.y,
+    ];
+  }
+
+  const corner = fromIsVertical
+    ? { x: fromHandle.x, y: toHandle.y }
+    : { x: toHandle.x, y: fromHandle.y };
+
+  return [
+    from.x,
+    from.y,
+    fromHandle.x,
+    fromHandle.y,
+    corner.x,
+    corner.y,
+    toHandle.x,
+    toHandle.y,
+    to.x,
+    to.y,
+  ];
 }
 
 export default function DiagramPanel({
@@ -133,6 +219,7 @@ export default function DiagramPanel({
   theme,
   activeItemId,
   hiddenItemIds,
+  edgeStyle = "curve",
   onSelectItem,
   onChangeStatus: _onChangeStatus,
   scrollContainerRef,
@@ -721,12 +808,12 @@ export default function DiagramPanel({
             if (!fromPos || !toPos) {
               return null;
             }
-            const points = getEdgePoints(
-              fromPos,
-              edge.fromPort ?? "right",
-              toPos,
-              edge.toPort ?? "left",
-            );
+            const fromPort = edge.fromPort ?? "right";
+            const toPort = edge.toPort ?? "left";
+            const points =
+              edgeStyle === "curve"
+                ? getCurveEdgePoints(fromPos, fromPort, toPos, toPort)
+                : getSquareEdgePoints(fromPos, fromPort, toPos, toPort);
             const isHover = hoveredEdgeId === edge.id;
             return (
               <Arrow
@@ -735,7 +822,7 @@ export default function DiagramPanel({
                 stroke={isHover ? edgeHoverColor : edgeColor}
                 strokeWidth={isHover ? 2.5 : 1.8}
                 fill={isHover ? edgeHoverColor : edgeColor}
-                bezier
+                bezier={edgeStyle === "curve"}
                 lineCap="round"
                 lineJoin="round"
                 perfectDrawEnabled={false}
