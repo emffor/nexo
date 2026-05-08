@@ -1,9 +1,8 @@
 import Dexie, { type Table } from 'dexie';
-import type { FlowLink, MarkdownItem } from '../types/markdown';
+import type { MarkdownItem } from '../types/markdown';
 
 class OrganizarMarkdownDatabase extends Dexie {
   items!: Table<MarkdownItem, string>;
-  flowLinks!: Table<FlowLink, string>;
 
   constructor() {
     super('organizarMarkdown');
@@ -18,7 +17,6 @@ class OrganizarMarkdownDatabase extends Dexie {
 
     this.version(3).stores({
       items: 'id, order, createdAt, updatedAt',
-      flowLinks: 'id, sourceId, targetId, createdAt, updatedAt',
     });
   }
 }

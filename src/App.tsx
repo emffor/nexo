@@ -10,7 +10,6 @@ import { ToastContainer } from "./components/Toast";
 import { useMarkdownBoard } from "./hooks/useMarkdownBoard";
 import { useToast } from "./hooks/useToast";
 import { createBackupText, parseBackupFile } from "./lib/backup";
-import { createSequentialFlowLinks, toggleFlowLink } from "./lib/flow";
 import { buildCombinedContent, getDisplayTitle } from "./lib/items";
 import {
   type AppTheme,
@@ -19,7 +18,6 @@ import {
   FONT_SCALE,
   readStoredCompactMode,
   readStoredFontScale,
-  readStoredFlowLinksCustomized,
   readStoredPreviewMaximized,
   readStoredTheme,
   readStoredViewMode,
@@ -45,12 +43,10 @@ export default function App() {
   const syncSourceRef = useRef<"left" | "right" | null>(null);
   const {
     items,
-    flowLinks,
     addItem,
     updateItem,
     deleteItem,
     reorderItems,
-    replaceFlowLinks,
     clearItems,
     replaceItems,
     isLoading,
@@ -58,7 +54,6 @@ export default function App() {
   const { messages, addToast, dismissToast } = useToast();
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [deletingItem, setDeletingItem] = useState<MarkdownItem | null>(null);
-  const [areFlowLinksCustomized, setAreFlowLinksCustomized] = useState(false);
 
   useEffect(() => {
     setIsCompactMode(readStoredCompactMode());
@@ -78,7 +73,6 @@ export default function App() {
 
   useEffect(() => {
     setTheme(readStoredTheme());
-    setAreFlowLinksCustomized(readStoredFlowLinksCustomized());
     setArePreferencesLoaded(true);
   }, []);
 
@@ -106,10 +100,7 @@ export default function App() {
       return;
     }
 
-    window.localStorage.setItem(
-      STORAGE_KEYS.viewMode,
-      viewMode,
-    );
+    window.localStorage.setItem(STORAGE_KEYS.viewMode, viewMode);
   }, [arePreferencesLoaded, viewMode]);
 
   useEffect(() => {
@@ -122,17 +113,6 @@ export default function App() {
       String(isPreviewMaximized),
     );
   }, [arePreferencesLoaded, isPreviewMaximized]);
-
-  useEffect(() => {
-    if (!arePreferencesLoaded) {
-      return;
-    }
-
-    window.localStorage.setItem(
-      STORAGE_KEYS.flowLinksCustomized,
-      String(areFlowLinksCustomized),
-    );
-  }, [areFlowLinksCustomized, arePreferencesLoaded]);
 
   useEffect(() => {
     if (!arePreferencesLoaded) {
@@ -156,12 +136,7 @@ export default function App() {
   }, [activeItemId, items]);
 
   useEffect(() => {
-    if (
-      !isScrollSyncEnabled ||
-      isPreviewMaximized ||
-      viewMode === "cards" ||
-      viewMode === "flow"
-    ) {
+    if (!isScrollSyncEnabled || isPreviewMaximized || viewMode === "cards") {
       syncSourceRef.current = null;
       return;
     }
@@ -237,25 +212,17 @@ export default function App() {
   const executeClearAll = async () => {
     setConfirmClearAll(false);
     const snapshot = [...items];
-    const flowLinkSnapshot = [...flowLinks];
-    const wasFlowCustomized = areFlowLinksCustomized;
     await clearItems();
-    setAreFlowLinksCustomized(false);
     addToast("Todos os cards foram removidos", "info", {
       label: "Desfazer",
       onClick: () => {
-        setAreFlowLinksCustomized(wasFlowCustomized);
-        void replaceItems(snapshot, flowLinkSnapshot);
+        void replaceItems(snapshot);
       },
     });
   };
 
   const handleExport = () => {
-    const backupText = createBackupText(
-      items,
-      flowLinks,
-      areFlowLinksCustomized,
-    );
+    const backupText = createBackupText(items);
     const blob = new Blob([backupText], { type: "text/plain;charset=utf-8" });
     const url = window.URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -282,9 +249,10 @@ export default function App() {
     try {
       const rawText = await file.text();
       const importedBackup = parseBackupFile(rawText);
-      await replaceItems(importedBackup.items, importedBackup.flowLinks);
-      setAreFlowLinksCustomized(importedBackup.flowLinksCustomized);
-      addToast(`${importedBackup.items.length} card(s) importado(s) com sucesso`);
+      await replaceItems(importedBackup.items);
+      addToast(
+        `${importedBackup.items.length} card(s) importado(s) com sucesso`,
+      );
     } catch {
       addToast("Nao foi possivel importar este arquivo.", "error");
     } finally {
@@ -360,32 +328,8 @@ export default function App() {
         return "cards";
       }
 
-      if (current === "cards") {
-        return "flow";
-      }
-
       return "normal";
     });
-  };
-
-  const displayedFlowLinks = areFlowLinksCustomized
-    ? flowLinks
-    : createSequentialFlowLinks(items);
-
-  const handleToggleFlowLink = (sourceId: string, targetId: string) => {
-    const baseLinks = areFlowLinksCustomized
-      ? flowLinks
-      : createSequentialFlowLinks(items);
-    const nextLinks = toggleFlowLink(baseLinks, sourceId, targetId);
-
-    setAreFlowLinksCustomized(true);
-    void replaceFlowLinks(nextLinks);
-  };
-
-  const handleClearFlowLinks = () => {
-    setAreFlowLinksCustomized(true);
-    void replaceFlowLinks([]);
-    addToast("Ligacoes do fluxo removidas", "info");
   };
 
   return (
@@ -454,14 +398,10 @@ export default function App() {
             isLoading={isLoading}
             theme={theme}
             viewMode={viewMode}
-            flowLinks={displayedFlowLinks}
-            hasCustomFlowLinks={areFlowLinksCustomized}
             activeItemId={activeItemId}
             scrollContainerRef={rightScrollRef}
             onSelect={handleSelectItem}
             onReorder={reorderItems}
-            onToggleFlowLink={handleToggleFlowLink}
-            onClearFlowLinks={handleClearFlowLinks}
           />
         }
       />

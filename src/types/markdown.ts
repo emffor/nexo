@@ -6,11 +6,3 @@ export interface MarkdownItem {
   createdAt: string;
   updatedAt: string;
 }
-
-export interface FlowLink {
-  id: string;
-  sourceId: string;
-  targetId: string;
-  createdAt: string;
-  updatedAt: string;
-}

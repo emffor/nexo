@@ -229,7 +229,7 @@ describe("App", () => {
     expect(scrollSpy).toHaveBeenCalled();
   });
 
-  it("alterna entre os modos normal, indice, cards e fluxo", async () => {
+  it("alterna entre os modos normal, indice e cards", async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -242,15 +242,9 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /modo cards/i }));
 
     expect(
-      screen.getByRole("button", { name: /modo fluxo/i }),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/cards em ordem/i)).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /modo fluxo/i }));
-
-    expect(
       screen.getByRole("button", { name: /modo normal/i }),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/cards em ordem/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /modo normal/i }));
 
@@ -341,70 +335,5 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /selecionar card card longo/i }),
     ).toBeInTheDocument();
-  });
-
-  it("renderiza o modo fluxo, conecta cards e abre task com duplo clique", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(
-      screen.getByLabelText(/conteudo/i),
-      "# Primeiro\n\nStatus: A iniciar\nPriority: Medium",
-    );
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
-
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(
-      screen.getByLabelText(/conteudo/i),
-      "# Segundo\n\nStatus: Em andamento\nAssignee: Maria",
-    );
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
-
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "# Terceiro");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
-
-    await user.click(screen.getByRole("button", { name: /modo indice/i }));
-    await user.click(screen.getByRole("button", { name: /modo cards/i }));
-    await user.click(screen.getByRole("button", { name: /modo fluxo/i }));
-
-    expect(screen.getByText(/fluxo de tasks/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /conectar/i })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /limpar ligacoes/i }),
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /limpar ligacoes/i }));
-
-    await waitFor(() => {
-      expect(
-        window.localStorage.getItem("organizar-markdown:flow-links-customized"),
-      ).toBe("true");
-    });
-    expect(screen.getByText(/ligacoes do fluxo removidas/i)).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /conectar/i }));
-    await user.click(screen.getByRole("button", { name: /abrir task primeiro/i }));
-    await user.click(screen.getByRole("button", { name: /abrir task terceiro/i }));
-
-    await waitFor(() => {
-      expect(
-        window.localStorage.getItem("organizar-markdown:flow-links-customized"),
-      ).toBe("true");
-    });
-
-    await user.dblClick(
-      screen.getByRole("button", { name: /abrir task segundo/i }),
-    );
-
-    expect(
-      screen.getByRole("button", { name: /voltar ao fluxo/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Segundo", level: 1 })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /voltar ao fluxo/i }));
-
-    expect(screen.getByText(/fluxo de tasks/i)).toBeInTheDocument();
   });
 });

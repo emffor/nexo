@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   DndContext,
@@ -16,7 +16,6 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FlowBoard } from "./FlowBoard";
 import { getDisplayTitle } from "../lib/items";
 import {
   useEffect,
@@ -26,7 +25,7 @@ import {
   type MouseEvent,
   type RefObject,
 } from "react";
-import type { FlowLink, MarkdownItem } from "../types/markdown";
+import type { MarkdownItem } from "../types/markdown";
 import type { AppTheme, ViewMode } from "../lib/preferences";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
@@ -60,7 +59,11 @@ function PreviewGridCard({
     id: item.id,
   });
   const displayTitle = getDisplayTitle(item, 72);
-  const { role: _role, tabIndex: _tabIndex, ...sortableAttributes } = attributes;
+  const {
+    role: _role,
+    tabIndex: _tabIndex,
+    ...sortableAttributes
+  } = attributes;
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -144,7 +147,10 @@ function PreviewGridCard({
 
       <div className="relative flex-1 px-3 py-3">
         <div className="markdown-preview markdown-preview--card max-h-[154px] overflow-hidden">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw]}
+          >
             {item.content}
           </ReactMarkdown>
         </div>
@@ -184,14 +190,10 @@ interface CombinedOutputPanelProps {
   isLoading: boolean;
   theme: AppTheme;
   viewMode: ViewMode;
-  flowLinks: FlowLink[];
-  hasCustomFlowLinks: boolean;
   activeItemId?: string | null;
   scrollContainerRef?: RefObject<HTMLDivElement>;
   onSelect: (item: MarkdownItem) => void;
   onReorder: (activeId: string, overId: string) => Promise<void>;
-  onToggleFlowLink: (sourceId: string, targetId: string) => void;
-  onClearFlowLinks: () => void;
 }
 
 export function CombinedOutputPanel({
@@ -199,28 +201,23 @@ export function CombinedOutputPanel({
   isLoading,
   theme,
   viewMode,
-  flowLinks,
-  hasCustomFlowLinks,
   activeItemId,
   scrollContainerRef,
   onSelect,
   onReorder,
-  onToggleFlowLink,
-  onClearFlowLinks,
 }: CombinedOutputPanelProps) {
   const [selectedPreviewCardId, setSelectedPreviewCardId] = useState<
     string | null
   >(null);
   const shouldIgnoreNextClickRef = useRef(false);
   const isCardsMode = viewMode === "cards";
-  const isFlowMode = viewMode === "flow";
   const selectedPreviewItem =
-    (isCardsMode || isFlowMode) && selectedPreviewCardId
+    isCardsMode && selectedPreviewCardId
       ? items.find((item) => item.id === selectedPreviewCardId)
       : null;
 
   useEffect(() => {
-    if (!isCardsMode && !isFlowMode) {
+    if (!isCardsMode) {
       setSelectedPreviewCardId(null);
       return;
     }
@@ -231,7 +228,7 @@ export function CombinedOutputPanel({
     ) {
       setSelectedPreviewCardId(null);
     }
-  }, [isCardsMode, isFlowMode, items, selectedPreviewCardId]);
+  }, [isCardsMode, items, selectedPreviewCardId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -311,9 +308,7 @@ export function CombinedOutputPanel({
               theme === "dark" ? "text-slate-50" : "text-slate-950"
             }`}
           >
-            {isFlowMode && !selectedPreviewItem
-              ? "Fluxo de tasks"
-              : isCardsMode && !selectedPreviewItem
+            {isCardsMode && !selectedPreviewItem
               ? "Preview em cards"
               : "Preview renderizado"}
           </h2>
@@ -327,7 +322,7 @@ export function CombinedOutputPanel({
                   : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
               }`}
             >
-              {isFlowMode ? "Voltar ao fluxo" : "Voltar aos cards"}
+              Voltar aos cards
             </button>
           ) : null}
         </div>
@@ -369,7 +364,11 @@ export function CombinedOutputPanel({
                       : "bg-slate-100 text-slate-500"
                   }`}
                 >
-                  {String(items.findIndex((item) => item.id === selectedPreviewItem.id) + 1).padStart(2, "0")}
+                  {String(
+                    items.findIndex(
+                      (item) => item.id === selectedPreviewItem.id,
+                    ) + 1,
+                  ).padStart(2, "0")}
                 </span>
                 <p
                   className={`m-0 text-xs font-medium uppercase tracking-[0.22em] ${
@@ -387,17 +386,6 @@ export function CombinedOutputPanel({
               </ReactMarkdown>
             </section>
           </article>
-        ) : items.length > 0 && isFlowMode ? (
-          <FlowBoard
-            items={items}
-            links={flowLinks}
-            hasCustomLinks={hasCustomFlowLinks}
-            theme={theme}
-            activeItemId={activeItemId}
-            onOpenItem={handleOpenPreviewCard}
-            onToggleLink={onToggleFlowLink}
-            onClearLinks={onClearFlowLinks}
-          />
         ) : items.length > 0 && isCardsMode ? (
           <DndContext
             sensors={sensors}
