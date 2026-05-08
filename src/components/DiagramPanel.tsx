@@ -66,6 +66,10 @@ const SCALE_STEP = 1.05;
 const PORT_RADIUS = 6;
 const PORT_HOVER_RADIUS = 10;
 const PORT_HIT_RADIUS = 22;
+const EDGE_STROKE_WIDTH = 2.4;
+const EDGE_HOVER_STROKE_WIDTH = 3.2;
+const EDGE_POINTER_SIZE = 12;
+const EDGE_HIT_STROKE_WIDTH = 18;
 const INITIAL_STAGE_TRANSFORM: DiagramViewport = { x: 0, y: 0, scale: 1 };
 const DIAGRAM_PORT_SIDES: DiagramPortSide[] = [
   "top",
@@ -820,16 +824,18 @@ export default function DiagramPanel({
                 key={edge.id}
                 points={points}
                 stroke={isHover ? edgeHoverColor : edgeColor}
-                strokeWidth={isHover ? 2.5 : 1.8}
+                strokeWidth={
+                  isHover ? EDGE_HOVER_STROKE_WIDTH : EDGE_STROKE_WIDTH
+                }
                 fill={isHover ? edgeHoverColor : edgeColor}
                 bezier={edgeStyle === "curve"}
                 lineCap="round"
                 lineJoin="round"
                 perfectDrawEnabled={false}
                 shadowForStrokeEnabled={false}
-                pointerLength={8}
-                pointerWidth={8}
-                hitStrokeWidth={14}
+                pointerLength={EDGE_POINTER_SIZE}
+                pointerWidth={EDGE_POINTER_SIZE}
+                hitStrokeWidth={EDGE_HIT_STROKE_WIDTH}
                 onMouseEnter={(event) => {
                   setHoveredEdgeId(edge.id);
                   const stage = event.target.getStage();
