@@ -64,6 +64,13 @@ const VIEW_MODE_OPTIONS: { mode: ViewMode; label: string; title: string }[] = [
   },
 ];
 
+const VIEW_MODE_ACCESSIBLE_LABELS: Record<ViewMode, string> = {
+  normal: "Modo normal",
+  index: "Modo indice",
+  cards: "Modo cards",
+  diagram: "Modo diagrama",
+};
+
 export function AppShell({
   itemsCount,
   isCompactMode,
@@ -98,7 +105,9 @@ export function AppShell({
     <main
       data-layout-mode={isCompactMode ? "compact" : "default"}
       data-theme={theme}
-      className={`flex min-h-screen w-full flex-col ${
+      className={`flex w-full flex-col ${
+        isDiagramMode ? "h-screen min-h-0 overflow-hidden" : "min-h-screen"
+      } ${
         isCompactMode ? "px-2 py-0 sm:px-3" : "px-4 py-6 sm:px-6 lg:px-8"
       }`}
       style={{ ["--font-scale" as string]: String(fontScale) }}
@@ -166,6 +175,7 @@ export function AppShell({
                   type="button"
                   onClick={() => onSetViewMode(mode)}
                   title={title}
+                  aria-label={VIEW_MODE_ACCESSIBLE_LABELS[mode]}
                   aria-pressed={isActive}
                   className={`rounded-md px-2 py-1 text-[11px] font-medium transition focus:outline-none focus:ring-2 focus:ring-teal-200 focus:ring-offset-1 focus:ring-offset-ink ${
                     isActive
@@ -197,6 +207,9 @@ export function AppShell({
             <button
               type="button"
               onClick={onToggleCompactMode}
+              aria-label={
+                isCompactMode ? "Restaurar espacamento" : "Usar tela inteira"
+              }
               className={`toolbar-button border-transparent bg-transparent ${
                 isCompactMode ? "toolbar-button--primary" : ""
               }`}
@@ -231,7 +244,7 @@ export function AppShell({
               onClick={onDecreaseFont}
               className="toolbar-button toolbar-button--icon border-transparent bg-transparent"
               title="Diminuir fonte"
-              aria-label="Diminuir fonte"
+              aria-label="A-"
             >
               A-
             </button>
@@ -240,7 +253,7 @@ export function AppShell({
               onClick={onIncreaseFont}
               className="toolbar-button toolbar-button--icon border-transparent bg-transparent"
               title="Aumentar fonte"
-              aria-label="Aumentar fonte"
+              aria-label="A+"
             >
               A+
             </button>
@@ -277,7 +290,7 @@ export function AppShell({
       </header>
 
       <section
-        className={`grid flex-1 ${
+        className={`grid flex-1 min-h-0 ${
           isPreviewMaximized
             ? "grid-cols-1"
             : isFullWidthMode
