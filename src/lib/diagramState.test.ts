@@ -19,14 +19,21 @@ describe('diagramState', () => {
   it('persiste e recupera posicoes e edges', () => {
     writeDiagramState({
       positions: { a: { x: 10, y: 20 } },
-      edges: [{ id: 'e1', from: 'a', to: 'b' }],
+      edges: [
+        { id: 'e1', from: 'a', to: 'b', fromPort: 'top', toPort: 'bottom' },
+      ],
       viewport: { x: -120, y: 80, scale: 0.75 },
     });
 
     const state = readDiagramState();
     expect(state.positions.a).toEqual({ x: 10, y: 20 });
     expect(state.edges).toHaveLength(1);
-    expect(state.edges[0]).toMatchObject({ from: 'a', to: 'b' });
+    expect(state.edges[0]).toMatchObject({
+      from: 'a',
+      to: 'b',
+      fromPort: 'top',
+      toPort: 'bottom',
+    });
     expect(state.viewport).toEqual({ x: -120, y: 80, scale: 0.75 });
   });
 
@@ -36,7 +43,7 @@ describe('diagramState', () => {
       JSON.stringify({
         positions: { a: { x: 'oops' }, b: { x: 1, y: 2 } },
         edges: [
-          { id: 'e1', from: 'a', to: 'b' },
+          { id: 'e1', from: 'a', to: 'b', fromPort: 'right', toPort: 'nope' },
           { id: 5, from: 1 },
           null,
         ],
@@ -46,7 +53,9 @@ describe('diagramState', () => {
 
     const state = readDiagramState();
     expect(state.positions).toEqual({ b: { x: 1, y: 2 } });
-    expect(state.edges).toEqual([{ id: 'e1', from: 'a', to: 'b' }]);
+    expect(state.edges).toEqual([
+      { id: 'e1', from: 'a', to: 'b', fromPort: 'right', toPort: undefined },
+    ]);
     expect(state.viewport).toBeUndefined();
   });
 

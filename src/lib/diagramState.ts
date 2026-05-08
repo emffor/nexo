@@ -1,4 +1,9 @@
-import type { DiagramEdge, DiagramState, DiagramViewport } from '../types/diagram';
+import type {
+  DiagramEdge,
+  DiagramPortSide,
+  DiagramState,
+  DiagramViewport,
+} from '../types/diagram';
 
 const STORAGE_KEY = 'organizar-markdown:diagram-state';
 
@@ -11,16 +16,40 @@ function isValidNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function parsePortSide(value: unknown): DiagramPortSide | undefined {
+  return value === 'top' ||
+    value === 'right' ||
+    value === 'bottom' ||
+    value === 'left'
+    ? value
+    : undefined;
+}
+
 function isValidEdge(value: unknown): value is DiagramEdge {
   if (!value || typeof value !== 'object') {
     return false;
   }
-  const edge = value as Record<string, unknown>;
+  const edge = value as unknown as Record<string, unknown>;
   return (
     typeof edge.id === 'string' &&
     typeof edge.from === 'string' &&
     typeof edge.to === 'string'
   );
+}
+
+function parseEdge(value: unknown): DiagramEdge | undefined {
+  if (!isValidEdge(value)) {
+    return undefined;
+  }
+
+  const edge = value as unknown as Record<string, unknown>;
+  return {
+    id: value.id,
+    from: value.from,
+    to: value.to,
+    fromPort: parsePortSide(edge.fromPort),
+    toPort: parsePortSide(edge.toPort),
+  };
 }
 
 function parseViewport(value: unknown): DiagramViewport | undefined {
@@ -72,7 +101,10 @@ export function readDiagramState(): DiagramState {
     }
 
     const edges: DiagramEdge[] = Array.isArray(parsed.edges)
-      ? parsed.edges.filter(isValidEdge)
+      ? parsed.edges.flatMap((edge) => {
+          const parsedEdge = parseEdge(edge);
+          return parsedEdge ? [parsedEdge] : [];
+        })
       : [];
     const viewport = parseViewport(parsed.viewport);
 

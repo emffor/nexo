@@ -34,7 +34,9 @@ describe('backup', () => {
   it('preserva estado do diagrama no backup', () => {
     const rawText = createBackupText(items, {
       positions: { '1': { x: 100, y: 200 } },
-      edges: [{ id: 'e1', from: '1', to: '2' }],
+      edges: [
+        { id: 'e1', from: '1', to: '2', fromPort: 'bottom', toPort: 'top' },
+      ],
       viewport: { x: -80, y: 40, scale: 0.8 },
     });
 
@@ -42,7 +44,9 @@ describe('backup', () => {
 
     expect(restored.diagramState).toEqual({
       positions: { '1': { x: 100, y: 200 } },
-      edges: [{ id: 'e1', from: '1', to: '2' }],
+      edges: [
+        { id: 'e1', from: '1', to: '2', fromPort: 'bottom', toPort: 'top' },
+      ],
       viewport: { x: -80, y: 40, scale: 0.8 },
     });
   });

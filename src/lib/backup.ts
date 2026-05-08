@@ -19,6 +19,17 @@ function parseStatus(value: unknown): DiagramStatus | undefined {
     : undefined;
 }
 
+function parsePortSide(
+  value: unknown,
+): DiagramState['edges'][number]['fromPort'] {
+  return value === 'top' ||
+    value === 'right' ||
+    value === 'bottom' ||
+    value === 'left'
+    ? value
+    : undefined;
+}
+
 interface MarkdownBackupFile {
   version: 1;
   exportedAt: string;
@@ -82,7 +93,7 @@ export function parseBackupFile(rawText: string): ParsedBackupFile {
   if (parsed.diagramState && typeof parsed.diagramState === 'object') {
     const ds = parsed.diagramState as unknown as Record<string, unknown>;
     const positions: Record<string, { x: number; y: number }> = {};
-    const edges: Array<{ id: string; from: string; to: string }> = [];
+    const edges: DiagramState['edges'] = [];
     let viewport: DiagramState['viewport'];
 
     if (ds.positions && typeof ds.positions === 'object') {
@@ -114,6 +125,8 @@ export function parseBackupFile(rawText: string): ParsedBackupFile {
             id: (edge as { id: string }).id,
             from: (edge as { from: string }).from,
             to: (edge as { to: string }).to,
+            fromPort: parsePortSide((edge as { fromPort?: unknown }).fromPort),
+            toPort: parsePortSide((edge as { toPort?: unknown }).toPort),
           });
         }
       }

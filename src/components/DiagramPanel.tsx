@@ -25,6 +25,7 @@ import { DIAGRAM_STATUS_PALETTE } from "../types/diagram";
 import type {
   DiagramEdge,
   DiagramNodePosition,
+  DiagramPortSide,
   DiagramViewport,
 } from "../types/diagram";
 import type { DiagramStatus, MarkdownItem } from "../types/markdown";
@@ -43,33 +44,96 @@ interface DiagramPanelProps {
 
 interface PendingConnection {
   fromId: string;
+  fromPort: DiagramPortSide;
   pointerX: number;
   pointerY: number;
+}
+
+interface DiagramPort {
+  item: MarkdownItem;
+  side: DiagramPortSide;
 }
 
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 1.8;
 const SCALE_STEP = 1.05;
+const PORT_RADIUS = 6;
+const PORT_HIT_RADIUS = 14;
 const INITIAL_STAGE_TRANSFORM: DiagramViewport = { x: 0, y: 0, scale: 1 };
+const DIAGRAM_PORT_SIDES: DiagramPortSide[] = [
+  "top",
+  "right",
+  "bottom",
+  "left",
+];
+
+const PORT_DIRECTIONS: Record<DiagramPortSide, { x: number; y: number }> = {
+  top: { x: 0, y: -1 },
+  right: { x: 1, y: 0 },
+  bottom: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+};
 
 Konva.pixelRatio = 1;
 
-function getNodeCenters(position: DiagramNodePosition): {
-  right: { x: number; y: number };
-  left: { x: number; y: number };
-  centerY: number;
-} {
-  return {
-    right: {
+function getPortPosition(
+  position: DiagramNodePosition,
+  side: DiagramPortSide,
+): { x: number; y: number } {
+  if (side === "top") {
+    return { x: position.x + DIAGRAM_NODE_WIDTH / 2, y: position.y };
+  }
+  if (side === "right") {
+    return {
       x: position.x + DIAGRAM_NODE_WIDTH,
       y: position.y + DIAGRAM_NODE_HEIGHT / 2,
-    },
-    left: {
-      x: position.x,
-      y: position.y + DIAGRAM_NODE_HEIGHT / 2,
-    },
-    centerY: position.y + DIAGRAM_NODE_HEIGHT / 2,
+    };
+  }
+  if (side === "bottom") {
+    return {
+      x: position.x + DIAGRAM_NODE_WIDTH / 2,
+      y: position.y + DIAGRAM_NODE_HEIGHT,
+    };
+  }
+  return { x: position.x, y: position.y + DIAGRAM_NODE_HEIGHT / 2 };
+}
+
+function getEdgePoints(
+  fromPosition: DiagramNodePosition,
+  fromPort: DiagramPortSide,
+  toPosition: DiagramNodePosition,
+  toPort: DiagramPortSide,
+): number[] {
+  const from = getPortPosition(fromPosition, fromPort);
+  const to = getPortPosition(toPosition, toPort);
+  const fromDirection = PORT_DIRECTIONS[fromPort];
+  const toDirection = PORT_DIRECTIONS[toPort];
+  const offset = 36;
+  const fromHandle = {
+    x: from.x + fromDirection.x * offset,
+    y: from.y + fromDirection.y * offset,
   };
+  const toHandle = {
+    x: to.x + toDirection.x * offset,
+    y: to.y + toDirection.y * offset,
+  };
+  const corner =
+    fromDirection.x !== 0
+      ? { x: fromHandle.x, y: toHandle.y }
+      : { x: toHandle.x, y: fromHandle.y };
+
+  return [
+    from.x,
+    from.y,
+    fromHandle.x,
+    fromHandle.y,
+    corner.x,
+    corner.y,
+    toHandle.x,
+    toHandle.y,
+    to.x,
+    to.y,
+  ];
 }
 
 export default function DiagramPanel({
@@ -299,20 +363,19 @@ export default function DiagramPanel({
     return transform.point({ x: clientX, y: clientY });
   }, []);
 
-  const findNodeAtPoint = useCallback(
-    (worldX: number, worldY: number): MarkdownItem | null => {
+  const findPortAtPoint = useCallback(
+    (worldX: number, worldY: number): DiagramPort | null => {
       for (const item of items) {
         const pos = positions[item.id];
         if (!pos) {
           continue;
         }
-        if (
-          worldX >= pos.x &&
-          worldX <= pos.x + DIAGRAM_NODE_WIDTH &&
-          worldY >= pos.y &&
-          worldY <= pos.y + DIAGRAM_NODE_HEIGHT
-        ) {
-          return item;
+        for (const side of DIAGRAM_PORT_SIDES) {
+          const port = getPortPosition(pos, side);
+          const distance = Math.hypot(worldX - port.x, worldY - port.y);
+          if (distance <= PORT_HIT_RADIUS) {
+            return { item, side };
+          }
         }
       }
       return null;
@@ -321,7 +384,11 @@ export default function DiagramPanel({
   );
 
   const handlePortMouseDown = useCallback(
-    (fromId: string, event: KonvaEventObject<MouseEvent>) => {
+    (
+      fromId: string,
+      fromPort: DiagramPortSide,
+      event: KonvaEventObject<MouseEvent>,
+    ) => {
       event.cancelBubble = true;
       const stage = stageRef.current;
       if (!stage) {
@@ -332,7 +399,7 @@ export default function DiagramPanel({
         return;
       }
       const world = stageToWorld(pointer.x, pointer.y);
-      setPending({ fromId, pointerX: world.x, pointerY: world.y });
+      setPending({ fromId, fromPort, pointerX: world.x, pointerY: world.y });
     },
     [stageToWorld],
   );
@@ -359,11 +426,15 @@ export default function DiagramPanel({
     if (!pending) {
       return;
     }
-    const targetItem = findNodeAtPoint(pending.pointerX, pending.pointerY);
-    if (targetItem && targetItem.id !== pending.fromId) {
+    const targetPort = findPortAtPoint(pending.pointerX, pending.pointerY);
+    if (targetPort && targetPort.item.id !== pending.fromId) {
       setEdges((current) => {
         const exists = current.some(
-          (edge) => edge.from === pending.fromId && edge.to === targetItem.id,
+          (edge) =>
+            edge.from === pending.fromId &&
+            edge.to === targetPort.item.id &&
+            (edge.fromPort ?? "right") === pending.fromPort &&
+            (edge.toPort ?? "left") === targetPort.side,
         );
         if (exists) {
           return current;
@@ -371,15 +442,17 @@ export default function DiagramPanel({
         return [
           ...current,
           {
-            id: `${pending.fromId}-${targetItem.id}-${Date.now()}`,
+            id: `${pending.fromId}-${pending.fromPort}-${targetPort.item.id}-${targetPort.side}-${Date.now()}`,
             from: pending.fromId,
-            to: targetItem.id,
+            to: targetPort.item.id,
+            fromPort: pending.fromPort,
+            toPort: targetPort.side,
           },
         ];
       });
     }
     setPending(null);
-  }, [pending, findNodeAtPoint]);
+  }, [pending, findPortAtPoint]);
 
   const handleWheel = useCallback(
     (event: KonvaEventObject<WheelEvent>) => {
@@ -471,19 +544,12 @@ export default function DiagramPanel({
             if (!fromPos || !toPos) {
               return null;
             }
-            const from = getNodeCenters(fromPos).right;
-            const to = getNodeCenters(toPos).left;
-            const midX = (from.x + to.x) / 2;
-            const points = [
-              from.x,
-              from.y,
-              midX,
-              from.y,
-              midX,
-              to.y,
-              to.x,
-              to.y,
-            ];
+            const points = getEdgePoints(
+              fromPos,
+              edge.fromPort ?? "right",
+              toPos,
+              edge.toPort ?? "left",
+            );
             const isHover = hoveredEdgeId === edge.id;
             return (
               <Arrow
@@ -525,7 +591,7 @@ export default function DiagramPanel({
                 if (!fromPos) {
                   return null;
                 }
-                const from = getNodeCenters(fromPos).right;
+                const from = getPortPosition(fromPos, pending.fromPort);
                 return (
                   <Arrow
                     points={[
@@ -613,40 +679,48 @@ export default function DiagramPanel({
                   listening={false}
                   perfectDrawEnabled={false}
                 />
-                {/* port direita: pressione e arraste para conectar */}
-                <Circle
-                  x={DIAGRAM_NODE_WIDTH}
-                  y={DIAGRAM_NODE_HEIGHT / 2}
-                  radius={6}
-                  fill={portColor}
-                  stroke={isDark ? "#0b0f17" : "#ffffff"}
-                  strokeWidth={2}
-                  perfectDrawEnabled={false}
-                  onMouseDown={(event) => handlePortMouseDown(item.id, event)}
-                  onTouchStart={(event) => {
-                    event.cancelBubble = true;
-                    const stage = stageRef.current;
-                    if (!stage) {
-                      return;
-                    }
-                    const pointer = stage.getPointerPosition();
-                    if (!pointer) {
-                      return;
-                    }
-                    const world = stageToWorld(pointer.x, pointer.y);
-                    setPending({
-                      fromId: item.id,
-                      pointerX: world.x,
-                      pointerY: world.y,
-                    });
-                  }}
-                  onMouseEnter={(event) => {
-                    const stage = event.target.getStage();
-                    if (stage) {
-                      stage.container().style.cursor = "crosshair";
-                    }
-                  }}
-                />
+                {DIAGRAM_PORT_SIDES.map((side) => {
+                  const port = getPortPosition({ x: 0, y: 0 }, side);
+                  return (
+                    <Circle
+                      key={side}
+                      x={port.x}
+                      y={port.y}
+                      radius={PORT_RADIUS}
+                      fill={portColor}
+                      stroke={isDark ? "#0b0f17" : "#ffffff"}
+                      strokeWidth={2}
+                      perfectDrawEnabled={false}
+                      onMouseDown={(event) =>
+                        handlePortMouseDown(item.id, side, event)
+                      }
+                      onTouchStart={(event) => {
+                        event.cancelBubble = true;
+                        const stage = stageRef.current;
+                        if (!stage) {
+                          return;
+                        }
+                        const pointer = stage.getPointerPosition();
+                        if (!pointer) {
+                          return;
+                        }
+                        const world = stageToWorld(pointer.x, pointer.y);
+                        setPending({
+                          fromId: item.id,
+                          fromPort: side,
+                          pointerX: world.x,
+                          pointerY: world.y,
+                        });
+                      }}
+                      onMouseEnter={(event) => {
+                        const stage = event.target.getStage();
+                        if (stage) {
+                          stage.container().style.cursor = "crosshair";
+                        }
+                      }}
+                    />
+                  );
+                })}
               </Group>
             );
           })}
@@ -674,7 +748,7 @@ export default function DiagramPanel({
             : "border-slate-200 bg-white/90 text-slate-600"
         }`}
       >
-        Arraste cards · porta verde para ligar · clique na seta para remover
+        Arraste cards · bolinhas verdes para ligar · clique na seta para remover
       </div>
     </div>
   );

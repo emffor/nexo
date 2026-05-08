@@ -5,10 +5,14 @@ export interface DiagramNodePosition {
   y: number;
 }
 
+export type DiagramPortSide = 'top' | 'right' | 'bottom' | 'left';
+
 export interface DiagramEdge {
   id: string;
   from: string;
   to: string;
+  fromPort?: DiagramPortSide;
+  toPort?: DiagramPortSide;
 }
 
 export interface DiagramViewport {
