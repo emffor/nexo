@@ -85,6 +85,7 @@ export function parseBackupFile(rawText: string): ParsedBackupFile {
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
       status: parseStatus((item as { status?: unknown }).status),
+      observation: typeof (item as { observation?: unknown }).observation === 'string' && (item as { observation: string }).observation.trim() ? (item as { observation: string }).observation.trim() : undefined,
     };
   });
 

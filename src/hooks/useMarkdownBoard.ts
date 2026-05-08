@@ -17,6 +17,7 @@ export interface UseMarkdownBoardResult {
   addItem: (content: string, title?: string) => Promise<void>;
   updateItem: (itemId: string, content: string, title?: string) => Promise<void>;
   updateItemStatus: (itemId: string, status: DiagramStatus | undefined) => Promise<void>;
+  updateItemObservation: (itemId: string, observation: string) => Promise<void>;
   deleteItem: (itemId: string) => Promise<void>;
   reorderItems: (activeId: string, overId: string) => Promise<void>;
   clearItems: () => Promise<void>;
@@ -159,6 +160,25 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
     await db.items.put(updatedItem);
   };
 
+  const updateItemObservation = async (itemId: string, observation: string) => {
+    const currentItem = items.find((item) => item.id === itemId);
+    if (!currentItem) {
+      return;
+    }
+
+    const cleanObservation = observation.trim() || undefined;
+    const updatedItem: MarkdownItem = {
+      ...currentItem,
+      observation: cleanObservation,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setItems((currentItems) =>
+      currentItems.map((item) => (item.id === itemId ? updatedItem : item)),
+    );
+    await db.items.put(updatedItem);
+  };
+
   const reorderItems = async (activeId: string, overId: string) => {
     const reorderedItems = reorderMarkdownItems(items, activeId, overId);
 
@@ -202,6 +222,7 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
     addItem,
     updateItem,
     updateItemStatus,
+    updateItemObservation,
     deleteItem,
     reorderItems,
     clearItems,

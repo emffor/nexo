@@ -64,6 +64,7 @@ export default function App() {
     addItem,
     updateItem,
     updateItemStatus,
+    updateItemObservation,
     deleteItem,
     reorderItems,
     clearItems,
@@ -428,6 +429,9 @@ export default function App() {
               onSelectItem={handleSelectDiagramItem}
               onChangeStatus={(itemId, status) => {
                 void updateItemStatus(itemId, status);
+              }}
+              onChangeObservation={(itemId, observation) => {
+                void updateItemObservation(itemId, observation);
               }}
               onResetLayout={handleResetDiagramLayout}
               onClearEdges={handleClearDiagramEdges}

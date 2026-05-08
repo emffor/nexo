@@ -14,6 +14,7 @@ interface DiagramSidebarProps {
   activeItemId: string | null;
   onSelectItem: (item: MarkdownItem) => void;
   onChangeStatus: (itemId: string, status: DiagramStatus | undefined) => void;
+  onChangeObservation: (itemId: string, observation: string) => void;
   onResetLayout: () => void;
   onClearEdges: () => void;
 }
@@ -23,6 +24,7 @@ export function DiagramSidebar({
   theme,
   activeItemId,
   onSelectItem,
+  onChangeObservation,
   onChangeStatus,
   onResetLayout,
   onClearEdges,
@@ -102,7 +104,9 @@ export function DiagramSidebar({
                     >
                       {String(index + 1).padStart(2, "0")}
                     </span>
-                    <span className="flex-1 truncate">{getDisplayTitle(item, 60)}</span>
+                    <span className="flex-1 truncate">
+                      {getDisplayTitle(item, 60)}
+                    </span>
                   </button>
                   <div className="flex items-center gap-1.5">
                     <span
@@ -135,6 +139,21 @@ export function DiagramSidebar({
                       ))}
                     </select>
                   </div>
+                  {isActive && (
+                    <textarea
+                      value={item.observation ?? ""}
+                      onChange={(event) => {
+                        onChangeObservation(item.id, event.target.value);
+                      }}
+                      placeholder="Adicione uma observação..."
+                      className={`w-full resize-none rounded border px-2 py-1 text-[11px] outline-none ${
+                        theme === "dark"
+                          ? "border-white/10 bg-ink/80 text-slate-200 placeholder:text-slate-500"
+                          : "border-slate-300 bg-white text-slate-700 placeholder:text-slate-400"
+                      }`}
+                      rows={2}
+                    />
+                  )}
                 </div>
               </li>
             );

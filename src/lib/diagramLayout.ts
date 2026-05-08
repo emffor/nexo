@@ -1,7 +1,7 @@
 import type { DiagramNodePosition } from '../types/diagram';
 
 export const DIAGRAM_NODE_WIDTH = 220;
-export const DIAGRAM_NODE_HEIGHT = 96;
+export const DIAGRAM_NODE_HEIGHT = 130;
 export const DIAGRAM_GRID_GAP_X = 80;
 export const DIAGRAM_GRID_GAP_Y = 40;
 export const DIAGRAM_GRID_OFFSET = 40;

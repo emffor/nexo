@@ -13,4 +13,5 @@ export interface MarkdownItem {
   createdAt: string;
   updatedAt: string;
   status?: DiagramStatus;
+  observation?: string;
 }

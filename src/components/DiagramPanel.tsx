@@ -175,6 +175,11 @@ export default function DiagramPanel({
   const [edges, setEdges] = useState<DiagramEdge[]>([]);
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
+  const [hoveredItem, setHoveredItem] = useState<{
+    item: MarkdownItem;
+    x: number;
+    y: number;
+  } | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
 
   const emitDiagramState = useCallback(
@@ -380,7 +385,13 @@ export default function DiagramPanel({
       edges: edgesRef.current,
       viewport: INITIAL_STAGE_TRANSFORM,
     });
-  }, [applyStageTransform, emitDiagramState, items, resetLayoutSignal, setDiagramPositions]);
+  }, [
+    applyStageTransform,
+    emitDiagramState,
+    items,
+    resetLayoutSignal,
+    setDiagramPositions,
+  ]);
 
   useEffect(() => {
     if (clearEdgesSignal === 0) {
@@ -591,18 +602,45 @@ export default function DiagramPanel({
     [persistCurrentDiagramState],
   );
 
-  const handleEdgeClick = useCallback((edgeId: string) => {
-    setEdges((current) => {
-      const nextEdges = current.filter((edge) => edge.id !== edgeId);
-      edgesRef.current = nextEdges;
-      emitDiagramState({
-        positions: positionsRef.current,
-        edges: nextEdges,
-        viewport: stageTransformRef.current,
+  const handleEdgeClick = useCallback(
+    (edgeId: string) => {
+      setEdges((current) => {
+        const nextEdges = current.filter((edge) => edge.id !== edgeId);
+        edgesRef.current = nextEdges;
+        emitDiagramState({
+          positions: positionsRef.current,
+          edges: nextEdges,
+          viewport: stageTransformRef.current,
+        });
+        return nextEdges;
       });
-      return nextEdges;
-    });
-  }, [emitDiagramState]);
+    },
+    [emitDiagramState],
+  );
+
+  const handleNodeMouseEnter = useCallback(
+    (item: MarkdownItem) => {
+      if (item.observation) {
+        const pos = positions[item.id];
+        if (pos) {
+          const stage = stageRef.current;
+          if (stage) {
+            const transform = stage.getAbsoluteTransform();
+            const point = transform.point({
+              x: pos.x + DIAGRAM_NODE_WIDTH / 2,
+              y: pos.y + DIAGRAM_NODE_HEIGHT,
+            });
+            setHoveredItem({ item, x: point.x, y: point.y });
+          }
+        }
+      }
+    },
+    [positions],
+  );
+
+  const handleNodeMouseLeave = useCallback(() => {
+    setHoveredItem(null);
+  }, []);
 
   const isDark = theme === "dark";
   const stageBg = isDark ? "#0b0f17" : "#f8fafc";
@@ -722,6 +760,11 @@ export default function DiagramPanel({
             const palette = DIAGRAM_STATUS_PALETTE[status][theme];
             const isActive = item.id === activeItemId;
             const title = getDisplayTitle(item, 70);
+            const observationText = item.observation?.trim() || "";
+            const observation =
+              observationText.length > 50
+                ? `${observationText.slice(0, 47)}...`
+                : observationText;
             return (
               <Group
                 key={item.id}
@@ -736,11 +779,13 @@ export default function DiagramPanel({
                   const stage = event.target.getStage();
                   if (stage) {
                     stage.container().style.cursor = "grab";
+                    handleNodeMouseEnter(item);
                   }
                 }}
                 onMouseLeave={(event) => {
                   const stage = event.target.getStage();
                   if (stage) {
+                    handleNodeMouseLeave();
                     stage.container().style.cursor = "default";
                   }
                 }}
@@ -764,7 +809,7 @@ export default function DiagramPanel({
                   x={12}
                   y={12}
                   width={DIAGRAM_NODE_WIDTH - 24}
-                  height={DIAGRAM_NODE_HEIGHT - 24}
+                  height={28}
                   text={title}
                   fontSize={13}
                   fontStyle="600"
@@ -776,6 +821,25 @@ export default function DiagramPanel({
                   listening={false}
                   perfectDrawEnabled={false}
                 />
+                {observation && (
+                  <Text
+                    x={12}
+                    y={44}
+                    width={DIAGRAM_NODE_WIDTH - 24}
+                    height={DIAGRAM_NODE_HEIGHT - 56}
+                    text={observation}
+                    fontSize={11}
+                    fontStyle="400"
+                    fontFamily="Inter, system-ui, sans-serif"
+                    fill={palette.text}
+                    lineHeight={1.3}
+                    ellipsis
+                    wrap="word"
+                    listening={false}
+                    perfectDrawEnabled={false}
+                    opacity={0.85}
+                  />
+                )}
                 {DIAGRAM_PORT_SIDES.map((side) => {
                   const port = getPortPosition({ x: 0, y: 0 }, side);
                   return (
@@ -847,6 +911,23 @@ export default function DiagramPanel({
       >
         Arraste cards · bolinhas verdes para ligar · clique na seta para remover
       </div>
+
+      {hoveredItem && (
+        <div
+          className={`absolute z-50 max-w-xs rounded-md border px-3 py-2 text-xs shadow-lg ${
+            isDark
+              ? "border-white/20 bg-slate-900 text-slate-100"
+              : "border-slate-300 bg-white text-slate-800"
+          }`}
+          style={{
+            left: hoveredItem.x,
+            top: hoveredItem.y + 10,
+            transform: "translateX(-50%)",
+          }}
+        >
+          {hoveredItem.item.observation}
+        </div>
+      )}
     </div>
   );
 }
