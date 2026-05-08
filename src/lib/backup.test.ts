@@ -50,4 +50,11 @@ describe('backup', () => {
       viewport: { x: -80, y: 40, scale: 0.8 },
     });
   });
+
+  it('preserva cards ocultos do diagrama no backup', () => {
+    const rawText = createBackupText(items, undefined, ['2', 'inexistente']);
+    const restored = parseBackupFile(rawText);
+
+    expect(restored.hiddenDiagramItemIds).toEqual(['2']);
+  });
 });

@@ -35,16 +35,19 @@ interface MarkdownBackupFile {
   exportedAt: string;
   items: MarkdownItem[];
   diagramState?: DiagramState;
+  hiddenDiagramItemIds?: string[];
 }
 
 export interface ParsedBackupFile {
   items: MarkdownItem[];
   diagramState?: DiagramState;
+  hiddenDiagramItemIds?: string[];
 }
 
 export function createBackupText(
   items: MarkdownItem[],
   diagramState?: DiagramState,
+  hiddenDiagramItemIds?: string[],
 ): string {
   const payload: MarkdownBackupFile = {
     version: 1,
@@ -54,6 +57,7 @@ export function createBackupText(
       order: index,
     })),
     diagramState,
+    hiddenDiagramItemIds,
   };
 
   return JSON.stringify(payload, null, 2);
@@ -90,6 +94,7 @@ export function parseBackupFile(rawText: string): ParsedBackupFile {
   });
 
   let diagramState: DiagramState | undefined;
+  let hiddenDiagramItemIds: string[] | undefined;
 
   if (parsed.diagramState && typeof parsed.diagramState === 'object') {
     const ds = parsed.diagramState as unknown as Record<string, unknown>;
@@ -150,9 +155,18 @@ export function parseBackupFile(rawText: string): ParsedBackupFile {
     diagramState = { positions, edges, viewport };
   }
 
+  if (Array.isArray(parsed.hiddenDiagramItemIds)) {
+    const validItemIds = new Set(items.map((item) => item.id));
+    hiddenDiagramItemIds = parsed.hiddenDiagramItemIds.filter(
+      (itemId): itemId is string =>
+        typeof itemId === 'string' && validItemIds.has(itemId),
+    );
+  }
+
   return {
     items,
     diagramState,
+    hiddenDiagramItemIds,
   };
 }
 

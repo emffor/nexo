@@ -303,7 +303,9 @@ export default function App() {
 
   const handleExport = () => {
     const diagramState = diagramStateRef.current ?? readDiagramState();
-    const backupText = createBackupText(items, diagramState);
+    const backupText = createBackupText(items, diagramState, [
+      ...hiddenDiagramItemIds,
+    ]);
     const blob = new Blob([backupText], { type: "text/plain;charset=utf-8" });
     const url = window.URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -342,6 +344,7 @@ export default function App() {
         diagramStateRef.current = null;
         clearDiagramState();
       }
+      setHiddenDiagramItemIds(new Set(importedBackup.hiddenDiagramItemIds));
       setDiagramReloadStateSignal((value) => value + 1);
       addToast(
         `${importedBackup.items.length} card(s) importado(s) com sucesso`,
