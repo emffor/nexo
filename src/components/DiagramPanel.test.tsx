@@ -74,7 +74,7 @@ describe('DiagramPanel', () => {
     expect(screen.getByText('Card Alfa')).toBeInTheDocument();
     expect(screen.getByText('Card Beta')).toBeInTheDocument();
     expect(screen.getByText('Card Gama')).toBeInTheDocument();
-    expect(screen.getAllByTestId('port')).toHaveLength(12);
+    expect(screen.getAllByTestId('port')).toHaveLength(24);
   });
 
   it('mostra mensagem vazia quando nao ha cards', () => {

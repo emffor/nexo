@@ -63,7 +63,8 @@ const MIN_SCALE = 0.4;
 const MAX_SCALE = 1.8;
 const SCALE_STEP = 1.05;
 const PORT_RADIUS = 6;
-const PORT_HIT_RADIUS = 14;
+const PORT_HOVER_RADIUS = 10;
+const PORT_HIT_RADIUS = 22;
 const INITIAL_STAGE_TRANSFORM: DiagramViewport = { x: 0, y: 0, scale: 1 };
 const DIAGRAM_PORT_SIDES: DiagramPortSide[] = [
   "top",
@@ -178,6 +179,7 @@ export default function DiagramPanel({
   const [edges, setEdges] = useState<DiagramEdge[]>([]);
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
+  const [hoveredPortId, setHoveredPortId] = useState<string | null>(null);
   const [hoveredItem, setHoveredItem] = useState<{
     item: MarkdownItem;
     x: number;
@@ -660,6 +662,42 @@ export default function DiagramPanel({
     setHoveredItem(null);
   }, []);
 
+  const getPortId = useCallback(
+    (itemId: string, side: DiagramPortSide) => `${itemId}:${side}`,
+    [],
+  );
+
+  const handlePortMouseEnter = useCallback(
+    (
+      itemId: string,
+      side: DiagramPortSide,
+      event: KonvaEventObject<MouseEvent>,
+    ) => {
+      setHoveredPortId(getPortId(itemId, side));
+      const stage = event.target.getStage();
+      if (stage) {
+        stage.container().style.cursor = "crosshair";
+      }
+    },
+    [getPortId],
+  );
+
+  const handlePortMouseLeave = useCallback(
+    (
+      itemId: string,
+      side: DiagramPortSide,
+      event: KonvaEventObject<MouseEvent>,
+    ) => {
+      const portId = getPortId(itemId, side);
+      setHoveredPortId((current) => (current === portId ? null : current));
+      const stage = event.target.getStage();
+      if (stage) {
+        stage.container().style.cursor = "default";
+      }
+    },
+    [getPortId],
+  );
+
   const isDark = theme === "dark";
   const stageBg = isDark ? "#0b0f17" : "#f8fafc";
   const edgeColor = isDark ? "#94a3b8" : "#475569";
@@ -863,44 +901,70 @@ export default function DiagramPanel({
                 )}
                 {DIAGRAM_PORT_SIDES.map((side) => {
                   const port = getPortPosition({ x: 0, y: 0 }, side);
+                  const portId = getPortId(item.id, side);
+                  const isHoveredPort = hoveredPortId === portId;
                   return (
-                    <Circle
-                      key={side}
-                      x={port.x}
-                      y={port.y}
-                      radius={PORT_RADIUS}
-                      fill={portColor}
-                      stroke={isDark ? "#0b0f17" : "#ffffff"}
-                      strokeWidth={2}
-                      perfectDrawEnabled={false}
-                      onMouseDown={(event) =>
-                        handlePortMouseDown(item.id, side, event)
-                      }
-                      onTouchStart={(event) => {
-                        event.cancelBubble = true;
-                        const stage = stageRef.current;
-                        if (!stage) {
-                          return;
+                    <Group key={side}>
+                      <Circle
+                        x={port.x}
+                        y={port.y}
+                        radius={PORT_HIT_RADIUS}
+                        fill="rgba(94, 234, 212, 0.01)"
+                        stroke={portColor}
+                        strokeWidth={isHoveredPort ? 1.4 : 0}
+                        opacity={isHoveredPort ? 0.35 : 1}
+                        perfectDrawEnabled={false}
+                        onMouseDown={(event) =>
+                          handlePortMouseDown(item.id, side, event)
                         }
-                        const pointer = stage.getPointerPosition();
-                        if (!pointer) {
-                          return;
+                        onTouchStart={(event) => {
+                          event.cancelBubble = true;
+                          const stage = stageRef.current;
+                          if (!stage) {
+                            return;
+                          }
+                          const pointer = stage.getPointerPosition();
+                          if (!pointer) {
+                            return;
+                          }
+                          const world = stageToWorld(pointer.x, pointer.y);
+                          setPending({
+                            fromId: item.id,
+                            fromPort: side,
+                            pointerX: world.x,
+                            pointerY: world.y,
+                          });
+                        }}
+                        onMouseEnter={(event) =>
+                          handlePortMouseEnter(item.id, side, event)
                         }
-                        const world = stageToWorld(pointer.x, pointer.y);
-                        setPending({
-                          fromId: item.id,
-                          fromPort: side,
-                          pointerX: world.x,
-                          pointerY: world.y,
-                        });
-                      }}
-                      onMouseEnter={(event) => {
-                        const stage = event.target.getStage();
-                        if (stage) {
-                          stage.container().style.cursor = "crosshair";
+                        onMouseLeave={(event) =>
+                          handlePortMouseLeave(item.id, side, event)
                         }
-                      }}
-                    />
+                      />
+                      {isHoveredPort && (
+                        <Circle
+                          x={port.x}
+                          y={port.y}
+                          radius={PORT_HOVER_RADIUS}
+                          fill="rgba(94, 234, 212, 0.18)"
+                          stroke={portColor}
+                          strokeWidth={1.6}
+                          listening={false}
+                          perfectDrawEnabled={false}
+                        />
+                      )}
+                      <Circle
+                        x={port.x}
+                        y={port.y}
+                        radius={PORT_RADIUS}
+                        fill={portColor}
+                        stroke={isDark ? "#0b0f17" : "#ffffff"}
+                        strokeWidth={2}
+                        listening={false}
+                        perfectDrawEnabled={false}
+                      />
+                    </Group>
                   );
                 })}
               </Group>
