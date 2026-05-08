@@ -360,22 +360,8 @@ export default function App() {
     });
   };
 
-  const handleCycleViewMode = () => {
-    setViewMode((current) => {
-      if (current === "normal") {
-        return "index";
-      }
-
-      if (current === "index") {
-        return "cards";
-      }
-
-      if (current === "cards") {
-        return "diagram";
-      }
-
-      return "normal";
-    });
+  const handleSetViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
   };
 
   const handleSelectDiagramItem = (item: MarkdownItem) => {
@@ -415,7 +401,7 @@ export default function App() {
         onTogglePreviewMaximized={() =>
           setIsPreviewMaximized((current) => !current)
         }
-        onCycleViewMode={handleCycleViewMode}
+        onSetViewMode={handleSetViewMode}
         onToggleScrollSync={() => setIsScrollSyncEnabled((current) => !current)}
         onToggleTheme={() =>
           setTheme((current) => (current === "dark" ? "light" : "dark"))

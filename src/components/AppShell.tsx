@@ -15,7 +15,7 @@ interface AppShellProps {
   onOpenModal: () => void;
   onToggleCompactMode: () => void;
   onTogglePreviewMaximized: () => void;
-  onCycleViewMode: () => void;
+  onSetViewMode: (mode: ViewMode) => void;
   onToggleScrollSync: () => void;
   onToggleTheme: () => void;
   onClearAll: () => void;
@@ -29,14 +29,40 @@ interface AppShellProps {
   rightPanel: ReactNode;
 }
 
-function ToolbarDivider() {
+function ToolbarGroup({
+  label,
+  children,
+  className = "",
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <span
-      className="mx-0.5 hidden h-4 w-px bg-white/10 sm:inline-block"
-      aria-hidden="true"
-    />
+    <div
+      role="group"
+      aria-label={label}
+      className={`flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-0.5 ${className}`}
+    >
+      {children}
+    </div>
   );
 }
+
+const VIEW_MODE_OPTIONS: { mode: ViewMode; label: string; title: string }[] = [
+  { mode: "normal", label: "Normal", title: "Editor + preview lado a lado" },
+  {
+    mode: "index",
+    label: "\u00cdndice",
+    title: "Lista compacta com \u00edndice",
+  },
+  { mode: "cards", label: "Cards", title: "Visualiza\u00e7\u00e3o em cards" },
+  {
+    mode: "diagram",
+    label: "Diagrama",
+    title: "Visualiza\u00e7\u00e3o em diagrama",
+  },
+];
 
 export function AppShell({
   itemsCount,
@@ -49,7 +75,7 @@ export function AppShell({
   onOpenModal,
   onToggleCompactMode,
   onTogglePreviewMaximized,
-  onCycleViewMode,
+  onSetViewMode,
   onToggleScrollSync,
   onToggleTheme,
   onClearAll,
@@ -67,14 +93,6 @@ export function AppShell({
   const isCardsMode = viewMode === "cards";
   const isDiagramMode = viewMode === "diagram";
   const isFullWidthMode = isCardsMode;
-  const viewModeLabel =
-    viewMode === "normal"
-      ? "Modo indice"
-      : viewMode === "index"
-        ? "Modo cards"
-        : viewMode === "cards"
-          ? "Modo diagrama"
-          : "Modo normal";
 
   return (
     <main
@@ -135,83 +153,119 @@ export function AppShell({
         </div>
 
         <div
-          className={`flex-wrap items-center gap-1 ${
+          className={`flex-wrap items-center gap-2 ${
             isToolbarExpanded ? "flex" : "hidden md:flex"
           }`}
         >
-          <button
-            type="button"
-            onClick={onTogglePreviewMaximized}
-            className="toolbar-button toolbar-button--primary"
-          >
-            {isPreviewMaximized ? "Restaurar colunas" : "Maximizar preview"}
-          </button>
-          <button
-            type="button"
-            onClick={onToggleCompactMode}
-            className="toolbar-button"
-          >
-            {isCompactMode ? "Restaurar espacamento" : "Usar tela inteira"}
-          </button>
-          <button
-            type="button"
-            onClick={onCycleViewMode}
-            className={`toolbar-button ${viewMode !== "normal" ? "toolbar-button--primary" : ""}`}
-          >
-            {viewModeLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onToggleScrollSync}
-            disabled={isFullWidthMode || isDiagramMode}
-            className={`toolbar-button ${
-              isScrollSyncEnabled ? "toolbar-button--primary" : ""
-            } disabled:cursor-not-allowed disabled:opacity-45`}
-          >
-            {isScrollSyncEnabled ? "Scroll sync ligado" : "Scroll sync"}
-          </button>
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            className="toolbar-button"
-          >
-            {theme === "dark" ? "Modo claro" : "Modo escuro"}
-          </button>
+          <ToolbarGroup label="Modo de visualiza\u00e7\u00e3o">
+            {VIEW_MODE_OPTIONS.map(({ mode, label, title }) => {
+              const isActive = viewMode === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => onSetViewMode(mode)}
+                  title={title}
+                  aria-pressed={isActive}
+                  className={`rounded-md px-2 py-1 text-[11px] font-medium transition focus:outline-none focus:ring-2 focus:ring-teal-200 focus:ring-offset-1 focus:ring-offset-ink ${
+                    isActive
+                      ? "bg-teal-300/[0.14] text-teal-100 shadow-[inset_0_0_0_1px_rgba(94,234,212,0.25)]"
+                      : "text-slate-300 hover:bg-white/[0.05] hover:text-slate-100"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </ToolbarGroup>
 
-          <ToolbarDivider />
+          <ToolbarGroup label="Layout">
+            <button
+              type="button"
+              onClick={onTogglePreviewMaximized}
+              className={`toolbar-button border-transparent bg-transparent ${
+                isPreviewMaximized ? "toolbar-button--primary" : ""
+              }`}
+              title="Alternar preview em tela cheia"
+            >
+              {isPreviewMaximized ? "Restaurar colunas" : "Maximizar preview"}
+            </button>
+            <button
+              type="button"
+              onClick={onToggleCompactMode}
+              className={`toolbar-button border-transparent bg-transparent ${
+                isCompactMode ? "toolbar-button--primary" : ""
+              }`}
+              title="Alternar espa\u00e7amento da p\u00e1gina"
+            >
+              {isCompactMode ? "Restaurar espa\u00e7amento" : "Tela inteira"}
+            </button>
+            <button
+              type="button"
+              onClick={onToggleScrollSync}
+              disabled={isFullWidthMode || isDiagramMode}
+              className={`toolbar-button border-transparent bg-transparent ${
+                isScrollSyncEnabled ? "toolbar-button--primary" : ""
+              } disabled:cursor-not-allowed disabled:opacity-45`}
+              title="Sincronizar rolagem entre editor e preview"
+            >
+              {isScrollSyncEnabled ? "Scroll sync ligado" : "Scroll sync"}
+            </button>
+          </ToolbarGroup>
 
-          <button
-            type="button"
-            onClick={onDecreaseFont}
-            className="toolbar-button toolbar-button--icon"
-            title="Diminuir fonte"
-          >
-            A-
-          </button>
-          <button
-            type="button"
-            onClick={onIncreaseFont}
-            className="toolbar-button toolbar-button--icon"
-            title="Aumentar fonte"
-          >
-            A+
-          </button>
+          <ToolbarGroup label="Apar\u00eancia">
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className="toolbar-button border-transparent bg-transparent"
+              title="Alternar tema"
+            >
+              {theme === "dark" ? "Modo claro" : "Modo escuro"}
+            </button>
+            <button
+              type="button"
+              onClick={onDecreaseFont}
+              className="toolbar-button toolbar-button--icon border-transparent bg-transparent"
+              title="Diminuir fonte"
+              aria-label="Diminuir fonte"
+            >
+              A-
+            </button>
+            <button
+              type="button"
+              onClick={onIncreaseFont}
+              className="toolbar-button toolbar-button--icon border-transparent bg-transparent"
+              title="Aumentar fonte"
+              aria-label="Aumentar fonte"
+            >
+              A+
+            </button>
+          </ToolbarGroup>
 
-          <ToolbarDivider />
-
-          <button type="button" onClick={onImport} className="toolbar-button">
-            Importar .txt
-          </button>
-          <button type="button" onClick={onExport} className="toolbar-button">
-            Exportar .txt
-          </button>
-
-          <ToolbarDivider />
+          <ToolbarGroup label="Dados">
+            <button
+              type="button"
+              onClick={onImport}
+              className="toolbar-button border-transparent bg-transparent"
+              title="Importar arquivo .txt"
+            >
+              Importar
+            </button>
+            <button
+              type="button"
+              onClick={onExport}
+              className="toolbar-button border-transparent bg-transparent"
+              title="Exportar arquivo .txt"
+            >
+              Exportar
+            </button>
+          </ToolbarGroup>
 
           <button
             type="button"
             onClick={onClearAll}
-            className="toolbar-button toolbar-button--danger"
+            className="toolbar-button toolbar-button--danger md:ml-auto"
+            title="Remover todos os cards"
           >
             Limpar tudo
           </button>
