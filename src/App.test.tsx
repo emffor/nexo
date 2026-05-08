@@ -229,7 +229,7 @@ describe("App", () => {
     expect(scrollSpy).toHaveBeenCalled();
   });
 
-  it("alterna entre os modos normal, indice e cards", async () => {
+  it("alterna entre os modos normal, indice, cards e diagrama", async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -242,9 +242,15 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /modo cards/i }));
 
     expect(
-      screen.getByRole("button", { name: /modo normal/i }),
+      screen.getByRole("button", { name: /modo diagrama/i }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/cards em ordem/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
+
+    expect(
+      screen.getByRole("button", { name: /modo normal/i }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /modo normal/i }));
 

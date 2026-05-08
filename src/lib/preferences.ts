@@ -8,7 +8,7 @@ export const STORAGE_KEYS = {
 } as const;
 
 export type AppTheme = 'dark' | 'light';
-export type ViewMode = 'normal' | 'index' | 'cards';
+export type ViewMode = 'normal' | 'index' | 'cards' | 'diagram';
 
 export const FONT_SCALE: {
   min: number;
@@ -74,7 +74,8 @@ export function readStoredViewMode(): ViewMode {
   if (
     rawValue === 'index' ||
     rawValue === 'cards' ||
-    rawValue === 'normal'
+    rawValue === 'normal' ||
+    rawValue === 'diagram'
   ) {
     return rawValue;
   }

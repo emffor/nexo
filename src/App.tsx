@@ -1,16 +1,28 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "./components/AppShell";
 import { AddMarkdownModal } from "./components/AddMarkdownModal";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { CombinedOutputPanel } from "./components/CombinedOutputPanel";
+import { DiagramSidebar } from "./components/DiagramSidebar";
 import { SortableCardsPanel } from "./components/SortableCardsPanel";
 import { ToastContainer } from "./components/Toast";
 import { useMarkdownBoard } from "./hooks/useMarkdownBoard";
 import { useToast } from "./hooks/useToast";
 import { createBackupText, parseBackupFile } from "./lib/backup";
+import { clearDiagramState } from "./lib/diagramState";
 import { buildCombinedContent, getDisplayTitle } from "./lib/items";
+
+const DiagramPanel = dynamic(() => import("./components/DiagramPanel"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full min-h-[480px] w-full items-center justify-center rounded-[1.25rem] border border-white/10 bg-ink/40 text-sm text-slate-400">
+      Carregando diagrama...
+    </div>
+  ),
+});
 import {
   type AppTheme,
   type ViewMode,
@@ -45,12 +57,15 @@ export default function App() {
     items,
     addItem,
     updateItem,
+    updateItemStatus,
     deleteItem,
     reorderItems,
     clearItems,
     replaceItems,
     isLoading,
   } = useMarkdownBoard();
+  const [diagramResetSignal, setDiagramResetSignal] = useState(0);
+  const [diagramClearEdgesSignal, setDiagramClearEdgesSignal] = useState(0);
   const { messages, addToast, dismissToast } = useToast();
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [deletingItem, setDeletingItem] = useState<MarkdownItem | null>(null);
@@ -136,7 +151,12 @@ export default function App() {
   }, [activeItemId, items]);
 
   useEffect(() => {
-    if (!isScrollSyncEnabled || isPreviewMaximized || viewMode === "cards") {
+    if (
+      !isScrollSyncEnabled ||
+      isPreviewMaximized ||
+      viewMode === "cards" ||
+      viewMode === "diagram"
+    ) {
       syncSourceRef.current = null;
       return;
     }
@@ -212,6 +232,7 @@ export default function App() {
   const executeClearAll = async () => {
     setConfirmClearAll(false);
     const snapshot = [...items];
+    clearDiagramState();
     await clearItems();
     addToast("Todos os cards foram removidos", "info", {
       label: "Desfazer",
@@ -328,8 +349,26 @@ export default function App() {
         return "cards";
       }
 
+      if (current === "cards") {
+        return "diagram";
+      }
+
       return "normal";
     });
+  };
+
+  const handleSelectDiagramItem = (item: MarkdownItem) => {
+    setActiveItemId(item.id);
+  };
+
+  const handleResetDiagramLayout = () => {
+    setDiagramResetSignal((value) => value + 1);
+    addToast("Layout do diagrama reorganizado", "info");
+  };
+
+  const handleClearDiagramEdges = () => {
+    setDiagramClearEdgesSignal((value) => value + 1);
+    addToast("Setas do diagrama removidas", "info");
   };
 
   return (
@@ -374,35 +413,64 @@ export default function App() {
         }}
         isMac={isMac}
         leftPanel={
-          <SortableCardsPanel
-            items={items}
-            isLoading={isLoading}
-            isOutlineMode={viewMode === "index"}
-            activeItemId={activeItemId}
-            scrollContainerRef={leftScrollRef}
-            theme={theme}
-            onReorder={reorderItems}
-            onSelect={handleSelectItem}
-            onEdit={(item) => {
-              setEditingItem(item);
-              setIsModalOpen(true);
-            }}
-            onDelete={(item) => {
-              void handleDeleteItem(item);
-            }}
-          />
+          viewMode === "diagram" ? (
+            <DiagramSidebar
+              items={items}
+              theme={theme}
+              activeItemId={activeItemId}
+              onSelectItem={handleSelectDiagramItem}
+              onChangeStatus={(itemId, status) => {
+                void updateItemStatus(itemId, status);
+              }}
+              onResetLayout={handleResetDiagramLayout}
+              onClearEdges={handleClearDiagramEdges}
+            />
+          ) : (
+            <SortableCardsPanel
+              items={items}
+              isLoading={isLoading}
+              isOutlineMode={viewMode === "index"}
+              activeItemId={activeItemId}
+              scrollContainerRef={leftScrollRef}
+              theme={theme}
+              onReorder={reorderItems}
+              onSelect={handleSelectItem}
+              onEdit={(item) => {
+                setEditingItem(item);
+                setIsModalOpen(true);
+              }}
+              onDelete={(item) => {
+                void handleDeleteItem(item);
+              }}
+            />
+          )
         }
         rightPanel={
-          <CombinedOutputPanel
-            items={items}
-            isLoading={isLoading}
-            theme={theme}
-            viewMode={viewMode}
-            activeItemId={activeItemId}
-            scrollContainerRef={rightScrollRef}
-            onSelect={handleSelectItem}
-            onReorder={reorderItems}
-          />
+          viewMode === "diagram" ? (
+            <DiagramPanel
+              items={items}
+              theme={theme}
+              activeItemId={activeItemId}
+              onSelectItem={handleSelectDiagramItem}
+              onChangeStatus={(itemId, status) => {
+                void updateItemStatus(itemId, status);
+              }}
+              scrollContainerRef={rightScrollRef}
+              resetLayoutSignal={diagramResetSignal}
+              clearEdgesSignal={diagramClearEdgesSignal}
+            />
+          ) : (
+            <CombinedOutputPanel
+              items={items}
+              isLoading={isLoading}
+              theme={theme}
+              viewMode={viewMode}
+              activeItemId={activeItemId}
+              scrollContainerRef={rightScrollRef}
+              onSelect={handleSelectItem}
+              onReorder={reorderItems}
+            />
+          )
         }
       />
 

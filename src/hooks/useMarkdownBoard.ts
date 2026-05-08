@@ -8,7 +8,7 @@ import {
   normalizeMarkdownContent,
   reorderMarkdownItems,
 } from '../lib/items';
-import type { MarkdownItem } from '../types/markdown';
+import type { DiagramStatus, MarkdownItem } from '../types/markdown';
 
 export interface UseMarkdownBoardResult {
   items: MarkdownItem[];
@@ -16,6 +16,7 @@ export interface UseMarkdownBoardResult {
   isLoading: boolean;
   addItem: (content: string, title?: string) => Promise<void>;
   updateItem: (itemId: string, content: string, title?: string) => Promise<void>;
+  updateItemStatus: (itemId: string, status: DiagramStatus | undefined) => Promise<void>;
   deleteItem: (itemId: string) => Promise<void>;
   reorderItems: (activeId: string, overId: string) => Promise<void>;
   clearItems: () => Promise<void>;
@@ -140,6 +141,24 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
     });
   };
 
+  const updateItemStatus = async (itemId: string, status: DiagramStatus | undefined) => {
+    const currentItem = items.find((item) => item.id === itemId);
+    if (!currentItem) {
+      return;
+    }
+
+    const updatedItem: MarkdownItem = {
+      ...currentItem,
+      status,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setItems((currentItems) =>
+      currentItems.map((item) => (item.id === itemId ? updatedItem : item)),
+    );
+    await db.items.put(updatedItem);
+  };
+
   const reorderItems = async (activeId: string, overId: string) => {
     const reorderedItems = reorderMarkdownItems(items, activeId, overId);
 
@@ -182,6 +201,7 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
     isLoading,
     addItem,
     updateItem,
+    updateItemStatus,
     deleteItem,
     reorderItems,
     clearItems,

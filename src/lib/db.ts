@@ -18,6 +18,10 @@ class OrganizarMarkdownDatabase extends Dexie {
     this.version(3).stores({
       items: 'id, order, createdAt, updatedAt',
     });
+
+    this.version(4).stores({
+      items: 'id, order, createdAt, updatedAt, status',
+    });
   }
 }
 

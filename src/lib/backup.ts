@@ -1,5 +1,22 @@
-import type { MarkdownItem } from '../types/markdown';
+import type { DiagramStatus, MarkdownItem } from '../types/markdown';
 import { normalizeMarkdownContent } from './items';
+
+const VALID_STATUSES: DiagramStatus[] = [
+  'backlog',
+  'impedido',
+  'em-desenvolvimento',
+  'revisando',
+  'finalizado',
+];
+
+function parseStatus(value: unknown): DiagramStatus | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  return (VALID_STATUSES as string[]).includes(value)
+    ? (value as DiagramStatus)
+    : undefined;
+}
 
 interface MarkdownBackupFile {
   version: 1;
@@ -51,6 +68,7 @@ export function parseBackupFile(rawText: string): ParsedBackupFile {
       order: index,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
+      status: parseStatus((item as { status?: unknown }).status),
     };
   });
 

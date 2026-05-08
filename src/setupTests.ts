@@ -8,6 +8,16 @@ if (!HTMLElement.prototype.scrollIntoView) {
   HTMLElement.prototype.scrollIntoView = () => {};
 }
 
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class ResizeObserverMock {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
+    ResizeObserverMock;
+}
+
 afterEach(async () => {
   cleanup();
   await db.items.clear();

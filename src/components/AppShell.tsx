@@ -65,13 +65,16 @@ export function AppShell({
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(false);
   const isIndexMode = viewMode === "index";
   const isCardsMode = viewMode === "cards";
+  const isDiagramMode = viewMode === "diagram";
   const isFullWidthMode = isCardsMode;
   const viewModeLabel =
     viewMode === "normal"
       ? "Modo indice"
       : viewMode === "index"
         ? "Modo cards"
-        : "Modo normal";
+        : viewMode === "cards"
+          ? "Modo diagrama"
+          : "Modo normal";
 
   return (
     <main
@@ -160,7 +163,7 @@ export function AppShell({
           <button
             type="button"
             onClick={onToggleScrollSync}
-            disabled={isFullWidthMode}
+            disabled={isFullWidthMode || isDiagramMode}
             className={`toolbar-button ${
               isScrollSyncEnabled ? "toolbar-button--primary" : ""
             } disabled:cursor-not-allowed disabled:opacity-45`}
@@ -223,7 +226,9 @@ export function AppShell({
               ? "grid-cols-1"
               : isIndexMode
                 ? `lg:grid-cols-[120px_minmax(0,1fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
-                : `lg:grid-cols-[minmax(280px,0.33fr)_minmax(0,0.67fr)] ${isCompactMode ? "gap-2" : "gap-6"}`
+                : isDiagramMode
+                  ? `lg:grid-cols-[minmax(240px,0.25fr)_minmax(0,0.75fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
+                  : `lg:grid-cols-[minmax(280px,0.33fr)_minmax(0,0.67fr)] ${isCompactMode ? "gap-2" : "gap-6"}`
         }`}
       >
         {isPreviewMaximized || isFullWidthMode ? null : leftPanel}
