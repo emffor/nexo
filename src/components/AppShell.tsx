@@ -11,6 +11,12 @@ interface AppShellProps {
   isDiagramSidebarVisible: boolean;
   diagramEdgeStyle: DiagramEdgeStyle;
   viewMode: ViewMode;
+  databaseInfo?: {
+    tables: number;
+    relations: number;
+    errors: number;
+  };
+  onResetDatabaseLayout?: () => void;
   isScrollSyncEnabled: boolean;
   theme: AppTheme;
   fontScale: number;
@@ -20,6 +26,7 @@ interface AppShellProps {
   onToggleDiagramSidebar: () => void;
   onSetDiagramEdgeStyle: (style: DiagramEdgeStyle) => void;
   onSetViewMode: (mode: ViewMode) => void;
+  onResetDiagramLayout?: () => void;
   onToggleScrollSync: () => void;
   onToggleTheme: () => void;
   onClearAll: () => void;
@@ -66,6 +73,11 @@ const VIEW_MODE_OPTIONS: { mode: ViewMode; label: string; title: string }[] = [
     label: "Diagrama",
     title: "Visualiza\u00e7\u00e3o em diagrama",
   },
+  {
+    mode: "database",
+    label: "Banco",
+    title: "Diagrama de banco (DBML)",
+  },
 ];
 
 const VIEW_MODE_ACCESSIBLE_LABELS: Record<ViewMode, string> = {
@@ -73,6 +85,7 @@ const VIEW_MODE_ACCESSIBLE_LABELS: Record<ViewMode, string> = {
   index: "Modo indice",
   cards: "Modo cards",
   diagram: "Modo diagrama",
+  database: "Modo banco",
 };
 
 export function AppShell({
@@ -91,6 +104,9 @@ export function AppShell({
   onToggleDiagramSidebar,
   onSetDiagramEdgeStyle,
   onSetViewMode,
+  onResetDiagramLayout,
+  onResetDatabaseLayout,
+  databaseInfo,
   onToggleScrollSync,
   onToggleTheme,
   onClearAll,
@@ -107,15 +123,17 @@ export function AppShell({
   const isIndexMode = viewMode === "index";
   const isCardsMode = viewMode === "cards";
   const isDiagramMode = viewMode === "diagram";
+  const isDatabaseMode = viewMode === "database";
   const isDiagramFullWidth = isDiagramMode && !isDiagramSidebarVisible;
   const isFullWidthMode = isCardsMode || isDiagramFullWidth;
+  const isCanvasMode = isDiagramMode || isDatabaseMode;
 
   return (
     <main
       data-layout-mode={isCompactMode ? "compact" : "default"}
       data-theme={theme}
       className={`flex w-full flex-col ${
-        isDiagramMode ? "h-screen min-h-0 overflow-hidden" : "min-h-screen"
+        isCanvasMode ? "h-screen min-h-0 overflow-hidden" : "min-h-screen"
       } ${isCompactMode ? "px-2 py-0 sm:px-3" : "px-4 py-6 sm:px-6 lg:px-8"}`}
       style={{ ["--font-scale" as string]: String(fontScale) }}
     >
@@ -267,7 +285,7 @@ export function AppShell({
             <button
               type="button"
               onClick={onToggleScrollSync}
-              disabled={isFullWidthMode || isDiagramMode}
+              disabled={isFullWidthMode || isDiagramMode || isDatabaseMode}
               className={`toolbar-button border-transparent bg-transparent ${
                 isScrollSyncEnabled ? "toolbar-button--primary" : ""
               } disabled:cursor-not-allowed disabled:opacity-45`}
@@ -302,7 +320,27 @@ export function AppShell({
                 >
                   {isDiagramSidebarVisible ? "Ocultar cards" : "Exibir cards"}
                 </button>
+                {onResetDiagramLayout && (
+                  <button
+                    type="button"
+                    onClick={onResetDiagramLayout}
+                    className="toolbar-button border-transparent bg-transparent"
+                    title="Reorganizar layout do diagrama"
+                  >
+                    Resetar layout
+                  </button>
+                )}
               </>
+            )}
+            {isDatabaseMode && onResetDatabaseLayout && (
+              <button
+                type="button"
+                onClick={onResetDatabaseLayout}
+                className="toolbar-button border-transparent bg-transparent"
+                title="Reorganizar layout do diagrama de banco"
+              >
+                Resetar layout
+              </button>
             )}
           </ToolbarGroup>
 
@@ -367,19 +405,39 @@ export function AppShell({
 
       <section
         className={`grid flex-1 min-h-0 ${
-          isPreviewMaximized
-            ? "grid-cols-1"
-            : isFullWidthMode
+          isDatabaseMode
+            ? `lg:grid-cols-[minmax(320px,0.4fr)_minmax(0,0.6fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
+            : isPreviewMaximized
               ? "grid-cols-1"
-              : isIndexMode
-                ? `lg:grid-cols-[120px_minmax(0,1fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
-                : isDiagramMode
-                  ? `lg:grid-cols-[minmax(240px,0.25fr)_minmax(0,0.75fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
-                  : `lg:grid-cols-[minmax(280px,0.33fr)_minmax(0,0.67fr)] ${isCompactMode ? "gap-2" : "gap-6"}`
+              : isFullWidthMode
+                ? "grid-cols-1"
+                : isIndexMode
+                  ? `lg:grid-cols-[120px_minmax(0,1fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
+                  : isDiagramMode
+                    ? `lg:grid-cols-[minmax(240px,0.25fr)_minmax(0,0.75fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
+                    : `lg:grid-cols-[minmax(280px,0.33fr)_minmax(0,0.67fr)] ${isCompactMode ? "gap-2" : "gap-6"}`
         }`}
       >
-        {isPreviewMaximized || isFullWidthMode ? null : leftPanel}
+        {isDatabaseMode
+          ? leftPanel
+          : isPreviewMaximized || isFullWidthMode
+            ? null
+            : leftPanel}
         {rightPanel}
+        {isDatabaseMode && databaseInfo ? (
+          <p
+            className={`col-span-full text-[10px] uppercase tracking-[0.18em] ${
+              theme === "dark" ? "text-slate-400" : "text-slate-500"
+            }`}
+          >
+            {databaseInfo.tables} tabela{databaseInfo.tables === 1 ? "" : "s"} ·{" "}
+            {databaseInfo.relations} relação
+            {databaseInfo.relations === 1 ? "" : "es"}
+            {databaseInfo.errors > 0
+              ? ` · ${databaseInfo.errors} erro${databaseInfo.errors === 1 ? "" : "s"} no DBML`
+              : ""}
+          </p>
+        ) : null}
       </section>
     </main>
   );

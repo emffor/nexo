@@ -10,7 +10,7 @@ export const STORAGE_KEYS = {
 } as const;
 
 export type AppTheme = 'dark' | 'light';
-export type ViewMode = 'normal' | 'index' | 'cards' | 'diagram';
+export type ViewMode = 'normal' | 'index' | 'cards' | 'diagram' | 'database';
 export type DiagramEdgeStyle = 'curve' | 'square';
 
 export const FONT_SCALE: {
@@ -78,7 +78,8 @@ export function readStoredViewMode(): ViewMode {
     rawValue === 'index' ||
     rawValue === 'cards' ||
     rawValue === 'normal' ||
-    rawValue === 'diagram'
+    rawValue === 'diagram' ||
+    rawValue === 'database'
   ) {
     return rawValue;
   }

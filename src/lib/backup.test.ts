@@ -57,4 +57,50 @@ describe('backup', () => {
 
     expect(restored.hiddenDiagramItemIds).toEqual(['2']);
   });
+
+  it('backup antigo sem databaseDiagram continua valido', () => {
+    const rawText = createBackupText(items);
+    const restored = parseBackupFile(rawText);
+    expect(restored.databaseDiagram).toBeUndefined();
+  });
+
+  it('preserva diagrama de banco no round-trip', () => {
+    const dbRecord = {
+      id: 'main',
+      title: 'Diagrama principal',
+      content: 'Table users { id integer [pk] }',
+      state: {
+        positions: { users: { x: 50, y: 80 } },
+        viewport: { x: 0, y: 0, scale: 1 },
+      },
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-02T00:00:00.000Z',
+    };
+    const rawText = createBackupText(items, undefined, undefined, dbRecord);
+    const restored = parseBackupFile(rawText);
+
+    expect(restored.databaseDiagram).toMatchObject({
+      id: 'main',
+      title: 'Diagrama principal',
+      content: 'Table users { id integer [pk] }',
+      state: {
+        positions: { users: { x: 50, y: 80 } },
+        viewport: { x: 0, y: 0, scale: 1 },
+      },
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-02T00:00:00.000Z',
+    });
+  });
+
+  it('ignora databaseDiagram inválido sem quebrar', () => {
+    const rawText = JSON.stringify({
+      version: 1,
+      exportedAt: '2026-05-01T00:00:00.000Z',
+      items,
+      databaseDiagram: { foo: 'bar' },
+    });
+    const restored = parseBackupFile(rawText);
+    expect(restored.items).toHaveLength(2);
+    expect(restored.databaseDiagram).toBeUndefined();
+  });
 });

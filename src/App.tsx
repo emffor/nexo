@@ -1,17 +1,25 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "./components/AppShell";
 import { AddMarkdownModal } from "./components/AddMarkdownModal";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { CombinedOutputPanel } from "./components/CombinedOutputPanel";
+import { DbmlEditor } from "./components/database/DbmlEditor";
 import { DiagramSidebar } from "./components/DiagramSidebar";
 import { SortableCardsPanel } from "./components/SortableCardsPanel";
 import { ToastContainer } from "./components/Toast";
 import { useMarkdownBoard } from "./hooks/useMarkdownBoard";
 import { useToast } from "./hooks/useToast";
 import { createBackupText, parseBackupFile } from "./lib/backup";
+import {
+  getDatabaseDiagram,
+  saveDatabaseDiagramContent,
+  saveDatabaseDiagramRecord,
+  saveDatabaseDiagramState,
+} from "./lib/databaseDiagramStore";
+import { parseDbml } from "./lib/dbml";
 import {
   clearDiagramState,
   readDiagramState,
@@ -27,6 +35,18 @@ const DiagramPanel = dynamic(() => import("./components/DiagramPanel"), {
     </div>
   ),
 });
+
+const DatabaseDiagramPanel = dynamic(
+  () => import("./components/database/DatabaseDiagramPanel"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full min-h-[480px] w-full items-center justify-center rounded-[1.25rem] border border-white/10 bg-ink/40 text-sm text-slate-400">
+        Carregando diagrama de banco...
+      </div>
+    ),
+  },
+);
 import {
   type AppTheme,
   type DiagramEdgeStyle,
@@ -42,6 +62,10 @@ import {
   readStoredViewMode,
   STORAGE_KEYS,
 } from "./lib/preferences";
+import type {
+  DatabaseDiagramRecord,
+  DatabaseDiagramVisualState,
+} from "./types/database";
 import type { DiagramState } from "./types/diagram";
 import type { MarkdownItem } from "./types/markdown";
 
@@ -83,12 +107,33 @@ export default function App() {
   const [diagramResetSignal, setDiagramResetSignal] = useState(0);
   const [diagramClearEdgesSignal, setDiagramClearEdgesSignal] = useState(0);
   const [diagramReloadStateSignal, setDiagramReloadStateSignal] = useState(0);
+  const [databaseDiagram, setDatabaseDiagram] =
+    useState<DatabaseDiagramRecord | null>(null);
+  const [databaseResetSignal, setDatabaseResetSignal] = useState(0);
+  const databaseContentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const databaseStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const { messages, addToast, dismissToast } = useToast();
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [deletingItem, setDeletingItem] = useState<MarkdownItem | null>(null);
 
   useEffect(() => {
     setIsCompactMode(readStoredCompactMode());
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void getDatabaseDiagram().then((record) => {
+      if (active) {
+        setDatabaseDiagram(record);
+      }
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -213,7 +258,8 @@ export default function App() {
       !isScrollSyncEnabled ||
       isPreviewMaximized ||
       viewMode === "cards" ||
-      viewMode === "diagram"
+      viewMode === "diagram" ||
+      viewMode === "database"
     ) {
       syncSourceRef.current = null;
       return;
@@ -303,9 +349,12 @@ export default function App() {
 
   const handleExport = () => {
     const diagramState = diagramStateRef.current ?? readDiagramState();
-    const backupText = createBackupText(items, diagramState, [
-      ...hiddenDiagramItemIds,
-    ]);
+    const backupText = createBackupText(
+      items,
+      diagramState,
+      [...hiddenDiagramItemIds],
+      databaseDiagram,
+    );
     const blob = new Blob([backupText], { type: "text/plain;charset=utf-8" });
     const url = window.URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -346,6 +395,12 @@ export default function App() {
       }
       setHiddenDiagramItemIds(new Set(importedBackup.hiddenDiagramItemIds));
       setDiagramReloadStateSignal((value) => value + 1);
+      if (importedBackup.databaseDiagram) {
+        const next = await saveDatabaseDiagramRecord(
+          importedBackup.databaseDiagram,
+        );
+        setDatabaseDiagram(next);
+      }
       addToast(
         `${importedBackup.items.length} card(s) importado(s) com sucesso`,
       );
@@ -418,6 +473,54 @@ export default function App() {
     setViewMode(mode);
   };
 
+  const databaseParseResult = useMemo(
+    () => parseDbml(databaseDiagram?.content ?? ""),
+    [databaseDiagram?.content],
+  );
+
+  const handleDatabaseContentChange = useCallback((next: string) => {
+    setDatabaseDiagram((current) =>
+      current ? { ...current, content: next } : current,
+    );
+    if (databaseContentTimerRef.current) {
+      clearTimeout(databaseContentTimerRef.current);
+    }
+    databaseContentTimerRef.current = setTimeout(() => {
+      void saveDatabaseDiagramContent(next);
+    }, 250);
+  }, []);
+
+  const handleDatabaseStateChange = useCallback(
+    (next: DatabaseDiagramVisualState) => {
+      setDatabaseDiagram((current) =>
+        current ? { ...current, state: next } : current,
+      );
+      if (databaseStateTimerRef.current) {
+        clearTimeout(databaseStateTimerRef.current);
+      }
+      databaseStateTimerRef.current = setTimeout(() => {
+        void saveDatabaseDiagramState(next);
+      }, 250);
+    },
+    [],
+  );
+
+  const handleResetDatabaseLayout = useCallback(() => {
+    setDatabaseResetSignal((value) => value + 1);
+    addToast("Layout do diagrama de banco reorganizado", "info");
+  }, [addToast]);
+
+  useEffect(() => {
+    return () => {
+      if (databaseContentTimerRef.current) {
+        clearTimeout(databaseContentTimerRef.current);
+      }
+      if (databaseStateTimerRef.current) {
+        clearTimeout(databaseStateTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleSelectDiagramItem = (item: MarkdownItem) => {
     setActiveItemId(item.id);
   };
@@ -474,6 +577,17 @@ export default function App() {
         }
         onSetDiagramEdgeStyle={setDiagramEdgeStyle}
         onSetViewMode={handleSetViewMode}
+        onResetDiagramLayout={handleResetDiagramLayout}
+        onResetDatabaseLayout={handleResetDatabaseLayout}
+        databaseInfo={
+          viewMode === "database"
+            ? {
+                tables: databaseParseResult.tables.length,
+                relations: databaseParseResult.relations.length,
+                errors: databaseParseResult.errors.length,
+              }
+            : undefined
+        }
         onToggleScrollSync={() => setIsScrollSyncEnabled((current) => !current)}
         onToggleTheme={() =>
           setTheme((current) => (current === "dark" ? "light" : "dark"))
@@ -492,7 +606,14 @@ export default function App() {
         }}
         isMac={isMac}
         leftPanel={
-          viewMode === "diagram" ? (
+          viewMode === "database" ? (
+            <DbmlEditor
+              value={databaseDiagram?.content ?? ""}
+              theme={theme}
+              onChange={handleDatabaseContentChange}
+              errors={databaseParseResult.errors}
+            />
+          ) : viewMode === "diagram" ? (
             <DiagramSidebar
               items={items}
               theme={theme}
@@ -530,7 +651,16 @@ export default function App() {
           )
         }
         rightPanel={
-          viewMode === "diagram" ? (
+          viewMode === "database" ? (
+            <DatabaseDiagramPanel
+              tables={databaseParseResult.tables}
+              relations={databaseParseResult.relations}
+              theme={theme}
+              state={databaseDiagram?.state ?? { positions: {} }}
+              onStateChange={handleDatabaseStateChange}
+              resetSignal={databaseResetSignal}
+            />
+          ) : viewMode === "diagram" ? (
             <DiagramPanel
               items={items}
               theme={theme}
