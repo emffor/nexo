@@ -28,7 +28,7 @@ export interface DiagramState {
 }
 
 export const DIAGRAM_STATUS_OPTIONS: { value: DiagramStatus; label: string }[] = [
-  { value: 'backlog', label: 'Backlog' },
+  { value: 'backlog', label: 'Não iniciado' },
   { value: 'impedido', label: 'Impedido' },
   { value: 'em-desenvolvimento', label: 'Em Desenvolvimento' },
   { value: 'revisando', label: 'Revisando' },
