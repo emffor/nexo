@@ -1,4 +1,5 @@
 import type { DiagramStatus, MarkdownItem } from '../types/markdown';
+import type { DiagramState } from '../types/diagram';
 import { normalizeMarkdownContent } from './items';
 
 const VALID_STATUSES: DiagramStatus[] = [
@@ -22,14 +23,17 @@ interface MarkdownBackupFile {
   version: 1;
   exportedAt: string;
   items: MarkdownItem[];
+  diagramState?: DiagramState;
 }
 
 export interface ParsedBackupFile {
   items: MarkdownItem[];
+  diagramState?: DiagramState;
 }
 
 export function createBackupText(
   items: MarkdownItem[],
+  diagramState?: DiagramState,
 ): string {
   const payload: MarkdownBackupFile = {
     version: 1,
@@ -38,6 +42,7 @@ export function createBackupText(
       ...item,
       order: index,
     })),
+    diagramState,
   };
 
   return JSON.stringify(payload, null, 2);
@@ -72,8 +77,68 @@ export function parseBackupFile(rawText: string): ParsedBackupFile {
     };
   });
 
+  let diagramState: DiagramState | undefined;
+
+  if (parsed.diagramState && typeof parsed.diagramState === 'object') {
+    const ds = parsed.diagramState as unknown as Record<string, unknown>;
+    const positions: Record<string, { x: number; y: number }> = {};
+    const edges: Array<{ id: string; from: string; to: string }> = [];
+    let viewport: DiagramState['viewport'];
+
+    if (ds.positions && typeof ds.positions === 'object') {
+      for (const [key, value] of Object.entries(ds.positions)) {
+        if (
+          value &&
+          typeof value === 'object' &&
+          typeof (value as { x: unknown }).x === 'number' &&
+          typeof (value as { y: unknown }).y === 'number'
+        ) {
+          positions[key] = {
+            x: (value as { x: number }).x,
+            y: (value as { y: number }).y,
+          };
+        }
+      }
+    }
+
+    if (Array.isArray(ds.edges)) {
+      for (const edge of ds.edges) {
+        if (
+          edge &&
+          typeof edge === 'object' &&
+          typeof (edge as { id: unknown }).id === 'string' &&
+          typeof (edge as { from: unknown }).from === 'string' &&
+          typeof (edge as { to: unknown }).to === 'string'
+        ) {
+          edges.push({
+            id: (edge as { id: string }).id,
+            from: (edge as { from: string }).from,
+            to: (edge as { to: string }).to,
+          });
+        }
+      }
+    }
+
+    if (
+      ds.viewport &&
+      typeof ds.viewport === 'object' &&
+      typeof (ds.viewport as { x: unknown }).x === 'number' &&
+      typeof (ds.viewport as { y: unknown }).y === 'number' &&
+      typeof (ds.viewport as { scale: unknown }).scale === 'number'
+    ) {
+      viewport = {
+        x: (ds.viewport as { x: number }).x,
+        y: (ds.viewport as { y: number }).y,
+        scale: (ds.viewport as { scale: number }).scale,
+      };
+    }
+
+    diagramState = { positions, edges, viewport };
+  }
+
   return {
     items,
+    diagramState,
   };
 }
 

@@ -11,9 +11,16 @@ export interface DiagramEdge {
   to: string;
 }
 
+export interface DiagramViewport {
+  x: number;
+  y: number;
+  scale: number;
+}
+
 export interface DiagramState {
   positions: Record<string, DiagramNodePosition>;
   edges: DiagramEdge[];
+  viewport?: DiagramViewport;
 }
 
 export const DIAGRAM_STATUS_OPTIONS: { value: DiagramStatus; label: string }[] = [

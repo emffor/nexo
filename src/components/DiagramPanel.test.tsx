@@ -4,16 +4,33 @@ import { describe, expect, it, vi } from 'vitest';
 import type { MarkdownItem } from '../types/markdown';
 
 vi.mock('react-konva', () => {
+  const stageRefValue = {
+    position: vi.fn(),
+    scale: vi.fn(),
+    batchDraw: vi.fn(),
+  };
+
   const passthrough = forwardRef<HTMLDivElement, { children?: ReactNode }>(
     function Passthrough({ children }, ref) {
       return <div ref={ref}>{children}</div>;
     },
   );
 
+  const stage = forwardRef<HTMLDivElement, { children?: ReactNode }>(
+    function Stage({ children }, ref) {
+      if (typeof ref === 'function') {
+        ref(stageRefValue as unknown as HTMLDivElement);
+      } else if (ref) {
+        ref.current = stageRefValue as unknown as HTMLDivElement;
+      }
+      return <div>{children}</div>;
+    },
+  );
+
   const textNode = ({ text }: { text?: string }) => <span>{text}</span>;
 
   return {
-    Stage: passthrough,
+    Stage: stage,
     Layer: passthrough,
     Group: passthrough,
     Rect: () => <div data-testid="rect" />,

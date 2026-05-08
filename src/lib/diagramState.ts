@@ -1,4 +1,4 @@
-import type { DiagramEdge, DiagramState } from '../types/diagram';
+import type { DiagramEdge, DiagramState, DiagramViewport } from '../types/diagram';
 
 const STORAGE_KEY = 'organizar-markdown:diagram-state';
 
@@ -6,6 +6,10 @@ const emptyState: DiagramState = {
   positions: {},
   edges: [],
 };
+
+function isValidNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
 
 function isValidEdge(value: unknown): value is DiagramEdge {
   if (!value || typeof value !== 'object') {
@@ -17,6 +21,27 @@ function isValidEdge(value: unknown): value is DiagramEdge {
     typeof edge.from === 'string' &&
     typeof edge.to === 'string'
   );
+}
+
+function parseViewport(value: unknown): DiagramViewport | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+
+  const viewport = value as Record<string, unknown>;
+  if (
+    !isValidNumber(viewport.x) ||
+    !isValidNumber(viewport.y) ||
+    !isValidNumber(viewport.scale)
+  ) {
+    return undefined;
+  }
+
+  return {
+    x: viewport.x,
+    y: viewport.y,
+    scale: viewport.scale,
+  };
 }
 
 export function readDiagramState(): DiagramState {
@@ -38,8 +63,8 @@ export function readDiagramState(): DiagramState {
         if (
           value &&
           typeof value === 'object' &&
-          typeof (value as { x: unknown }).x === 'number' &&
-          typeof (value as { y: unknown }).y === 'number'
+          isValidNumber((value as { x: unknown }).x) &&
+          isValidNumber((value as { y: unknown }).y)
         ) {
           positions[key] = { x: (value as { x: number }).x, y: (value as { y: number }).y };
         }
@@ -49,8 +74,9 @@ export function readDiagramState(): DiagramState {
     const edges: DiagramEdge[] = Array.isArray(parsed.edges)
       ? parsed.edges.filter(isValidEdge)
       : [];
+    const viewport = parseViewport(parsed.viewport);
 
-    return { positions, edges };
+    return { positions, edges, viewport };
   } catch {
     return { ...emptyState };
   }

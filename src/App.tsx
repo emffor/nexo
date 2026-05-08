@@ -12,7 +12,11 @@ import { ToastContainer } from "./components/Toast";
 import { useMarkdownBoard } from "./hooks/useMarkdownBoard";
 import { useToast } from "./hooks/useToast";
 import { createBackupText, parseBackupFile } from "./lib/backup";
-import { clearDiagramState } from "./lib/diagramState";
+import {
+  clearDiagramState,
+  readDiagramState,
+  writeDiagramState,
+} from "./lib/diagramState";
 import { buildCombinedContent, getDisplayTitle } from "./lib/items";
 
 const DiagramPanel = dynamic(() => import("./components/DiagramPanel"), {
@@ -243,7 +247,8 @@ export default function App() {
   };
 
   const handleExport = () => {
-    const backupText = createBackupText(items);
+    const diagramState = readDiagramState();
+    const backupText = createBackupText(items, diagramState);
     const blob = new Blob([backupText], { type: "text/plain;charset=utf-8" });
     const url = window.URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -271,6 +276,9 @@ export default function App() {
       const rawText = await file.text();
       const importedBackup = parseBackupFile(rawText);
       await replaceItems(importedBackup.items);
+      if (importedBackup.diagramState) {
+        writeDiagramState(importedBackup.diagramState);
+      }
       addToast(
         `${importedBackup.items.length} card(s) importado(s) com sucesso`,
       );

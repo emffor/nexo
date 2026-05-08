@@ -20,12 +20,14 @@ describe('diagramState', () => {
     writeDiagramState({
       positions: { a: { x: 10, y: 20 } },
       edges: [{ id: 'e1', from: 'a', to: 'b' }],
+      viewport: { x: -120, y: 80, scale: 0.75 },
     });
 
     const state = readDiagramState();
     expect(state.positions.a).toEqual({ x: 10, y: 20 });
     expect(state.edges).toHaveLength(1);
     expect(state.edges[0]).toMatchObject({ from: 'a', to: 'b' });
+    expect(state.viewport).toEqual({ x: -120, y: 80, scale: 0.75 });
   });
 
   it('descarta entradas invalidas com seguranca', () => {
@@ -38,12 +40,14 @@ describe('diagramState', () => {
           { id: 5, from: 1 },
           null,
         ],
+        viewport: { x: 1, y: 'oops', scale: 1 },
       }),
     );
 
     const state = readDiagramState();
     expect(state.positions).toEqual({ b: { x: 1, y: 2 } });
     expect(state.edges).toEqual([{ id: 'e1', from: 'a', to: 'b' }]);
+    expect(state.viewport).toBeUndefined();
   });
 
   it('limpa o estado salvo', () => {

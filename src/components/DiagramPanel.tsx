@@ -22,7 +22,11 @@ import {
 import { readDiagramState, writeDiagramState } from "../lib/diagramState";
 import type { AppTheme } from "../lib/preferences";
 import { DIAGRAM_STATUS_PALETTE } from "../types/diagram";
-import type { DiagramEdge, DiagramNodePosition } from "../types/diagram";
+import type {
+  DiagramEdge,
+  DiagramNodePosition,
+  DiagramViewport,
+} from "../types/diagram";
 import type { DiagramStatus, MarkdownItem } from "../types/markdown";
 import { DiagramLegend } from "./DiagramLegend";
 
@@ -43,16 +47,10 @@ interface PendingConnection {
   pointerY: number;
 }
 
-interface StageTransform {
-  x: number;
-  y: number;
-  scale: number;
-}
-
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 1.8;
 const SCALE_STEP = 1.05;
-const INITIAL_STAGE_TRANSFORM: StageTransform = { x: 0, y: 0, scale: 1 };
+const INITIAL_STAGE_TRANSFORM: DiagramViewport = { x: 0, y: 0, scale: 1 };
 
 Konva.pixelRatio = 1;
 
@@ -90,7 +88,12 @@ export default function DiagramPanel({
   const nodesLayerRef = useRef<Konva.Layer | null>(null);
   const dragLayerRef = useRef<Konva.Layer | null>(null);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const stageTransformRef = useRef<StageTransform>(INITIAL_STAGE_TRANSFORM);
+  const viewportPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const stageTransformRef = useRef<DiagramViewport>(INITIAL_STAGE_TRANSFORM);
+  const positionsRef = useRef<Record<string, DiagramNodePosition>>({});
+  const edgesRef = useRef<DiagramEdge[]>([]);
 
   const [size, setSize] = useState<{ width: number; height: number }>({
     width: 800,
@@ -102,8 +105,9 @@ export default function DiagramPanel({
   const [edges, setEdges] = useState<DiagramEdge[]>([]);
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  const applyStageTransform = useCallback((transform: StageTransform) => {
+  const applyStageTransform = useCallback((transform: DiagramViewport) => {
     stageTransformRef.current = transform;
     const stage = stageRef.current;
     if (!stage) {
@@ -114,15 +118,41 @@ export default function DiagramPanel({
     stage.batchDraw();
   }, []);
 
+  const scheduleViewportPersist = useCallback(() => {
+    if (viewportPersistTimerRef.current) {
+      clearTimeout(viewportPersistTimerRef.current);
+    }
+    viewportPersistTimerRef.current = setTimeout(() => {
+      writeDiagramState({
+        positions: positionsRef.current,
+        edges: edgesRef.current,
+        viewport: stageTransformRef.current,
+      });
+    }, 250);
+  }, []);
+
   // hidratar estado salvo
   useEffect(() => {
     const stored = readDiagramState();
     setPositions(stored.positions);
     setEdges(stored.edges);
-  }, []);
+    applyStageTransform(stored.viewport ?? INITIAL_STAGE_TRANSFORM);
+    setIsHydrated(true);
+  }, [applyStageTransform]);
+
+  useEffect(() => {
+    positionsRef.current = positions;
+  }, [positions]);
+
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
 
   // garantir posicao para todo item
   useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
     setPositions((current) => {
       const missing = items.filter((item) => !current[item.id]);
       if (missing.length === 0) {
@@ -141,7 +171,7 @@ export default function DiagramPanel({
       });
       return next;
     });
-  }, [items]);
+  }, [items, isHydrated]);
 
   // limpar edges/posicoes orfãs quando items mudam
   useEffect(() => {
@@ -155,18 +185,33 @@ export default function DiagramPanel({
 
   // persistir
   useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
     if (persistTimerRef.current) {
       clearTimeout(persistTimerRef.current);
     }
     persistTimerRef.current = setTimeout(() => {
-      writeDiagramState({ positions, edges });
+      writeDiagramState({
+        positions,
+        edges,
+        viewport: stageTransformRef.current,
+      });
     }, 250);
     return () => {
       if (persistTimerRef.current) {
         clearTimeout(persistTimerRef.current);
       }
     };
-  }, [positions, edges]);
+  }, [positions, edges, isHydrated]);
+
+  useEffect(() => {
+    return () => {
+      if (viewportPersistTimerRef.current) {
+        clearTimeout(viewportPersistTimerRef.current);
+      }
+    };
+  }, []);
 
   // resetLayout quando o sinal mudar
   useEffect(() => {
@@ -217,10 +262,17 @@ export default function DiagramPanel({
       node.position({ x, y });
       nodesLayer?.batchDraw();
       dragLayerRef.current?.batchDraw();
-      setPositions((current) => ({
-        ...current,
+      const nextPositions = {
+        ...positionsRef.current,
         [id]: { x, y },
-      }));
+      };
+      positionsRef.current = nextPositions;
+      setPositions(nextPositions);
+      writeDiagramState({
+        positions: nextPositions,
+        edges: edgesRef.current,
+        viewport: stageTransformRef.current,
+      });
     },
     [],
   );
@@ -329,31 +381,35 @@ export default function DiagramPanel({
     setPending(null);
   }, [pending, findNodeAtPoint]);
 
-  const handleWheel = useCallback((event: KonvaEventObject<WheelEvent>) => {
-    event.evt.preventDefault();
-    const stage = stageRef.current;
-    if (!stage) {
-      return;
-    }
-    const oldScale = stage.scaleX();
-    const pointer = stage.getPointerPosition();
-    if (!pointer) {
-      return;
-    }
-    const mousePointTo = {
-      x: (pointer.x - stage.x()) / oldScale,
-      y: (pointer.y - stage.y()) / oldScale,
-    };
-    const direction = event.evt.deltaY > 0 ? -1 : 1;
-    const rawScale =
-      direction > 0 ? oldScale * SCALE_STEP : oldScale / SCALE_STEP;
-    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, rawScale));
-    const newPos = {
-      x: pointer.x - mousePointTo.x * newScale,
-      y: pointer.y - mousePointTo.y * newScale,
-    };
-    applyStageTransform({ ...newPos, scale: newScale });
-  }, [applyStageTransform]);
+  const handleWheel = useCallback(
+    (event: KonvaEventObject<WheelEvent>) => {
+      event.evt.preventDefault();
+      const stage = stageRef.current;
+      if (!stage) {
+        return;
+      }
+      const oldScale = stage.scaleX();
+      const pointer = stage.getPointerPosition();
+      if (!pointer) {
+        return;
+      }
+      const mousePointTo = {
+        x: (pointer.x - stage.x()) / oldScale,
+        y: (pointer.y - stage.y()) / oldScale,
+      };
+      const direction = event.evt.deltaY > 0 ? -1 : 1;
+      const rawScale =
+        direction > 0 ? oldScale * SCALE_STEP : oldScale / SCALE_STEP;
+      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, rawScale));
+      const newPos = {
+        x: pointer.x - mousePointTo.x * newScale,
+        y: pointer.y - mousePointTo.y * newScale,
+      };
+      applyStageTransform({ ...newPos, scale: newScale });
+      scheduleViewportPersist();
+    },
+    [applyStageTransform, scheduleViewportPersist],
+  );
 
   const handleStageDragEnd = useCallback(
     (event: KonvaEventObject<DragEvent>) => {
@@ -365,6 +421,11 @@ export default function DiagramPanel({
         y: event.target.y(),
         scale: event.target.scaleX(),
       };
+      writeDiagramState({
+        positions: positionsRef.current,
+        edges: edgesRef.current,
+        viewport: stageTransformRef.current,
+      });
     },
     [],
   );
