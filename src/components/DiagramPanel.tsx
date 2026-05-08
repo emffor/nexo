@@ -114,32 +114,18 @@ function getEdgePoints(
   const to = getPortPosition(toPosition, toPort);
   const fromDirection = PORT_DIRECTIONS[fromPort];
   const toDirection = PORT_DIRECTIONS[toPort];
-  const offset = 36;
-  const fromHandle = {
-    x: from.x + fromDirection.x * offset,
-    y: from.y + fromDirection.y * offset,
+  const distance = Math.hypot(to.x - from.x, to.y - from.y);
+  const controlOffset = Math.max(72, Math.min(180, distance * 0.45));
+  const fromControl = {
+    x: from.x + fromDirection.x * controlOffset,
+    y: from.y + fromDirection.y * controlOffset,
   };
-  const toHandle = {
-    x: to.x + toDirection.x * offset,
-    y: to.y + toDirection.y * offset,
+  const toControl = {
+    x: to.x + toDirection.x * controlOffset,
+    y: to.y + toDirection.y * controlOffset,
   };
-  const corner =
-    fromDirection.x !== 0
-      ? { x: fromHandle.x, y: toHandle.y }
-      : { x: toHandle.x, y: fromHandle.y };
 
-  return [
-    from.x,
-    from.y,
-    fromHandle.x,
-    fromHandle.y,
-    corner.x,
-    corner.y,
-    toHandle.x,
-    toHandle.y,
-    to.x,
-    to.y,
-  ];
+  return [from.x, from.y, fromControl.x, fromControl.y, toControl.x, toControl.y, to.x, to.y];
 }
 
 export default function DiagramPanel({
@@ -749,6 +735,9 @@ export default function DiagramPanel({
                 stroke={isHover ? edgeHoverColor : edgeColor}
                 strokeWidth={isHover ? 2.5 : 1.8}
                 fill={isHover ? edgeHoverColor : edgeColor}
+                bezier
+                lineCap="round"
+                lineJoin="round"
                 perfectDrawEnabled={false}
                 shadowForStrokeEnabled={false}
                 pointerLength={8}
