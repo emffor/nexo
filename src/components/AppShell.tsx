@@ -169,8 +169,12 @@ export function AppShell({
                   aria-pressed={isActive}
                   className={`rounded-md px-2 py-1 text-[11px] font-medium transition focus:outline-none focus:ring-2 focus:ring-teal-200 focus:ring-offset-1 focus:ring-offset-ink ${
                     isActive
-                      ? "bg-teal-300/[0.14] text-teal-100 shadow-[inset_0_0_0_1px_rgba(94,234,212,0.25)]"
-                      : "text-slate-300 hover:bg-white/[0.05] hover:text-slate-100"
+                      ? theme === "light"
+                        ? "bg-teal-50 text-teal-700 shadow-[inset_0_0_0_1px_rgba(20,184,166,0.3)]"
+                        : "bg-teal-300/[0.14] text-teal-100 shadow-[inset_0_0_0_1px_rgba(94,234,212,0.25)]"
+                      : theme === "light"
+                        ? "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        : "text-slate-300 hover:bg-white/[0.05] hover:text-slate-100"
                   }`}
                 >
                   {label}

@@ -483,4 +483,70 @@
   [data-theme="light"] .markdown-preview h2 {
     border-bottom-color: rgba(148, 163, 184, 0.25);
   }
+
+  [data-theme="light"] header {
+    background: rgba(255, 255, 255, 0.85) !important;
+    border-color: rgba(148, 163, 184, 0.2) !important;
+  }
+
+  [data-theme="light"] header h1 {
+    color: #0f172a !important;
+  }
+
+  [data-theme="light"] header p {
+    color: #0e7490 !important;
+  }
+
+  [data-theme="light"] .toolbar-button {
+    border-color: rgba(148, 163, 184, 0.2) !important;
+    background: rgba(0, 0, 0, 0.02) !important;
+    color: #475569 !important;
+  }
+
+  [data-theme="light"] .toolbar-button:hover {
+    border-color: rgba(148, 163, 184, 0.3) !important;
+    background: rgba(0, 0, 0, 0.04) !important;
+    color: #1e293b !important;
+  }
+
+  [data-theme="light"] .toolbar-button--accent {
+    background: #14b8a6 !important;
+    color: #fff !important;
+    border-color: transparent !important;
+  }
+
+  [data-theme="light"] .toolbar-button--accent:hover {
+    background: #0d9488 !important;
+  }
+
+  [data-theme="light"] .toolbar-button--primary {
+    background: rgba(20, 184, 166, 0.1) !important;
+    border-color: rgba(20, 184, 166, 0.25) !important;
+    color: #0f766e !important;
+  }
+
+  [data-theme="light"] .toolbar-button--primary:hover {
+    background: rgba(20, 184, 166, 0.15) !important;
+  }
+
+  [data-theme="light"] .toolbar-button--danger {
+    background: rgba(239, 68, 68, 0.08) !important;
+    border-color: rgba(239, 68, 68, 0.2) !important;
+    color: #dc2626 !important;
+  }
+
+  [data-theme="light"] .toolbar-button--danger:hover {
+    background: rgba(239, 68, 68, 0.12) !important;
+  }
+
+  [data-theme="light"] .toolbar-badge {
+    border-color: rgba(148, 163, 184, 0.2) !important;
+    background: rgba(0, 0, 0, 0.02) !important;
+    color: #475569 !important;
+  }
+
+  [data-theme="light"] [role="group"] {
+    background: rgba(255, 255, 255, 0.6) !important;
+    border-color: rgba(148, 163, 184, 0.2) !important;
+  }
 }
