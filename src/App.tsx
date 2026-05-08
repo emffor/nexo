@@ -39,6 +39,7 @@ import {
   readStoredViewMode,
   STORAGE_KEYS,
 } from "./lib/preferences";
+import type { DiagramState } from "./types/diagram";
 import type { MarkdownItem } from "./types/markdown";
 
 export default function App() {
@@ -54,6 +55,7 @@ export default function App() {
   const [theme, setTheme] = useState<AppTheme>("dark");
   const [arePreferencesLoaded, setArePreferencesLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const diagramStateRef = useRef<DiagramState | null>(null);
   const leftScrollRef = useRef<HTMLDivElement | null>(null);
   const rightScrollRef = useRef<HTMLDivElement | null>(null);
   const syncSourceRef = useRef<"left" | "right" | null>(null);
@@ -70,6 +72,7 @@ export default function App() {
   } = useMarkdownBoard();
   const [diagramResetSignal, setDiagramResetSignal] = useState(0);
   const [diagramClearEdgesSignal, setDiagramClearEdgesSignal] = useState(0);
+  const [diagramReloadStateSignal, setDiagramReloadStateSignal] = useState(0);
   const { messages, addToast, dismissToast } = useToast();
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [deletingItem, setDeletingItem] = useState<MarkdownItem | null>(null);
@@ -236,6 +239,7 @@ export default function App() {
   const executeClearAll = async () => {
     setConfirmClearAll(false);
     const snapshot = [...items];
+    diagramStateRef.current = null;
     clearDiagramState();
     await clearItems();
     addToast("Todos os cards foram removidos", "info", {
@@ -247,7 +251,7 @@ export default function App() {
   };
 
   const handleExport = () => {
-    const diagramState = readDiagramState();
+    const diagramState = diagramStateRef.current ?? readDiagramState();
     const backupText = createBackupText(items, diagramState);
     const blob = new Blob([backupText], { type: "text/plain;charset=utf-8" });
     const url = window.URL.createObjectURL(blob);
@@ -258,6 +262,10 @@ export default function App() {
     window.URL.revokeObjectURL(url);
     addToast(`Backup exportado com ${items.length} card(s)`);
   };
+
+  const handleDiagramStateChange = useCallback((state: DiagramState) => {
+    diagramStateRef.current = state;
+  }, []);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -277,8 +285,13 @@ export default function App() {
       const importedBackup = parseBackupFile(rawText);
       await replaceItems(importedBackup.items);
       if (importedBackup.diagramState) {
+        diagramStateRef.current = importedBackup.diagramState;
         writeDiagramState(importedBackup.diagramState);
+      } else {
+        diagramStateRef.current = null;
+        clearDiagramState();
       }
+      setDiagramReloadStateSignal((value) => value + 1);
       addToast(
         `${importedBackup.items.length} card(s) importado(s) com sucesso`,
       );
@@ -466,6 +479,8 @@ export default function App() {
               scrollContainerRef={rightScrollRef}
               resetLayoutSignal={diagramResetSignal}
               clearEdgesSignal={diagramClearEdgesSignal}
+              reloadStateSignal={diagramReloadStateSignal}
+              onDiagramStateChange={handleDiagramStateChange}
             />
           ) : (
             <CombinedOutputPanel

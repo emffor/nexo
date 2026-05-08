@@ -26,6 +26,7 @@ import type {
   DiagramEdge,
   DiagramNodePosition,
   DiagramPortSide,
+  DiagramState,
   DiagramViewport,
 } from "../types/diagram";
 import type { DiagramStatus, MarkdownItem } from "../types/markdown";
@@ -40,6 +41,8 @@ interface DiagramPanelProps {
   scrollContainerRef?: RefObject<HTMLDivElement>;
   resetLayoutSignal?: number;
   clearEdgesSignal?: number;
+  reloadStateSignal?: number;
+  onDiagramStateChange?: (state: DiagramState) => void;
 }
 
 interface PendingConnection {
@@ -145,6 +148,8 @@ export default function DiagramPanel({
   scrollContainerRef,
   resetLayoutSignal = 0,
   clearEdgesSignal = 0,
+  reloadStateSignal = 0,
+  onDiagramStateChange,
 }: DiagramPanelProps) {
   void _onChangeStatus;
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -155,6 +160,7 @@ export default function DiagramPanel({
   const viewportPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const lastResetLayoutSignalRef = useRef(resetLayoutSignal);
   const stageTransformRef = useRef<DiagramViewport>(INITIAL_STAGE_TRANSFORM);
   const positionsRef = useRef<Record<string, DiagramNodePosition>>({});
   const edgesRef = useRef<DiagramEdge[]>([]);
@@ -170,6 +176,14 @@ export default function DiagramPanel({
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+
+  const emitDiagramState = useCallback(
+    (state: DiagramState) => {
+      writeDiagramState(state);
+      onDiagramStateChange?.(state);
+    },
+    [onDiagramStateChange],
+  );
 
   const applyStageTransform = useCallback((transform: DiagramViewport) => {
     stageTransformRef.current = transform;
@@ -187,22 +201,81 @@ export default function DiagramPanel({
       clearTimeout(viewportPersistTimerRef.current);
     }
     viewportPersistTimerRef.current = setTimeout(() => {
-      writeDiagramState({
+      emitDiagramState({
         positions: positionsRef.current,
         edges: edgesRef.current,
         viewport: stageTransformRef.current,
       });
     }, 250);
-  }, []);
+  }, [emitDiagramState]);
 
-  // hidratar estado salvo
-  useEffect(() => {
+  const loadStoredDiagramState = useCallback(() => {
     const stored = readDiagramState();
+    positionsRef.current = stored.positions;
+    edgesRef.current = stored.edges;
     setPositions(stored.positions);
     setEdges(stored.edges);
     applyStageTransform(stored.viewport ?? INITIAL_STAGE_TRANSFORM);
+    onDiagramStateChange?.(stored);
     setIsHydrated(true);
-  }, [applyStageTransform]);
+  }, [applyStageTransform, onDiagramStateChange]);
+
+  // hidratar estado salvo
+  useEffect(() => {
+    loadStoredDiagramState();
+  }, [loadStoredDiagramState]);
+
+  useEffect(() => {
+    if (reloadStateSignal === 0) {
+      return;
+    }
+    loadStoredDiagramState();
+  }, [reloadStateSignal, loadStoredDiagramState]);
+
+  const persistCurrentDiagramState = useCallback(() => {
+    emitDiagramState({
+      positions: positionsRef.current,
+      edges: edgesRef.current,
+      viewport: stageTransformRef.current,
+    });
+  }, [emitDiagramState]);
+
+  const setDiagramEdges = useCallback(
+    (nextEdges: DiagramEdge[]) => {
+      edgesRef.current = nextEdges;
+      setEdges(nextEdges);
+      emitDiagramState({
+        positions: positionsRef.current,
+        edges: nextEdges,
+        viewport: stageTransformRef.current,
+      });
+    },
+    [emitDiagramState],
+  );
+
+  const setDiagramPositions = useCallback(
+    (nextPositions: Record<string, DiagramNodePosition>) => {
+      positionsRef.current = nextPositions;
+      setPositions(nextPositions);
+      emitDiagramState({
+        positions: nextPositions,
+        edges: edgesRef.current,
+        viewport: stageTransformRef.current,
+      });
+    },
+    [emitDiagramState],
+  );
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+    onDiagramStateChange?.({
+      positions,
+      edges,
+      viewport: stageTransformRef.current,
+    });
+  }, [edges, isHydrated, onDiagramStateChange, positions]);
 
   useEffect(() => {
     positionsRef.current = positions;
@@ -240,12 +313,22 @@ export default function DiagramPanel({
   // limpar edges/posicoes orfãs quando items mudam
   useEffect(() => {
     const validIds = new Set(items.map((item) => item.id));
-    setEdges((current) =>
-      current.filter(
+    setEdges((current) => {
+      const next = current.filter(
         (edge) => validIds.has(edge.from) && validIds.has(edge.to),
-      ),
-    );
-  }, [items]);
+      );
+      if (next.length === current.length) {
+        return current;
+      }
+      edgesRef.current = next;
+      emitDiagramState({
+        positions: positionsRef.current,
+        edges: next,
+        viewport: stageTransformRef.current,
+      });
+      return next;
+    });
+  }, [emitDiagramState, items]);
 
   // persistir
   useEffect(() => {
@@ -256,7 +339,7 @@ export default function DiagramPanel({
       clearTimeout(persistTimerRef.current);
     }
     persistTimerRef.current = setTimeout(() => {
-      writeDiagramState({
+      emitDiagramState({
         positions,
         edges,
         viewport: stageTransformRef.current,
@@ -267,7 +350,7 @@ export default function DiagramPanel({
         clearTimeout(persistTimerRef.current);
       }
     };
-  }, [positions, edges, isHydrated]);
+  }, [positions, edges, emitDiagramState, isHydrated]);
 
   useEffect(() => {
     return () => {
@@ -279,24 +362,32 @@ export default function DiagramPanel({
 
   // resetLayout quando o sinal mudar
   useEffect(() => {
-    if (resetLayoutSignal === 0) {
+    if (
+      resetLayoutSignal === 0 ||
+      resetLayoutSignal === lastResetLayoutSignalRef.current
+    ) {
       return;
     }
-    setPositions(
-      computeAutoLayout(
-        items.map((i) => i.id),
-        4,
-      ),
+    lastResetLayoutSignalRef.current = resetLayoutSignal;
+    const nextPositions = computeAutoLayout(
+      items.map((i) => i.id),
+      4,
     );
+    setDiagramPositions(nextPositions);
     applyStageTransform(INITIAL_STAGE_TRANSFORM);
-  }, [resetLayoutSignal]); // eslint-disable-line react-hooks/exhaustive-deps
+    emitDiagramState({
+      positions: nextPositions,
+      edges: edgesRef.current,
+      viewport: INITIAL_STAGE_TRANSFORM,
+    });
+  }, [applyStageTransform, emitDiagramState, items, resetLayoutSignal, setDiagramPositions]);
 
   useEffect(() => {
     if (clearEdgesSignal === 0) {
       return;
     }
-    setEdges([]);
-  }, [clearEdgesSignal]);
+    setDiagramEdges([]);
+  }, [clearEdgesSignal, setDiagramEdges]);
 
   // medir container
   useEffect(() => {
@@ -330,15 +421,9 @@ export default function DiagramPanel({
         ...positionsRef.current,
         [id]: { x, y },
       };
-      positionsRef.current = nextPositions;
-      setPositions(nextPositions);
-      writeDiagramState({
-        positions: nextPositions,
-        edges: edgesRef.current,
-        viewport: stageTransformRef.current,
-      });
+      setDiagramPositions(nextPositions);
     },
-    [],
+    [setDiagramPositions],
   );
 
   const handleNodeDragStart = useCallback(
@@ -439,7 +524,7 @@ export default function DiagramPanel({
         if (exists) {
           return current;
         }
-        return [
+        const nextEdges = [
           ...current,
           {
             id: `${pending.fromId}-${pending.fromPort}-${targetPort.item.id}-${targetPort.side}-${Date.now()}`,
@@ -449,10 +534,17 @@ export default function DiagramPanel({
             toPort: targetPort.side,
           },
         ];
+        edgesRef.current = nextEdges;
+        emitDiagramState({
+          positions: positionsRef.current,
+          edges: nextEdges,
+          viewport: stageTransformRef.current,
+        });
+        return nextEdges;
       });
     }
     setPending(null);
-  }, [pending, findPortAtPoint]);
+  }, [emitDiagramState, pending, findPortAtPoint]);
 
   const handleWheel = useCallback(
     (event: KonvaEventObject<WheelEvent>) => {
@@ -494,18 +586,23 @@ export default function DiagramPanel({
         y: event.target.y(),
         scale: event.target.scaleX(),
       };
-      writeDiagramState({
-        positions: positionsRef.current,
-        edges: edgesRef.current,
-        viewport: stageTransformRef.current,
-      });
+      persistCurrentDiagramState();
     },
-    [],
+    [persistCurrentDiagramState],
   );
 
   const handleEdgeClick = useCallback((edgeId: string) => {
-    setEdges((current) => current.filter((edge) => edge.id !== edgeId));
-  }, []);
+    setEdges((current) => {
+      const nextEdges = current.filter((edge) => edge.id !== edgeId);
+      edgesRef.current = nextEdges;
+      emitDiagramState({
+        positions: positionsRef.current,
+        edges: nextEdges,
+        viewport: stageTransformRef.current,
+      });
+      return nextEdges;
+    });
+  }, [emitDiagramState]);
 
   const isDark = theme === "dark";
   const stageBg = isDark ? "#0b0f17" : "#f8fafc";
