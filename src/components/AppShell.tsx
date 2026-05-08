@@ -126,7 +126,11 @@ export function AppShell({
       style={{ ["--font-scale" as string]: String(fontScale) }}
     >
       <header
-        className={`flex flex-col gap-2 border-b border-white/10 bg-ink text-white shadow-[0_1px_0_rgba(255,255,255,0.04)] ${
+        className={`flex flex-col gap-2 border-b shadow-[0_1px_0_rgba(255,255,255,0.04)] ${
+          theme === "dark"
+            ? "border-white/10 bg-ink text-white"
+            : "border-slate-200 bg-white/90 text-slate-950 shadow-slate-200/80"
+        } ${
           isCompactMode
             ? "mb-2 rounded-none px-4 py-2 sm:px-5"
             : "mb-3 rounded-[1.25rem] px-5 py-3.5 sm:px-6"
@@ -138,19 +142,41 @@ export function AppShell({
               isPreviewMaximized ? "max-w-2xl" : "max-w-4xl"
             }`}
           >
-            <div className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-teal-300/20 bg-teal-300/[0.12] shadow-[inset_0_0_0_1px_rgba(94,234,212,0.08)]">
-              <span className="font-mono text-[14px] font-semibold leading-none text-teal-100">
+            <div
+              className={`mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg border shadow-[inset_0_0_0_1px_rgba(94,234,212,0.08)] ${
+                theme === "dark"
+                  ? "border-teal-300/20 bg-teal-300/[0.12]"
+                  : "border-teal-500/30 bg-teal-50"
+              }`}
+            >
+              <span
+                className={`font-mono text-[14px] font-semibold leading-none ${
+                  theme === "dark" ? "text-teal-100" : "text-teal-700"
+                }`}
+              >
                 MD
               </span>
             </div>
             <div className="min-w-0">
-              <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.24em] text-teal-200/80">
+              <p
+                className={`mb-1 text-[10px] font-medium uppercase tracking-[0.24em] ${
+                  theme === "dark" ? "text-teal-200/80" : "text-sky-700"
+                }`}
+              >
                 Organizador de conteudo
               </p>
-              <h1 className="m-0 text-[1.5rem] font-semibold leading-tight text-slate-50">
+              <h1
+                className={`m-0 text-[1.5rem] font-semibold leading-tight ${
+                  theme === "dark" ? "text-slate-50" : "text-slate-950"
+                }`}
+              >
                 Organizador Markdown
               </h1>
-              <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-300">
+              <p
+                className={`mt-1 max-w-2xl text-[13px] leading-snug ${
+                  theme === "dark" ? "text-slate-300" : "text-sky-700"
+                }`}
+              >
                 Cole blocos, organize cards e exporte a versao final.
               </p>
             </div>
