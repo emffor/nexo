@@ -262,6 +262,9 @@ export default function DiagramPanel({
     x: number;
     y: number;
   } | null>(null);
+  const [viewportScale, setViewportScale] = useState(
+    INITIAL_STAGE_TRANSFORM.scale,
+  );
   const [isHydrated, setIsHydrated] = useState(false);
   const visibleItems = useMemo(
     () => items.filter((item) => !hiddenItemIds?.has(item.id)),
@@ -289,6 +292,7 @@ export default function DiagramPanel({
 
   const applyStageTransform = useCallback((transform: DiagramViewport) => {
     stageTransformRef.current = transform;
+    setViewportScale(transform.scale);
     const stage = stageRef.current;
     if (!stage) {
       return;
@@ -682,6 +686,35 @@ export default function DiagramPanel({
       scheduleViewportPersist();
     },
     [applyStageTransform, scheduleViewportPersist],
+  );
+
+  const handleZoom = useCallback(
+    (direction: 1 | -1) => {
+      const current = stageTransformRef.current;
+      const oldScale = current.scale;
+      const rawScale =
+        direction > 0 ? oldScale * SCALE_STEP : oldScale / SCALE_STEP;
+      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, rawScale));
+      if (newScale === oldScale) {
+        return;
+      }
+      const center = {
+        x: size.width / 2,
+        y: size.height / 2,
+      };
+      const worldCenter = {
+        x: (center.x - current.x) / oldScale,
+        y: (center.y - current.y) / oldScale,
+      };
+      const nextTransform = {
+        x: center.x - worldCenter.x * newScale,
+        y: center.y - worldCenter.y * newScale,
+        scale: newScale,
+      };
+      applyStageTransform(nextTransform);
+      scheduleViewportPersist();
+    },
+    [applyStageTransform, scheduleViewportPersist, size.height, size.width],
   );
 
   const handleStageDragEnd = useCallback(
@@ -1079,6 +1112,46 @@ export default function DiagramPanel({
         }`}
       >
         Arraste cards · bolinhas verdes para ligar · clique na seta para remover
+      </div>
+
+      <div
+        className={`absolute bottom-4 right-4 z-40 flex flex-col items-center overflow-hidden rounded-lg border shadow-lg ${
+          isDark
+            ? "border-white/10 bg-ink/85 text-slate-100 shadow-black/30"
+            : "border-slate-200 bg-white/95 text-slate-800 shadow-slate-300/40"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => handleZoom(1)}
+          disabled={viewportScale >= MAX_SCALE}
+          className={`flex h-8 w-8 items-center justify-center text-base font-semibold transition ${
+            isDark ? "hover:bg-white/10" : "hover:bg-slate-100"
+          } disabled:cursor-not-allowed disabled:opacity-40`}
+          aria-label="Aumentar zoom do diagrama"
+          title="Aumentar zoom"
+        >
+          +
+        </button>
+        <div
+          className={`border-y px-2 py-1 text-[10px] font-semibold tabular-nums ${
+            isDark ? "border-white/10" : "border-slate-200"
+          }`}
+        >
+          {Math.round(viewportScale * 100)}%
+        </div>
+        <button
+          type="button"
+          onClick={() => handleZoom(-1)}
+          disabled={viewportScale <= MIN_SCALE}
+          className={`flex h-8 w-8 items-center justify-center text-base font-semibold transition ${
+            isDark ? "hover:bg-white/10" : "hover:bg-slate-100"
+          } disabled:cursor-not-allowed disabled:opacity-40`}
+          aria-label="Diminuir zoom do diagrama"
+          title="Diminuir zoom"
+        >
+          -
+        </button>
       </div>
 
       {hoveredItem && (
