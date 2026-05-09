@@ -17,7 +17,9 @@ interface AppShellProps {
     relations: number;
     errors: number;
   };
+  projectName?: string;
   storedDataSizeBytes: number;
+  onBackToProjects?: () => void;
   onResetDatabaseLayout?: () => void;
   isScrollSyncEnabled: boolean;
   theme: AppTheme;
@@ -107,6 +109,7 @@ export function AppShell({
   diagramEdgeStyle,
   databaseEdgeStyle,
   viewMode,
+  projectName,
   isScrollSyncEnabled,
   theme,
   fontScale,
@@ -121,6 +124,7 @@ export function AppShell({
   onResetDatabaseLayout,
   databaseInfo,
   storedDataSizeBytes,
+  onBackToProjects,
   onToggleScrollSync,
   onToggleTheme,
   onClearAll,
@@ -196,7 +200,7 @@ export function AppShell({
                   theme === "dark" ? "text-slate-50" : "text-slate-950"
                 }`}
               >
-                Jira Markdown
+                {projectName ?? "Jira Markdown"}
               </h1>
               <p
                 className={`mt-1 max-w-2xl text-[13px] leading-snug ${
@@ -209,6 +213,15 @@ export function AppShell({
           </div>
 
           <div className="flex shrink-0 items-center justify-start gap-1 sm:justify-end">
+            {onBackToProjects ? (
+              <button
+                type="button"
+                onClick={onBackToProjects}
+                className="toolbar-button"
+              >
+                Projetos
+              </button>
+            ) : null}
             <span className="toolbar-badge">
               {formatStorageSize(storedDataSizeBytes)}
             </span>

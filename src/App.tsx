@@ -8,17 +8,17 @@ import { ConfirmModal } from "./components/ConfirmModal";
 import { CombinedOutputPanel } from "./components/CombinedOutputPanel";
 import { DbmlEditor } from "./components/database/DbmlEditor";
 import { DiagramSidebar } from "./components/DiagramSidebar";
+import { ProjectsHome } from "./components/ProjectsHome";
 import { SortableCardsPanel } from "./components/SortableCardsPanel";
 import { ToastContainer } from "./components/Toast";
 import { useDatabaseDiagram } from "./hooks/useDatabaseDiagram";
 import { useMarkdownBoard } from "./hooks/useMarkdownBoard";
 import { useToast } from "./hooks/useToast";
-import { createBackupText, parseBackupFile } from "./lib/backup";
 import {
-  clearDiagramState,
-  readDiagramState,
-  writeDiagramState,
-} from "./lib/diagramState";
+  createBackupText,
+  createCompleteBackupText,
+  parseBackupFile,
+} from "./lib/backup";
 import { buildCombinedContent, getDisplayTitle } from "./lib/items";
 
 const DiagramPanel = dynamic(() => import("./components/DiagramPanel"), {
@@ -51,16 +51,179 @@ import {
   readStoredDiagramEdgeStyle,
   readStoredCompactMode,
   readStoredFontScale,
-  readStoredHiddenDiagramItemIds,
   readStoredPreviewMaximized,
   readStoredTheme,
   readStoredViewMode,
   STORAGE_KEYS,
 } from "./lib/preferences";
+import {
+  createProject,
+  deleteProject,
+  getAllProjectsData,
+  getProjectData,
+  getProjectSummaries,
+  renameProject,
+  updateProjectDiagramState,
+  updateProjectHiddenDiagramItemIds,
+  type ProjectSummary,
+} from "./lib/projects";
 import type { DiagramState } from "./types/diagram";
 import type { MarkdownItem } from "./types/markdown";
+import type { Project } from "./types/project";
+
+const EMPTY_DIAGRAM_STATE: DiagramState = {
+  positions: {},
+  edges: [],
+};
+
+function downloadTextFile(filename: string, text: string) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  window.URL.revokeObjectURL(url);
+}
 
 export default function App() {
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [isProjectsLoading, setIsProjectsLoading] = useState(true);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null,
+  );
+  const [projectToDelete, setProjectToDelete] =
+    useState<ProjectSummary | null>(null);
+  const [theme, setTheme] = useState<AppTheme>("dark");
+  const { messages, addToast, dismissToast } = useToast();
+
+  const loadProjects = useCallback(async () => {
+    setIsProjectsLoading(true);
+    const summaries = await getProjectSummaries();
+    setProjects(summaries);
+    setIsProjectsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    setTheme(readStoredTheme());
+    void loadProjects();
+  }, [loadProjects]);
+
+  const handleCreateProject = async (name: string) => {
+    await createProject(name);
+    await loadProjects();
+    addToast("Projeto criado com sucesso");
+  };
+
+  const handleRenameProject = async (projectId: string, name: string) => {
+    await renameProject(projectId, name);
+    await loadProjects();
+    addToast("Projeto renomeado");
+  };
+
+  const handleExportProject = async (projectId: string) => {
+    const data = await getProjectData(projectId);
+    if (!data) {
+      addToast("Projeto nao encontrado", "error");
+      return;
+    }
+
+    const backupText = createBackupText(
+      data.items,
+      data.project.diagramState,
+      data.project.hiddenDiagramItemIds,
+      data.databaseDiagram,
+    );
+    downloadTextFile(`${data.project.name}-backup.txt`, backupText);
+    addToast(`Backup do projeto "${data.project.name}" exportado`);
+  };
+
+  const handleExportAll = async () => {
+    const data = await getAllProjectsData();
+    const backupText = createCompleteBackupText(data);
+    downloadTextFile("organizar-markdown-projetos-backup.txt", backupText);
+    addToast(`Backup completo exportado com ${data.length} projeto(s)`);
+  };
+
+  const executeDeleteProject = async () => {
+    if (!projectToDelete) {
+      return;
+    }
+    await deleteProject(projectToDelete.id);
+    setProjectToDelete(null);
+    await loadProjects();
+    addToast("Projeto removido", "info");
+  };
+
+  const selectedProject = selectedProjectId
+    ? projects.find((project) => project.id === selectedProjectId)
+    : null;
+
+  if (selectedProject) {
+    return (
+      <ProjectWorkspace
+        key={selectedProject.id}
+        project={selectedProject}
+        onBackToProjects={() => {
+          setTheme(readStoredTheme());
+          setSelectedProjectId(null);
+          void loadProjects();
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      <ProjectsHome
+        projects={projects}
+        isLoading={isProjectsLoading}
+        theme={theme}
+        onCreateProject={handleCreateProject}
+        onOpenProject={setSelectedProjectId}
+        onRenameProject={handleRenameProject}
+        onDeleteProject={setProjectToDelete}
+        onExportProject={(projectId) => {
+          void handleExportProject(projectId);
+        }}
+        onExportAll={() => {
+          void handleExportAll();
+        }}
+      />
+
+      <ConfirmModal
+        open={projectToDelete !== null}
+        title="Excluir projeto"
+        description={`Deseja excluir o projeto "${projectToDelete?.name ?? ""}" e todos os dados dele? Essa acao nao pode ser desfeita.`}
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        variant="danger"
+        theme={theme}
+        onConfirm={() => {
+          void executeDeleteProject();
+        }}
+        onCancel={() => setProjectToDelete(null)}
+      />
+
+      <ToastContainer
+        messages={messages}
+        theme={theme}
+        onDismiss={dismissToast}
+      />
+    </>
+  );
+}
+
+interface ProjectWorkspaceProps {
+  project: Project;
+  onBackToProjects: () => void;
+}
+
+function ProjectWorkspace({
+  project,
+  onBackToProjects,
+}: ProjectWorkspaceProps) {
+  const [workspaceProject, setWorkspaceProject] = useState(project);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingItem, setEditingItem] = useState<MarkdownItem | null>(null);
@@ -74,14 +237,16 @@ export default function App() {
   const [databaseEdgeStyle, setDatabaseEdgeStyle] =
     useState<DiagramEdgeStyle>("square");
   const [hiddenDiagramItemIds, setHiddenDiagramItemIds] = useState<Set<string>>(
-    () => new Set(),
+    () => new Set(project.hiddenDiagramItemIds ?? []),
   );
   const [fontScale, setFontScale] = useState(FONT_SCALE.default);
   const [isPreviewMaximized, setIsPreviewMaximized] = useState(false);
   const [theme, setTheme] = useState<AppTheme>("dark");
   const [arePreferencesLoaded, setArePreferencesLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const diagramStateRef = useRef<DiagramState | null>(null);
+  const diagramStateRef = useRef<DiagramState | null>(
+    project.diagramState ?? null,
+  );
   const leftScrollRef = useRef<HTMLDivElement | null>(null);
   const rightScrollRef = useRef<HTMLDivElement | null>(null);
   const syncSourceRef = useRef<"left" | "right" | null>(null);
@@ -96,7 +261,7 @@ export default function App() {
     clearItems,
     replaceItems,
     isLoading,
-  } = useMarkdownBoard();
+  } = useMarkdownBoard(project.id);
   const [diagramResetSignal, setDiagramResetSignal] = useState(0);
   const [diagramClearEdgesSignal, setDiagramClearEdgesSignal] = useState(0);
   const [diagramReloadStateSignal, setDiagramReloadStateSignal] = useState(0);
@@ -113,6 +278,7 @@ export default function App() {
     replaceDatabaseDiagramRecord,
     resetDatabaseDiagramToDefault,
   } = useDatabaseDiagram({
+    projectId: project.id,
     onAutosaveError: () => {
       addToast(
         "Nao foi possivel salvar automaticamente o diagrama de banco.",
@@ -143,7 +309,6 @@ export default function App() {
     setTheme(readStoredTheme());
     setDiagramEdgeStyle(readStoredDiagramEdgeStyle());
     setDatabaseEdgeStyle(readStoredDatabaseEdgeStyle());
-    setHiddenDiagramItemIds(readStoredHiddenDiagramItemIds());
     setArePreferencesLoaded(true);
   }, []);
 
@@ -222,11 +387,13 @@ export default function App() {
       return;
     }
 
-    window.localStorage.setItem(
-      STORAGE_KEYS.hiddenDiagramItemIds,
-      JSON.stringify([...hiddenDiagramItemIds]),
-    );
-  }, [arePreferencesLoaded, hiddenDiagramItemIds]);
+    const nextHiddenItemIds = [...hiddenDiagramItemIds];
+    setWorkspaceProject((current) => ({
+      ...current,
+      hiddenDiagramItemIds: nextHiddenItemIds,
+    }));
+    void updateProjectHiddenDiagramItemIds(project.id, nextHiddenItemIds);
+  }, [arePreferencesLoaded, hiddenDiagramItemIds, project.id]);
 
   useEffect(() => {
     if (items.length === 0) {
@@ -339,8 +506,14 @@ export default function App() {
   const executeClearAll = async () => {
     setConfirmClearAll(false);
     const snapshot = [...items];
-    diagramStateRef.current = null;
-    clearDiagramState();
+    diagramStateRef.current = EMPTY_DIAGRAM_STATE;
+    setHiddenDiagramItemIds(new Set());
+    setWorkspaceProject((current) => ({
+      ...current,
+      diagramState: EMPTY_DIAGRAM_STATE,
+      hiddenDiagramItemIds: [],
+    }));
+    await updateProjectDiagramState(project.id, EMPTY_DIAGRAM_STATE);
     await clearItems();
     await resetDatabaseDiagramToDefault();
     addToast(
@@ -356,7 +529,7 @@ export default function App() {
   };
 
   const handleExport = async () => {
-    const diagramState = diagramStateRef.current ?? readDiagramState();
+    const diagramState = diagramStateRef.current ?? workspaceProject.diagramState;
     const currentDatabaseDiagram = await getCurrentDatabaseDiagram();
     const backupText = createBackupText(
       items,
@@ -364,19 +537,14 @@ export default function App() {
       [...hiddenDiagramItemIds],
       currentDatabaseDiagram,
     );
-    const blob = new Blob([backupText], { type: "text/plain;charset=utf-8" });
-    const url = window.URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "organizar-markdown-backup.txt";
-    anchor.click();
-    window.URL.revokeObjectURL(url);
+    downloadTextFile(`${workspaceProject.name}-backup.txt`, backupText);
     addToast(`Backup exportado com ${items.length} card(s)`);
   };
 
   const handleDiagramStateChange = useCallback((state: DiagramState) => {
     diagramStateRef.current = state;
-  }, []);
+    void updateProjectDiagramState(project.id, state);
+  }, [project.id]);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -395,14 +563,18 @@ export default function App() {
       const rawText = await file.text();
       const importedBackup = parseBackupFile(rawText);
       await replaceItems(importedBackup.items);
-      if (importedBackup.diagramState) {
-        diagramStateRef.current = importedBackup.diagramState;
-        writeDiagramState(importedBackup.diagramState);
-      } else {
-        diagramStateRef.current = null;
-        clearDiagramState();
-      }
-      setHiddenDiagramItemIds(new Set(importedBackup.hiddenDiagramItemIds));
+      const nextDiagramState =
+        importedBackup.diagramState ?? EMPTY_DIAGRAM_STATE;
+      const nextHiddenItemIds = importedBackup.hiddenDiagramItemIds ?? [];
+      diagramStateRef.current = nextDiagramState;
+      setHiddenDiagramItemIds(new Set(nextHiddenItemIds));
+      setWorkspaceProject((current) => ({
+        ...current,
+        diagramState: nextDiagramState,
+        hiddenDiagramItemIds: nextHiddenItemIds,
+      }));
+      await updateProjectDiagramState(project.id, nextDiagramState);
+      await updateProjectHiddenDiagramItemIds(project.id, nextHiddenItemIds);
       setDiagramReloadStateSignal((value) => value + 1);
       if (importedBackup.databaseDiagram) {
         await replaceDatabaseDiagramRecord(importedBackup.databaseDiagram);
@@ -565,7 +737,9 @@ export default function App() {
               }
             : undefined
         }
+        projectName={workspaceProject.name}
         storedDataSizeBytes={storedDataSizeBytes}
+        onBackToProjects={onBackToProjects}
         onToggleScrollSync={() => setIsScrollSyncEnabled((current) => !current)}
         onToggleTheme={() =>
           setTheme((current) => (current === "dark" ? "light" : "dark"))
@@ -658,6 +832,7 @@ export default function App() {
               resetLayoutSignal={diagramResetSignal}
               clearEdgesSignal={diagramClearEdgesSignal}
               reloadStateSignal={diagramReloadStateSignal}
+              initialState={workspaceProject.diagramState ?? EMPTY_DIAGRAM_STATE}
               onDiagramStateChange={handleDiagramStateChange}
             />
           ) : (

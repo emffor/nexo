@@ -102,6 +102,7 @@ export interface DatabaseDiagramVisualState {
 
 export interface DatabaseDiagramRecord {
   id: string;
+  projectId?: string;
   title: string;
   content: string;
   state: DatabaseDiagramVisualState;

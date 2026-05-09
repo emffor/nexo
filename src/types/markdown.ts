@@ -7,6 +7,7 @@ export type DiagramStatus =
 
 export interface MarkdownItem {
   id: string;
+  projectId?: string;
   title?: string;
   content: string;
   order: number;

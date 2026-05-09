@@ -6,6 +6,7 @@ import type {
   DatabaseDiagramVisualState,
   DatabaseTablePosition,
 } from '../types/database';
+import type { Project } from '../types/project';
 import { normalizeMarkdownContent } from './items';
 
 const VALID_STATUSES: DiagramStatus[] = [
@@ -53,10 +54,30 @@ interface MarkdownBackupFile {
   databaseDiagram?: DatabaseDiagramBackupPayload;
 }
 
+interface ProjectBackupPayload {
+  project: Project;
+  items: MarkdownItem[];
+  diagramState?: DiagramState;
+  hiddenDiagramItemIds?: string[];
+  databaseDiagram?: DatabaseDiagramBackupPayload;
+}
+
+interface CompleteProjectsBackupFile {
+  version: 2;
+  exportedAt: string;
+  projects: ProjectBackupPayload[];
+}
+
 export interface ParsedBackupFile {
   items: MarkdownItem[];
   diagramState?: DiagramState;
   hiddenDiagramItemIds?: string[];
+  databaseDiagram?: DatabaseDiagramRecord;
+}
+
+export interface ProjectBackupData {
+  project: Project;
+  items: MarkdownItem[];
   databaseDiagram?: DatabaseDiagramRecord;
 }
 
@@ -189,6 +210,40 @@ export function createBackupText(
           state: databaseDiagram.state,
         }
       : undefined,
+  };
+
+  return JSON.stringify(payload, null, 2);
+}
+
+function serializeDatabaseDiagram(
+  databaseDiagram?: DatabaseDiagramRecord | null,
+): DatabaseDiagramBackupPayload | undefined {
+  return databaseDiagram
+    ? {
+        title: databaseDiagram.title,
+        content: databaseDiagram.content,
+        createdAt: databaseDiagram.createdAt,
+        updatedAt: databaseDiagram.updatedAt,
+        state: databaseDiagram.state,
+      }
+    : undefined;
+}
+
+export function createCompleteBackupText(projects: ProjectBackupData[]): string {
+  const payload: CompleteProjectsBackupFile = {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    projects: projects.map(({ project, items, databaseDiagram }) => ({
+      project,
+      items: items.map((item, index) => ({
+        ...item,
+        projectId: project.id,
+        order: index,
+      })),
+      diagramState: project.diagramState,
+      hiddenDiagramItemIds: project.hiddenDiagramItemIds,
+      databaseDiagram: serializeDatabaseDiagram(databaseDiagram),
+    })),
   };
 
   return JSON.stringify(payload, null, 2);

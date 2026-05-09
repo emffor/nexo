@@ -8,6 +8,7 @@ import {
   normalizeMarkdownContent,
   reorderMarkdownItems,
 } from '../lib/items';
+import { touchProject } from '../lib/projects';
 import type { DiagramStatus, MarkdownItem } from '../types/markdown';
 
 export interface UseMarkdownBoardResult {
@@ -24,8 +25,11 @@ export interface UseMarkdownBoardResult {
   replaceItems: (nextItems: MarkdownItem[]) => Promise<void>;
 }
 
-async function loadItems(): Promise<MarkdownItem[]> {
-  const storedItems = await db.items.orderBy('order').toArray();
+async function loadItems(projectId: string): Promise<MarkdownItem[]> {
+  const storedItems = await db.items
+    .where('projectId')
+    .equals(projectId)
+    .sortBy('order');
   let hasNormalizedItem = false;
 
   const normalizedItems = storedItems.map((item) => {
@@ -51,15 +55,16 @@ async function loadItems(): Promise<MarkdownItem[]> {
   return normalizedItems;
 }
 
-export function useMarkdownBoard(): UseMarkdownBoardResult {
+export function useMarkdownBoard(projectId: string): UseMarkdownBoardResult {
   const [items, setItems] = useState<MarkdownItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
+    setIsLoading(true);
 
     const hydrate = async () => {
-      const storedItems = await loadItems();
+      const storedItems = await loadItems(projectId);
 
       if (!isMounted) {
         return;
@@ -74,7 +79,7 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [projectId]);
 
   const combinedContent = useMemo(() => buildCombinedContent(items), [items]);
 
@@ -89,6 +94,7 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
     const timestamp = new Date().toISOString();
     const nextItem: MarkdownItem = {
       id: crypto.randomUUID(),
+      projectId,
       title: cleanTitle,
       content: normalizedContent,
       order: items.length,
@@ -98,6 +104,7 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
 
     setItems((currentItems) => [...currentItems, nextItem]);
     await db.items.put(nextItem);
+    await touchProject(projectId);
   };
 
   const updateItem = async (itemId: string, content: string, title?: string) => {
@@ -125,6 +132,7 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
       currentItems.map((item) => (item.id === itemId ? updatedItem : item)),
     );
     await db.items.put(updatedItem);
+    await touchProject(projectId);
   };
 
   const deleteItem = async (itemId: string) => {
@@ -134,12 +142,13 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
       .map((item, index) => ({ ...item, order: index, updatedAt: now }));
 
     setItems(remaining);
-    await db.transaction('rw', db.items, async () => {
+    await db.transaction('rw', db.items, db.projects, async () => {
       await db.items.delete(itemId);
       if (remaining.length > 0) {
         await db.items.bulkPut(remaining);
       }
     });
+    await touchProject(projectId);
   };
 
   const updateItemStatus = async (itemId: string, status: DiagramStatus | undefined) => {
@@ -158,6 +167,7 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
       currentItems.map((item) => (item.id === itemId ? updatedItem : item)),
     );
     await db.items.put(updatedItem);
+    await touchProject(projectId);
   };
 
   const updateItemObservation = async (itemId: string, observation: string) => {
@@ -177,6 +187,7 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
       currentItems.map((item) => (item.id === itemId ? updatedItem : item)),
     );
     await db.items.put(updatedItem);
+    await touchProject(projectId);
   };
 
   const reorderItems = async (activeId: string, overId: string) => {
@@ -190,29 +201,34 @@ export function useMarkdownBoard(): UseMarkdownBoardResult {
     await db.transaction('rw', db.items, async () => {
       await db.items.bulkPut(reorderedItems);
     });
+    await touchProject(projectId);
   };
 
 
   const clearItems = async () => {
     setItems([]);
     await db.transaction('rw', db.items, async () => {
-      await db.items.clear();
+      await db.items.where('projectId').equals(projectId).delete();
     });
+    await touchProject(projectId);
   };
 
   const replaceItems = async (nextItems: MarkdownItem[]) => {
-    const normalizedItems = nextItems.map((item) => ({
+    const normalizedItems = nextItems.map((item, index) => ({
       ...item,
+      projectId,
+      order: index,
       content: normalizeMarkdownContent(item.content),
     }));
 
     setItems(normalizedItems);
     await db.transaction('rw', db.items, async () => {
-      await db.items.clear();
+      await db.items.where('projectId').equals(projectId).delete();
       if (normalizedItems.length > 0) {
         await db.items.bulkPut(normalizedItems);
       }
     });
+    await touchProject(projectId);
   };
 
   return {

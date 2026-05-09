@@ -22,5 +22,6 @@ afterEach(async () => {
   cleanup();
   await db.items.clear();
   await db.databaseDiagrams.clear();
+  await db.projects.clear();
   window.localStorage.clear();
 });

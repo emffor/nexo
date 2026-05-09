@@ -20,7 +20,7 @@ import {
   computeAutoLayout,
   snapToGrid,
 } from "../lib/diagramLayout";
-import { readDiagramState, writeDiagramState } from "../lib/diagramState";
+import { readDiagramState } from "../lib/diagramState";
 import type { AppTheme, DiagramEdgeStyle } from "../lib/preferences";
 import { DIAGRAM_STATUS_PALETTE } from "../types/diagram";
 import type {
@@ -45,6 +45,7 @@ interface DiagramPanelProps {
   resetLayoutSignal?: number;
   clearEdgesSignal?: number;
   reloadStateSignal?: number;
+  initialState?: DiagramState;
   onDiagramStateChange?: (state: DiagramState) => void;
 }
 
@@ -236,6 +237,7 @@ export default function DiagramPanel({
   resetLayoutSignal = 0,
   clearEdgesSignal = 0,
   reloadStateSignal = 0,
+  initialState,
   onDiagramStateChange,
 }: DiagramPanelProps) {
   void _onChangeStatus;
@@ -306,7 +308,6 @@ export default function DiagramPanel({
 
   const emitDiagramState = useCallback(
     (state: DiagramState) => {
-      writeDiagramState(state);
       onDiagramStateChange?.(state);
     },
     [onDiagramStateChange],
@@ -338,7 +339,7 @@ export default function DiagramPanel({
   }, [emitDiagramState]);
 
   const loadStoredDiagramState = useCallback(() => {
-    const stored = readDiagramState();
+    const stored = initialState ?? readDiagramState();
     positionsRef.current = stored.positions;
     edgesRef.current = stored.edges;
     setPositions(stored.positions);
@@ -346,7 +347,7 @@ export default function DiagramPanel({
     applyStageTransform(stored.viewport ?? INITIAL_STAGE_TRANSFORM);
     onDiagramStateChange?.(stored);
     setIsHydrated(true);
-  }, [applyStageTransform, onDiagramStateChange]);
+  }, [applyStageTransform, initialState, onDiagramStateChange]);
 
   // hidratar estado salvo
   useEffect(() => {
