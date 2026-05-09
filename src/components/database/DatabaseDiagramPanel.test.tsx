@@ -87,10 +87,11 @@ vi.mock('react-konva', () => {
   const Path = forwardRef<
     HTMLSpanElement,
     {
+      data?: string;
       onClick?: (event: ReturnType<typeof buildEvent>) => void;
       onDblClick?: (event: ReturnType<typeof buildEvent>) => void;
     }
-  >(function Path({ onClick, onDblClick }, ref) {
+  >(function Path({ data, onClick, onDblClick }, ref) {
     const pathRefValue = {
       dashOffset: vi.fn(),
       getLayer: () => null,
@@ -106,11 +107,12 @@ vi.mock('react-konva', () => {
       <button
         type="button"
         aria-label="Selecionar relação"
+        data-path={data}
         onClick={() => onClick(buildEvent())}
         onDoubleClick={() => onDblClick?.(buildEvent())}
       />
     ) : (
-      <span data-testid="path" />
+      <span data-testid="path" data-path={data} />
     );
   });
 
@@ -332,11 +334,21 @@ describe('DatabaseDiagramPanel', () => {
     expect(nextState.relationPaths).toBeUndefined();
   });
 
-  it('mantem relacao do banco em modo ortogonal mesmo com preferencia de curva', async () => {
+  it('renderiza relacao do banco como curva quando preferencia de curva esta ativa', () => {
+    renderPanel({ edgeStyle: 'curve' });
+
+    expect(
+      screen
+        .getAllByTestId('path')
+        .some((path) => path.dataset.path?.includes(' C ')),
+    ).toBe(true);
+  });
+
+  it('mantem edicao ortogonal quando preferencia quadrada esta ativa', async () => {
     const user = userEvent.setup();
     const onStateChange = vi.fn();
     renderPanel({
-      edgeStyle: 'curve',
+      edgeStyle: 'square',
       onStateChange,
       state: {
         positions: {

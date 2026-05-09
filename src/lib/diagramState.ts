@@ -108,11 +108,6 @@ export function readDiagramState(): DiagramState {
       : [];
     const viewport = parseViewport(parsed.viewport);
 
-    // Garante que o viewport padrão seja scale: 1 (100%)
-    if (!viewport || viewport.scale !== 1) {
-      return { positions, edges, viewport: { x: 0, y: 0, scale: 1 } };
-    }
-
     return { positions, edges, viewport };
   } catch {
     return { ...emptyState };

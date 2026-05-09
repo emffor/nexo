@@ -578,6 +578,25 @@ function buildCurvePathDataFromPoints(
   return `M ${from.x} ${from.y} C ${controlFrom.x} ${controlFrom.y}, ${controlTo.x} ${controlTo.y}, ${to.x} ${to.y}`;
 }
 
+function buildCurveMidpoint(points: { x: number; y: number }[]): {
+  x: number;
+  y: number;
+} {
+  if (points.length < 4) {
+    return points[0] ?? { x: 0, y: 0 };
+  }
+
+  const [from, controlFrom, controlTo, to] = points;
+  return {
+    x:
+      (from.x + 3 * controlFrom.x + 3 * controlTo.x + to.x) /
+      8,
+    y:
+      (from.y + 3 * controlFrom.y + 3 * controlTo.y + to.y) /
+      8,
+  };
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -1435,7 +1454,7 @@ export default function DatabaseDiagramPanel({
             const isSelected = selectedRelationId === rel.id;
             const isActive = activeRelationIds.has(rel.id);
             const isEditing = editingRelationId === rel.id;
-            const isCurveEdge = false;
+            const isCurveEdge = edgeStyle === "curve";
             const roundedPath = buildOrthogonalPathData(points);
             const defaultCurvePoints = buildCurvePoints(
               fromAnchor,
@@ -1447,10 +1466,18 @@ export default function DatabaseDiagramPanel({
               isCurveEdge && customPath?.points.length === 4
                 ? pointArrayToPairs(points)
                 : defaultCurvePoints;
-            const relationPath = roundedPath;
+            const relationPath = isCurveEdge
+              ? buildCurvePathDataFromPoints(curvePoints)
+              : roundedPath;
             const stroke = isActive ? activeEdgeColor : edgeColor;
-            const relationMidpoint = buildRelationMidpoint(points);
-            const editablePoints = isEditing ? pointArrayToPairs(points) : [];
+            const relationMidpoint = isCurveEdge
+              ? buildCurveMidpoint(curvePoints)
+              : buildRelationMidpoint(points);
+            const editablePoints = isEditing
+              ? isCurveEdge
+                ? [curvePoints[0], curvePoints[curvePoints.length - 1]]
+                : pointArrayToPairs(points)
+              : [];
             const segmentHandles =
               isEditing && !isCurveEdge
                 ? buildSegmentHandles(editablePoints)
@@ -1469,8 +1496,8 @@ export default function DatabaseDiagramPanel({
                     data={relationPath}
                     stroke={activeEdgeColor}
                     strokeWidth={5}
-                    lineCap="butt"
-                    lineJoin="miter"
+                    lineCap={isCurveEdge ? "round" : "butt"}
+                    lineJoin={isCurveEdge ? "round" : "miter"}
                     opacity={0.12}
                     perfectDrawEnabled={false}
                     listening={false}
@@ -1481,8 +1508,8 @@ export default function DatabaseDiagramPanel({
                   data={relationPath}
                   stroke={stroke}
                   strokeWidth={1.6}
-                  lineCap="butt"
-                  lineJoin="miter"
+                  lineCap={isCurveEdge ? "round" : "butt"}
+                  lineJoin={isCurveEdge ? "round" : "miter"}
                   opacity={isActive ? 1 : 0.86}
                   perfectDrawEnabled={false}
                   shadowForStrokeEnabled={false}
@@ -1533,16 +1560,24 @@ export default function DatabaseDiagramPanel({
                         fromColIndex,
                         nextSide,
                       );
-                      const nextPoints = buildOrthogonalPath(
-                        nextFromAnchor,
-                        nextSide,
-                        toAnchor,
-                        effectiveToSide,
-                      );
                       return {
                         fromSide: nextSide,
                         toSide: effectiveToSide,
-                        points: pointArrayToPairs(nextPoints),
+                        points: isCurveEdge
+                          ? buildCurvePoints(
+                              nextFromAnchor,
+                              nextSide,
+                              toAnchor,
+                              effectiveToSide,
+                            )
+                          : pointArrayToPairs(
+                              buildOrthogonalPath(
+                                nextFromAnchor,
+                                nextSide,
+                                toAnchor,
+                                effectiveToSide,
+                              ),
+                            ),
                       };
                     }
 
@@ -1556,16 +1591,24 @@ export default function DatabaseDiagramPanel({
                         toColIndex,
                         nextSide,
                       );
-                      const nextPoints = buildOrthogonalPath(
-                        fromAnchor,
-                        effectiveFromSide,
-                        nextToAnchor,
-                        nextSide,
-                      );
                       return {
                         fromSide: effectiveFromSide,
                         toSide: nextSide,
-                        points: pointArrayToPairs(nextPoints),
+                        points: isCurveEdge
+                          ? buildCurvePoints(
+                              fromAnchor,
+                              effectiveFromSide,
+                              nextToAnchor,
+                              nextSide,
+                            )
+                          : pointArrayToPairs(
+                              buildOrthogonalPath(
+                                fromAnchor,
+                                effectiveFromSide,
+                                nextToAnchor,
+                                nextSide,
+                              ),
+                            ),
                       };
                     }
 
@@ -1828,11 +1871,11 @@ export default function DatabaseDiagramPanel({
                   />
                 ) : null}
                 <Path
-                  data={roundedPath}
+                  data={relationPath}
                   stroke="transparent"
                   strokeWidth={16}
-                  lineCap="butt"
-                  lineJoin="miter"
+                  lineCap={isCurveEdge ? "round" : "butt"}
+                  lineJoin={isCurveEdge ? "round" : "miter"}
                   listening={!isEditing}
                   perfectDrawEnabled={false}
                   shadowForStrokeEnabled={false}
@@ -1852,7 +1895,9 @@ export default function DatabaseDiagramPanel({
                       saveRelationPath(rel.id, {
                         fromSide: effectiveFromSide,
                         toSide: effectiveToSide,
-                        points: pointArrayToPairs(points),
+                        points: isCurveEdge
+                          ? curvePoints
+                          : pointArrayToPairs(points),
                       });
                     }
                   }}
@@ -1866,7 +1911,9 @@ export default function DatabaseDiagramPanel({
                       saveRelationPath(rel.id, {
                         fromSide: effectiveFromSide,
                         toSide: effectiveToSide,
-                        points: pointArrayToPairs(points),
+                        points: isCurveEdge
+                          ? curvePoints
+                          : pointArrayToPairs(points),
                       });
                     }
                   }}

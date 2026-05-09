@@ -59,4 +59,32 @@ describe('useDatabaseDiagram', () => {
     );
     expect(onAutosaveError).not.toHaveBeenCalled();
   });
+
+  it('mantem viewport salvo ao carregar diagrama', async () => {
+    const savedViewport = { x: -180, y: 72, scale: 0.65 };
+    await db.databaseDiagrams.put({
+      id: 'main',
+      title: 'Diagrama principal',
+      content: 'Table users { id integer [pk] }',
+      state: {
+        positions: { users: { x: 120, y: 80 } },
+        viewport: savedViewport,
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    let latest: UseDatabaseDiagramResult | undefined;
+    render(
+      <Harness
+        onReady={(result) => {
+          latest = result;
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(latest?.databaseDiagram?.state.viewport).toEqual(savedViewport);
+    });
+  });
 });
