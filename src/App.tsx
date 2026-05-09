@@ -10,17 +10,10 @@ import { DbmlEditor } from "./components/database/DbmlEditor";
 import { DiagramSidebar } from "./components/DiagramSidebar";
 import { SortableCardsPanel } from "./components/SortableCardsPanel";
 import { ToastContainer } from "./components/Toast";
+import { useDatabaseDiagram } from "./hooks/useDatabaseDiagram";
 import { useMarkdownBoard } from "./hooks/useMarkdownBoard";
 import { useToast } from "./hooks/useToast";
 import { createBackupText, parseBackupFile } from "./lib/backup";
-import {
-  getDatabaseDiagram,
-  resetDatabaseDiagram,
-  saveDatabaseDiagramContent,
-  saveDatabaseDiagramRecord,
-  saveDatabaseDiagramState,
-} from "./lib/databaseDiagramStore";
-import { parseDbml, renameDbmlColumn, renameDbmlTable } from "./lib/dbml";
 import {
   clearDiagramState,
   readDiagramState,
@@ -63,10 +56,6 @@ import {
   readStoredViewMode,
   STORAGE_KEYS,
 } from "./lib/preferences";
-import type {
-  DatabaseDiagramRecord,
-  DatabaseDiagramVisualState,
-} from "./types/database";
 import type { DiagramState } from "./types/diagram";
 import type { MarkdownItem } from "./types/markdown";
 
@@ -108,33 +97,31 @@ export default function App() {
   const [diagramResetSignal, setDiagramResetSignal] = useState(0);
   const [diagramClearEdgesSignal, setDiagramClearEdgesSignal] = useState(0);
   const [diagramReloadStateSignal, setDiagramReloadStateSignal] = useState(0);
-  const [databaseDiagram, setDatabaseDiagram] =
-    useState<DatabaseDiagramRecord | null>(null);
-  const [databaseResetSignal, setDatabaseResetSignal] = useState(0);
-  const databaseContentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const databaseStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
   const { messages, addToast, dismissToast } = useToast();
+  const {
+    databaseDiagram,
+    databaseParseResult,
+    databaseResetSignal,
+    getCurrentDatabaseDiagram,
+    onDatabaseContentChange,
+    onDatabaseStateChange,
+    onRenameDatabaseTable,
+    onRenameDatabaseColumn,
+    replaceDatabaseDiagramRecord,
+    resetDatabaseDiagramToDefault,
+  } = useDatabaseDiagram({
+    onAutosaveError: () => {
+      addToast(
+        "Nao foi possivel salvar automaticamente o diagrama de banco.",
+        "error",
+      );
+    },
+  });
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [deletingItem, setDeletingItem] = useState<MarkdownItem | null>(null);
 
   useEffect(() => {
     setIsCompactMode(readStoredCompactMode());
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    void getDatabaseDiagram().then((record) => {
-      if (active) {
-        setDatabaseDiagram(record);
-      }
-    });
-    return () => {
-      active = false;
-    };
   }, []);
 
   useEffect(() => {
@@ -340,8 +327,7 @@ export default function App() {
     diagramStateRef.current = null;
     clearDiagramState();
     await clearItems();
-    const nextDatabaseDiagram = await resetDatabaseDiagram();
-    setDatabaseDiagram(nextDatabaseDiagram);
+    await resetDatabaseDiagramToDefault();
     addToast(
       "Dados removidos e banco restaurado para o exemplo inicial",
       "info",
@@ -356,8 +342,7 @@ export default function App() {
 
   const handleExport = async () => {
     const diagramState = diagramStateRef.current ?? readDiagramState();
-    const currentDatabaseDiagram =
-      databaseDiagram ?? (await getDatabaseDiagram());
+    const currentDatabaseDiagram = await getCurrentDatabaseDiagram();
     const backupText = createBackupText(
       items,
       diagramState,
@@ -405,10 +390,7 @@ export default function App() {
       setHiddenDiagramItemIds(new Set(importedBackup.hiddenDiagramItemIds));
       setDiagramReloadStateSignal((value) => value + 1);
       if (importedBackup.databaseDiagram) {
-        const next = await saveDatabaseDiagramRecord(
-          importedBackup.databaseDiagram,
-        );
-        setDatabaseDiagram(next);
+        await replaceDatabaseDiagramRecord(importedBackup.databaseDiagram);
       }
       addToast(
         `${importedBackup.items.length} card(s) importado(s) com sucesso`,
@@ -482,10 +464,6 @@ export default function App() {
     setViewMode(mode);
   };
 
-  const databaseParseResult = useMemo(
-    () => parseDbml(databaseDiagram?.content ?? ""),
-    [databaseDiagram?.content],
-  );
   const storedDataSizeBytes = useMemo(
     () =>
       new Blob([
@@ -497,122 +475,11 @@ export default function App() {
     [databaseDiagram, items],
   );
 
-  const scheduleDatabaseContentSave = useCallback((next: string) => {
-    if (databaseContentTimerRef.current) {
-      clearTimeout(databaseContentTimerRef.current);
-    }
-    databaseContentTimerRef.current = setTimeout(() => {
-      void saveDatabaseDiagramContent(next);
-    }, 250);
-  }, []);
-
-  const scheduleDatabaseStateSave = useCallback(
-    (next: DatabaseDiagramVisualState) => {
-      if (databaseStateTimerRef.current) {
-        clearTimeout(databaseStateTimerRef.current);
-      }
-      databaseStateTimerRef.current = setTimeout(() => {
-        void saveDatabaseDiagramState(next);
-      }, 250);
-    },
-    [],
-  );
-
-  const handleDatabaseContentChange = useCallback(
-    (next: string) => {
-      setDatabaseDiagram((current) =>
-        current ? { ...current, content: next } : current,
-      );
-      scheduleDatabaseContentSave(next);
-    },
-    [scheduleDatabaseContentSave],
-  );
-
-  const handleDatabaseStateChange = useCallback(
-    (next: DatabaseDiagramVisualState) => {
-      setDatabaseDiagram((current) =>
-        current ? { ...current, state: next } : current,
-      );
-      scheduleDatabaseStateSave(next);
-    },
-    [scheduleDatabaseStateSave],
-  );
-
-  const handleRenameDatabaseTable = useCallback(
-    (tableName: string, nextName: string): boolean => {
-      if (!databaseDiagram) {
-        return false;
-      }
-      const nextContent = renameDbmlTable(
-        databaseDiagram.content,
-        tableName,
-        nextName,
-      );
-      if (nextContent === databaseDiagram.content && tableName !== nextName) {
-        return false;
-      }
-
-      let nextState = databaseDiagram.state;
-      const currentPosition = databaseDiagram.state.positions[tableName];
-      if (currentPosition && tableName !== nextName) {
-        const nextPositions = { ...databaseDiagram.state.positions };
-        delete nextPositions[tableName];
-        nextPositions[nextName] = currentPosition;
-        nextState = { ...databaseDiagram.state, positions: nextPositions };
-        scheduleDatabaseStateSave(nextState);
-      }
-
-      setDatabaseDiagram({
-        ...databaseDiagram,
-        content: nextContent,
-        state: nextState,
-      });
-      scheduleDatabaseContentSave(nextContent);
-      return true;
-    },
-    [databaseDiagram, scheduleDatabaseContentSave, scheduleDatabaseStateSave],
-  );
-
-  const handleRenameDatabaseColumn = useCallback(
-    (tableName: string, columnName: string, nextName: string): boolean => {
-      if (!databaseDiagram) {
-        return false;
-      }
-      const nextContent = renameDbmlColumn(
-        databaseDiagram.content,
-        tableName,
-        columnName,
-        nextName,
-      );
-      if (nextContent === databaseDiagram.content && columnName !== nextName) {
-        return false;
-      }
-
-      setDatabaseDiagram({ ...databaseDiagram, content: nextContent });
-      scheduleDatabaseContentSave(nextContent);
-      return true;
-    },
-    [databaseDiagram, scheduleDatabaseContentSave],
-  );
-
   const handleResetDatabaseLayout = useCallback(() => {
-    void resetDatabaseDiagram().then((nextDatabaseDiagram) => {
-      setDatabaseDiagram(nextDatabaseDiagram);
-      setDatabaseResetSignal((value) => value + 1);
+    void resetDatabaseDiagramToDefault().then(() => {
       addToast("Banco restaurado para o exemplo inicial", "info");
     });
-  }, [addToast]);
-
-  useEffect(() => {
-    return () => {
-      if (databaseContentTimerRef.current) {
-        clearTimeout(databaseContentTimerRef.current);
-      }
-      if (databaseStateTimerRef.current) {
-        clearTimeout(databaseStateTimerRef.current);
-      }
-    };
-  }, []);
+  }, [addToast, resetDatabaseDiagramToDefault]);
 
   const handleSelectDiagramItem = (item: MarkdownItem) => {
     setActiveItemId(item.id);
@@ -706,7 +573,7 @@ export default function App() {
             <DbmlEditor
               value={databaseDiagram?.content ?? ""}
               theme={theme}
-              onChange={handleDatabaseContentChange}
+              onChange={onDatabaseContentChange}
               errors={databaseParseResult.errors}
             />
           ) : viewMode === "diagram" ? (
@@ -753,9 +620,9 @@ export default function App() {
               relations={databaseParseResult.relations}
               theme={theme}
               state={databaseDiagram?.state ?? { positions: {} }}
-              onStateChange={handleDatabaseStateChange}
-              onRenameTable={handleRenameDatabaseTable}
-              onRenameColumn={handleRenameDatabaseColumn}
+              onStateChange={onDatabaseStateChange}
+              onRenameTable={onRenameDatabaseTable}
+              onRenameColumn={onRenameDatabaseColumn}
               edgeStyle={diagramEdgeStyle}
               resetSignal={databaseResetSignal}
             />

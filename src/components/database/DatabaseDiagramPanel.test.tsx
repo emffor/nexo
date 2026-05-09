@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { forwardRef, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -24,6 +24,15 @@ vi.mock('react-konva', () => {
   const buildEvent = () => ({
     cancelBubble: false,
     target: stageTarget,
+  });
+
+  const buildDragEvent = (x: number, y: number) => ({
+    cancelBubble: false,
+    target: {
+      ...stageTarget,
+      x: () => x,
+      y: () => y,
+    },
   });
 
   const Stage = forwardRef<HTMLDivElement, { children?: ReactNode }>(
@@ -96,7 +105,29 @@ vi.mock('react-konva', () => {
 
   return {
     Stage,
-    Circle: () => <span data-testid="circle" />,
+    Circle: ({
+      draggable,
+      onDragMove,
+      onDragEnd,
+      x = 0,
+      y = 0,
+    }: {
+      draggable?: boolean;
+      onDragMove?: (event: ReturnType<typeof buildDragEvent>) => void;
+      onDragEnd?: (event: ReturnType<typeof buildDragEvent>) => void;
+      x?: number;
+      y?: number;
+    }) =>
+      draggable ? (
+        <button
+          type="button"
+          aria-label="Arrastar ponto da relacao"
+          onMouseMove={() => onDragMove?.(buildDragEvent(x + 12, y + 12))}
+          onMouseUp={() => onDragEnd?.(buildDragEvent(x + 12, y + 12))}
+        />
+      ) : (
+        <span data-testid="circle" />
+      ),
     Layer: Passthrough,
     Group: Passthrough,
     Rect: () => <span data-testid="rect" />,
@@ -133,9 +164,11 @@ function renderPanel(overrides?: {
     columnName: string,
     nextName: string,
   ) => boolean;
+  onStateChange?: (state: DatabaseDiagramVisualState) => void;
+  state?: DatabaseDiagramVisualState;
 }) {
   const parsed = parseDbml(content);
-  const state: DatabaseDiagramVisualState = {
+  const state: DatabaseDiagramVisualState = overrides?.state ?? {
     positions: {
       users: { x: 40, y: 40 },
       posts: { x: 360, y: 40 },
@@ -148,7 +181,7 @@ function renderPanel(overrides?: {
       relations={parsed.relations}
       theme="light"
       state={state}
-      onStateChange={() => {}}
+      onStateChange={overrides?.onStateChange ?? (() => {})}
       onRenameTable={overrides?.onRenameTable}
       onRenameColumn={overrides?.onRenameColumn}
     />,
@@ -199,5 +232,44 @@ describe('DatabaseDiagramPanel', () => {
       screen.getByRole('dialog', { name: /records de users/i }),
     ).toBeInTheDocument();
     expect(screen.getByText('Ada')).toBeInTheDocument();
+  });
+
+  it('previsualiza drag de relacao sem persistir antes do fim', async () => {
+    const user = userEvent.setup();
+    const onStateChange = vi.fn();
+    renderPanel({
+      onStateChange,
+      state: {
+        positions: {
+          users: { x: 40, y: 40 },
+          posts: { x: 360, y: 40 },
+        },
+        relationPaths: {
+          user_posts: {
+            fromSide: 'left',
+            toSide: 'right',
+            points: [
+              { x: 360, y: 71 },
+              { x: 320, y: 71 },
+              { x: 320, y: 45 },
+              { x: 280, y: 45 },
+            ],
+          },
+        },
+      },
+    });
+
+    await user.dblClick(
+      screen.getAllByRole('button', { name: 'Selecionar relação' })[0],
+    );
+    const dragHandle = screen.getAllByRole('button', {
+      name: 'Arrastar ponto da relacao',
+    })[0];
+
+    fireEvent.mouseMove(dragHandle);
+    expect(onStateChange).not.toHaveBeenCalled();
+
+    fireEvent.mouseUp(dragHandle);
+    expect(onStateChange).toHaveBeenCalledTimes(1);
   });
 });

@@ -33,8 +33,8 @@ import {
   DB_TABLE_WIDTH,
   computeDatabaseAutoLayout,
   computeDatabaseTableHeight,
-  ensureTablePositions,
 } from "../../lib/databaseLayout";
+import { reanchorRelationPathsForMovedTable } from "../../lib/databaseDiagramSync";
 import type {
   DatabaseDiagramViewport,
   DatabaseDiagramVisualState,
@@ -87,6 +87,51 @@ type LiveTablePosition = {
   x: number;
   y: number;
 };
+
+type LiveRelationPath = {
+  relationId: string;
+  path: DatabaseRelationPathState;
+};
+
+function HandIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      className="h-4 w-4 shrink-0"
+    >
+      <path
+        d="M7.5 12.5V7.8a1.3 1.3 0 0 1 2.6 0V12"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.1 12V6.8a1.3 1.3 0 0 1 2.6 0V12"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12.7 12V7.6a1.3 1.3 0 0 1 2.6 0V13"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15.3 13V8.9a1.3 1.3 0 0 1 2.6 0v6.2c0 2.9-1.8 4.9-4.4 4.9h-2.2c-1.9 0-3.2-.8-4.4-2.2l-1.7-2a1.4 1.4 0 0 1 2-2l.9.9"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function columnYCenter(columnIndex: number): number {
   return DB_HEADER_HEIGHT + columnIndex * DB_ROW_HEIGHT + DB_ROW_HEIGHT / 2;
@@ -521,6 +566,8 @@ export default function DatabaseDiagramPanel({
   const [recordsTableId, setRecordsTableId] = useState<string | null>(null);
   const [liveTablePosition, setLiveTablePosition] =
     useState<LiveTablePosition | null>(null);
+  const [liveRelationPath, setLiveRelationPath] =
+    useState<LiveRelationPath | null>(null);
 
   useEffect(() => {
     stateRef.current = state;
@@ -542,33 +589,9 @@ export default function DatabaseDiagramPanel({
     return () => observer.disconnect();
   }, []);
 
-  // garantir posições para novas tabelas
-  useEffect(() => {
-    const next = ensureTablePositions(tables, state.positions);
-    if (next !== state.positions) {
-      onStateChange({ ...state, positions: next });
-    }
-  }, [tables, state, onStateChange]);
-
-  // remover posições órfãs
-  useEffect(() => {
-    const validIds = new Set(tables.map((t) => t.id));
-    const filtered: typeof state.positions = {};
-    let changed = false;
-    for (const [key, value] of Object.entries(state.positions)) {
-      if (validIds.has(key)) {
-        filtered[key] = value;
-      } else {
-        changed = true;
-      }
-    }
-    if (changed) {
-      onStateChange({ ...state, positions: filtered });
-    }
-  }, [tables, state, onStateChange]);
-
   useEffect(() => {
     const validIds = new Set(tables.map((table) => table.id));
+    const validRelationIds = new Set(relations.map((relation) => relation.id));
     if (selectedTableId && !validIds.has(selectedTableId)) {
       setSelectedTableId(null);
     }
@@ -590,11 +613,18 @@ export default function DatabaseDiagramPanel({
     if (liveTablePosition && !validIds.has(liveTablePosition.id)) {
       setLiveTablePosition(null);
     }
+    if (
+      liveRelationPath &&
+      !validRelationIds.has(liveRelationPath.relationId)
+    ) {
+      setLiveRelationPath(null);
+    }
   }, [
     activeEditor,
     editingRelationId,
     hoveredTableId,
     liveTablePosition,
+    liveRelationPath,
     recordsTableId,
     relations,
     selectedTableId,
@@ -649,36 +679,19 @@ export default function DatabaseDiagramPanel({
       node.position({ x, y });
       setLiveTablePosition({ id, x, y });
       const current = stateRef.current;
-      // descarta caminhos customizados das relações que tocam a tabela movida
-      // para evitar segmentos diagonais quando os pontos intermediários ficam
-      // desalinhados em relação aos novos endpoints
-      let nextRelationPaths = current.relationPaths;
-      if (nextRelationPaths) {
-        const filtered: typeof nextRelationPaths = {};
-        let removed = false;
-        for (const [relationId, path] of Object.entries(nextRelationPaths)) {
-          const relation = relations.find((r) => r.id === relationId);
-          if (
-            relation &&
-            (relation.fromTable === id || relation.toTable === id)
-          ) {
-            removed = true;
-            continue;
-          }
-          filtered[relationId] = path;
-        }
-        if (removed) {
-          nextRelationPaths =
-            Object.keys(filtered).length > 0 ? filtered : undefined;
-        }
-      }
+      const reanchoredState = reanchorRelationPathsForMovedTable({
+        state: current,
+        tables,
+        relations,
+        tableId: id,
+        nextPosition: { x, y },
+      });
       onStateChange({
-        ...current,
-        positions: { ...current.positions, [id]: { x, y } },
-        relationPaths: nextRelationPaths,
+        ...reanchoredState,
+        positions: { ...reanchoredState.positions, [id]: { x, y } },
       });
     },
-    [onStateChange, relations],
+    [onStateChange, relations, tables],
   );
 
   const handleTableDragMove = useCallback(
@@ -707,10 +720,26 @@ export default function DatabaseDiagramPanel({
     [onStateChange],
   );
 
+  const previewRelationPath = useCallback(
+    (relationId: string, path: DatabaseRelationPathState) => {
+      setLiveRelationPath({ relationId, path });
+    },
+    [],
+  );
+
+  const commitRelationPath = useCallback(
+    (relationId: string, path: DatabaseRelationPathState) => {
+      setLiveRelationPath(null);
+      saveRelationPath(relationId, path);
+    },
+    [saveRelationPath],
+  );
+
   const resetRelationPath = useCallback(
     (relationId: string) => {
       const current = stateRef.current;
       if (!current.relationPaths?.[relationId]) {
+        setLiveRelationPath(null);
         setEditingRelationId(null);
         return;
       }
@@ -724,6 +753,7 @@ export default function DatabaseDiagramPanel({
             ? nextRelationPaths
             : undefined,
       });
+      setLiveRelationPath(null);
       setEditingRelationId(null);
     },
     [onStateChange],
@@ -1001,6 +1031,17 @@ export default function DatabaseDiagramPanel({
     };
   }, [liveTablePosition, state.positions]);
 
+  const visualRelationPaths = useMemo(() => {
+    if (!liveRelationPath) {
+      return state.relationPaths;
+    }
+
+    return {
+      ...state.relationPaths,
+      [liveRelationPath.relationId]: liveRelationPath.path,
+    };
+  }, [liveRelationPath, state.relationPaths]);
+
   const activeRelationIds = useMemo(() => {
     if (hoveredRelationId) {
       return new Set([hoveredRelationId]);
@@ -1125,7 +1166,7 @@ export default function DatabaseDiagramPanel({
               toPos,
               toHeight,
             );
-            const customPath = state.relationPaths?.[rel.id];
+            const customPath = visualRelationPaths?.[rel.id];
             const effectiveFromSide = customPath?.fromSide ?? fromSide;
             const effectiveToSide = customPath?.toSide ?? toSide;
             const fromAnchor = getColumnAnchor(
@@ -1238,6 +1279,61 @@ export default function DatabaseDiagramPanel({
                   const isEndpoint =
                     pointIndex === 0 ||
                     pointIndex === editablePoints.length - 1;
+                  const buildEndpointDragPath = (
+                    dragX: number,
+                  ): DatabaseRelationPathState | null => {
+                    if (!isEndpoint) {
+                      return null;
+                    }
+
+                    if (pointIndex === 0) {
+                      const nextSide: DatabaseRelationSide =
+                        dragX < fromPos.x + DB_TABLE_WIDTH / 2
+                          ? "left"
+                          : "right";
+                      const nextFromAnchor = getColumnAnchor(
+                        fromPos,
+                        fromColIndex,
+                        nextSide,
+                      );
+                      const nextPoints = buildOrthogonalPath(
+                        nextFromAnchor,
+                        nextSide,
+                        toAnchor,
+                        effectiveToSide,
+                      );
+                      return {
+                        fromSide: nextSide,
+                        toSide: effectiveToSide,
+                        points: pointArrayToPairs(nextPoints),
+                      };
+                    }
+
+                    if (pointIndex === editablePoints.length - 1) {
+                      const nextSide: DatabaseRelationSide =
+                        dragX < toPos.x + DB_TABLE_WIDTH / 2
+                          ? "left"
+                          : "right";
+                      const nextToAnchor = getColumnAnchor(
+                        toPos,
+                        toColIndex,
+                        nextSide,
+                      );
+                      const nextPoints = buildOrthogonalPath(
+                        fromAnchor,
+                        effectiveFromSide,
+                        nextToAnchor,
+                        nextSide,
+                      );
+                      return {
+                        fromSide: effectiveFromSide,
+                        toSide: nextSide,
+                        points: pointArrayToPairs(nextPoints),
+                      };
+                    }
+
+                    return null;
+                  };
                   return (
                     <Circle
                       key={`edit-${rel.id}-${pointIndex}`}
@@ -1250,56 +1346,20 @@ export default function DatabaseDiagramPanel({
                       draggable={isEndpoint}
                       onDragMove={(event) => {
                         event.cancelBubble = true;
-                        if (!isEndpoint) {
-                          return;
+                        const nextPath = buildEndpointDragPath(
+                          event.target.x(),
+                        );
+                        if (nextPath) {
+                          previewRelationPath(rel.id, nextPath);
                         }
-                        const node = event.target;
-                        if (pointIndex === 0) {
-                          const nextSide: DatabaseRelationSide =
-                            node.x() < fromPos.x + DB_TABLE_WIDTH / 2
-                              ? "left"
-                              : "right";
-                          const nextFromAnchor = getColumnAnchor(
-                            fromPos,
-                            fromColIndex,
-                            nextSide,
-                          );
-                          const nextPoints = buildOrthogonalPath(
-                            nextFromAnchor,
-                            nextSide,
-                            toAnchor,
-                            effectiveToSide,
-                          );
-                          saveRelationPath(rel.id, {
-                            fromSide: nextSide,
-                            toSide: effectiveToSide,
-                            points: pointArrayToPairs(nextPoints),
-                          });
-                          return;
-                        }
-
-                        if (pointIndex === editablePoints.length - 1) {
-                          const nextSide: DatabaseRelationSide =
-                            node.x() < toPos.x + DB_TABLE_WIDTH / 2
-                              ? "left"
-                              : "right";
-                          const nextToAnchor = getColumnAnchor(
-                            toPos,
-                            toColIndex,
-                            nextSide,
-                          );
-                          const nextPoints = buildOrthogonalPath(
-                            fromAnchor,
-                            effectiveFromSide,
-                            nextToAnchor,
-                            nextSide,
-                          );
-                          saveRelationPath(rel.id, {
-                            fromSide: effectiveFromSide,
-                            toSide: nextSide,
-                            points: pointArrayToPairs(nextPoints),
-                          });
-                          return;
+                      }}
+                      onDragEnd={(event) => {
+                        event.cancelBubble = true;
+                        const nextPath = buildEndpointDragPath(
+                          event.target.x(),
+                        );
+                        if (nextPath) {
+                          commitRelationPath(rel.id, nextPath);
                         }
                       }}
                       onMouseEnter={(event) => {
@@ -1318,88 +1378,124 @@ export default function DatabaseDiagramPanel({
                     />
                   );
                 })}
-                {curveControlPoints.map((point, controlIndex) => (
-                  <Circle
-                    key={`curve-control-${rel.id}-${controlIndex}`}
-                    x={point.x}
-                    y={point.y}
-                    radius={5}
-                    fill="#ffffff"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    draggable
-                    onDragMove={(event) => {
-                      event.cancelBubble = true;
-                      const nextCurvePoints = curvePoints.map((entry) => ({
-                        ...entry,
-                      }));
-                      nextCurvePoints[controlIndex + 1] = {
-                        x: event.target.x(),
-                        y: event.target.y(),
-                      };
-                      saveRelationPath(rel.id, {
-                        fromSide: effectiveFromSide,
-                        toSide: effectiveToSide,
-                        points: nextCurvePoints,
-                      });
-                    }}
-                    onMouseEnter={(event) => {
-                      const stage = event.target.getStage();
-                      if (stage) {
-                        stage.container().style.cursor = "move";
-                      }
-                    }}
-                    onMouseLeave={(event) => {
-                      const stage = event.target.getStage();
-                      if (stage) {
-                        stage.container().style.cursor = "default";
-                      }
-                    }}
-                    perfectDrawEnabled={false}
-                  />
-                ))}
-                {segmentHandles.map((handle) => (
-                  <Circle
-                    key={`segment-${rel.id}-${handle.index}`}
-                    x={handle.x}
-                    y={handle.y}
-                    radius={5}
-                    fill="#ffffff"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    draggable
-                    onDragMove={(event) => {
-                      event.cancelBubble = true;
-                      const node = event.target;
-                      const nextPoints = moveRelationSegment(
-                        editablePoints,
-                        handle.index,
-                        { x: node.x(), y: node.y() },
-                      );
-                      saveRelationPath(rel.id, {
-                        fromSide: effectiveFromSide,
-                        toSide: effectiveToSide,
-                        points: nextPoints,
-                      });
-                    }}
-                    onMouseEnter={(event) => {
-                      const stage = event.target.getStage();
-                      if (stage) {
-                        stage.container().style.cursor =
-                          handle.orientation === "vertical"
-                            ? "ew-resize"
-                            : "ns-resize";
-                      }
-                    }}
-                    onMouseLeave={(event) => {
-                      const stage = event.target.getStage();
-                      if (stage) {
-                        stage.container().style.cursor = "default";
-                      }
-                    }}
-                    perfectDrawEnabled={false}
-                  />
-                ))}
+                {curveControlPoints.map((point, controlIndex) => {
+                  const buildCurveControlPath = (
+                    x: number,
+                    y: number,
+                  ): DatabaseRelationPathState => {
+                    const nextCurvePoints = curvePoints.map((entry) => ({
+                      ...entry,
+                    }));
+                    nextCurvePoints[controlIndex + 1] = { x, y };
+                    return {
+                      fromSide: effectiveFromSide,
+                      toSide: effectiveToSide,
+                      points: nextCurvePoints,
+                    };
+                  };
+
+                  return (
+                    <Circle
+                      key={`curve-control-${rel.id}-${controlIndex}`}
+                      x={point.x}
+                      y={point.y}
+                      radius={5}
+                      fill="#ffffff"
+                      stroke="#6366f1"
+                      strokeWidth={2}
+                      draggable
+                      onDragMove={(event) => {
+                        event.cancelBubble = true;
+                        previewRelationPath(
+                          rel.id,
+                          buildCurveControlPath(
+                            event.target.x(),
+                            event.target.y(),
+                          ),
+                        );
+                      }}
+                      onDragEnd={(event) => {
+                        event.cancelBubble = true;
+                        commitRelationPath(
+                          rel.id,
+                          buildCurveControlPath(
+                            event.target.x(),
+                            event.target.y(),
+                          ),
+                        );
+                      }}
+                      onMouseEnter={(event) => {
+                        const stage = event.target.getStage();
+                        if (stage) {
+                          stage.container().style.cursor = "move";
+                        }
+                      }}
+                      onMouseLeave={(event) => {
+                        const stage = event.target.getStage();
+                        if (stage) {
+                          stage.container().style.cursor = "default";
+                        }
+                      }}
+                      perfectDrawEnabled={false}
+                    />
+                  );
+                })}
+                {segmentHandles.map((handle) => {
+                  const buildSegmentPath = (
+                    x: number,
+                    y: number,
+                  ): DatabaseRelationPathState => ({
+                    fromSide: effectiveFromSide,
+                    toSide: effectiveToSide,
+                    points: moveRelationSegment(editablePoints, handle.index, {
+                      x,
+                      y,
+                    }),
+                  });
+
+                  return (
+                    <Circle
+                      key={`segment-${rel.id}-${handle.index}`}
+                      x={handle.x}
+                      y={handle.y}
+                      radius={5}
+                      fill="#ffffff"
+                      stroke="#6366f1"
+                      strokeWidth={2}
+                      draggable
+                      onDragMove={(event) => {
+                        event.cancelBubble = true;
+                        previewRelationPath(
+                          rel.id,
+                          buildSegmentPath(event.target.x(), event.target.y()),
+                        );
+                      }}
+                      onDragEnd={(event) => {
+                        event.cancelBubble = true;
+                        commitRelationPath(
+                          rel.id,
+                          buildSegmentPath(event.target.x(), event.target.y()),
+                        );
+                      }}
+                      onMouseEnter={(event) => {
+                        const stage = event.target.getStage();
+                        if (stage) {
+                          stage.container().style.cursor =
+                            handle.orientation === "vertical"
+                              ? "ew-resize"
+                              : "ns-resize";
+                        }
+                      }}
+                      onMouseLeave={(event) => {
+                        const stage = event.target.getStage();
+                        if (stage) {
+                          stage.container().style.cursor = "default";
+                        }
+                      }}
+                      perfectDrawEnabled={false}
+                    />
+                  );
+                })}
                 {isEditing ? (
                   <Group
                     x={relationMidpoint.x - 18}
@@ -2003,6 +2099,8 @@ export default function DatabaseDiagramPanel({
             )
           }
           aria-pressed={interactionMode === "pan"}
+          aria-label={interactionMode === "pan" ? "Alternar para pan" : "Selecionar"}
+          title={interactionMode === "pan" ? "Pan" : "Selecionar"}
           className={`border-l px-3 py-2 text-xs font-semibold transition ${
             interactionMode === "pan"
               ? "bg-blue-600 text-white"
@@ -2011,7 +2109,7 @@ export default function DatabaseDiagramPanel({
                 : "border-slate-200 hover:bg-slate-100"
           }`}
         >
-          {interactionMode === "pan" ? "Pan" : "Selecionar"}
+          {interactionMode === "pan" ? "Pan" : <HandIcon />}
         </button>
       </div>
     </div>
