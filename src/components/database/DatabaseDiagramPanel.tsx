@@ -8,7 +8,16 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
+import {
+  Circle,
+  Group,
+  Layer,
+  Line,
+  Path,
+  Rect,
+  Stage,
+  Text,
+} from "react-konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import Konva from "konva";
 
@@ -132,15 +141,14 @@ function chooseRelationSides(
 ): { fromSide: RelationSide; toSide: RelationSide } {
   const fromCenterX = fromPosition.x + DB_TABLE_WIDTH / 2;
   const toCenterX = toPosition.x + DB_TABLE_WIDTH / 2;
-  const fromCenterY = fromPosition.y + fromHeight / 2;
-  const toCenterY = toPosition.y + toHeight / 2;
   const horizontalOverlap =
     fromPosition.x < toPosition.x + DB_TABLE_WIDTH &&
     toPosition.x < fromPosition.x + DB_TABLE_WIDTH;
-  const mostlyVertical =
-    Math.abs(fromCenterY - toCenterY) > Math.abs(fromCenterX - toCenterX);
+  const verticalOverlap =
+    fromPosition.y < toPosition.y + toHeight &&
+    toPosition.y < fromPosition.y + fromHeight;
 
-  if (horizontalOverlap || mostlyVertical) {
+  if (horizontalOverlap || !verticalOverlap) {
     return { fromSide: "right", toSide: "right" };
   }
 
@@ -161,6 +169,54 @@ function buildPathControlPoints(points: number[]): { x: number; y: number }[] {
   }
 
   return result;
+}
+
+function getPointAt(points: number[], index: number): { x: number; y: number } {
+  return { x: points[index], y: points[index + 1] };
+}
+
+function buildRoundedPathData(points: number[], radius = 12): string {
+  if (points.length < 4) {
+    return "";
+  }
+
+  const lastIndex = points.length - 2;
+  let data = `M ${points[0]} ${points[1]}`;
+
+  for (let index = 2; index < lastIndex; index += 2) {
+    const previous = getPointAt(points, index - 2);
+    const current = getPointAt(points, index);
+    const next = getPointAt(points, index + 2);
+    const incomingLength = Math.hypot(
+      current.x - previous.x,
+      current.y - previous.y,
+    );
+    const outgoingLength = Math.hypot(
+      next.x - current.x,
+      next.y - current.y,
+    );
+    const cornerRadius = Math.min(radius, incomingLength / 2, outgoingLength / 2);
+
+    if (cornerRadius <= 0) {
+      data += ` L ${current.x} ${current.y}`;
+      continue;
+    }
+
+    const beforeCorner = {
+      x: current.x + ((previous.x - current.x) / incomingLength) * cornerRadius,
+      y: current.y + ((previous.y - current.y) / incomingLength) * cornerRadius,
+    };
+    const afterCorner = {
+      x: current.x + ((next.x - current.x) / outgoingLength) * cornerRadius,
+      y: current.y + ((next.y - current.y) / outgoingLength) * cornerRadius,
+    };
+
+    data += ` L ${beforeCorner.x} ${beforeCorner.y}`;
+    data += ` Q ${current.x} ${current.y} ${afterCorner.x} ${afterCorner.y}`;
+  }
+
+  data += ` L ${points[lastIndex]} ${points[lastIndex + 1]}`;
+  return data;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -766,6 +822,7 @@ export default function DatabaseDiagramPanel({
               toAnchor,
               toSide,
             );
+            const roundedPath = buildRoundedPathData(points);
             const isSelected = selectedRelationId === rel.id;
             const isActive = activeRelationIds.has(rel.id);
             const stroke = isActive ? activeEdgeColor : edgeColor;
@@ -776,8 +833,8 @@ export default function DatabaseDiagramPanel({
             return (
               <Group key={rel.id}>
                 {isActive ? (
-                  <Line
-                    points={points}
+                  <Path
+                    data={roundedPath}
                     stroke={activeEdgeColor}
                     strokeWidth={6}
                     lineCap="round"
@@ -788,8 +845,8 @@ export default function DatabaseDiagramPanel({
                     shadowForStrokeEnabled={false}
                   />
                 ) : null}
-                <Line
-                  points={points}
+                <Path
+                  data={roundedPath}
                   stroke={stroke}
                   strokeWidth={isActive ? 2.4 : 1.35}
                   lineCap="round"
@@ -877,8 +934,8 @@ export default function DatabaseDiagramPanel({
                   />
                 ) : null}
                 {isSelected ? (
-                  <Line
-                    points={points}
+                  <Path
+                    data={roundedPath}
                     stroke={activeEdgeColor}
                     strokeWidth={4.5}
                     lineCap="round"
@@ -888,8 +945,8 @@ export default function DatabaseDiagramPanel({
                     listening={false}
                   />
                 ) : null}
-                <Line
-                  points={points}
+                <Path
+                  data={roundedPath}
                   stroke="transparent"
                   strokeWidth={16}
                   lineCap="round"

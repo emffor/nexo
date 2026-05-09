@@ -75,6 +75,18 @@ vi.mock('react-konva', () => {
     );
   }
 
+  function Path({
+    onClick,
+  }: {
+    onClick?: (event: ReturnType<typeof buildEvent>) => void;
+  }) {
+    return onClick ? (
+      <button type="button" aria-label="Selecionar relação" onClick={() => onClick(buildEvent())} />
+    ) : (
+      <span data-testid="path" />
+    );
+  }
+
   return {
     Stage,
     Circle: () => <span data-testid="circle" />,
@@ -82,6 +94,7 @@ vi.mock('react-konva', () => {
     Group: Passthrough,
     Rect: () => <span data-testid="rect" />,
     Line,
+    Path,
     Text,
   };
 });
