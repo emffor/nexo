@@ -55,6 +55,12 @@ interface PendingConnection {
   pointerY: number;
 }
 
+interface LiveNodePosition {
+  id: string;
+  x: number;
+  y: number;
+}
+
 interface DiagramPort {
   item: MarkdownItem;
   side: DiagramPortSide;
@@ -254,6 +260,8 @@ export default function DiagramPanel({
     Record<string, DiagramNodePosition>
   >({});
   const [edges, setEdges] = useState<DiagramEdge[]>([]);
+  const [liveNodePosition, setLiveNodePosition] =
+    useState<LiveNodePosition | null>(null);
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
   const [hoveredPortId, setHoveredPortId] = useState<string | null>(null);
@@ -281,6 +289,20 @@ export default function DiagramPanel({
       ),
     [edges, visibleItemIds],
   );
+
+  const visualPositions = useMemo(() => {
+    if (!liveNodePosition) {
+      return positions;
+    }
+
+    return {
+      ...positions,
+      [liveNodePosition.id]: {
+        x: liveNodePosition.x,
+        y: liveNodePosition.y,
+      },
+    };
+  }, [liveNodePosition, positions]);
 
   const emitDiagramState = useCallback(
     (state: DiagramState) => {
@@ -386,6 +408,21 @@ export default function DiagramPanel({
   useEffect(() => {
     positionsRef.current = positions;
   }, [positions]);
+
+  useEffect(() => {
+    if (!liveNodePosition) {
+      return;
+    }
+
+    const persisted = positions[liveNodePosition.id];
+    if (
+      persisted &&
+      persisted.x === liveNodePosition.x &&
+      persisted.y === liveNodePosition.y
+    ) {
+      setLiveNodePosition(null);
+    }
+  }, [liveNodePosition, positions]);
 
   useEffect(() => {
     edgesRef.current = edges;
@@ -527,6 +564,7 @@ export default function DiagramPanel({
         node.moveTo(nodesLayer);
       }
       node.position({ x, y });
+      setLiveNodePosition({ id, x, y });
       nodesLayer?.batchDraw();
       dragLayerRef.current?.batchDraw();
       const nextPositions = {
@@ -536,6 +574,18 @@ export default function DiagramPanel({
       setDiagramPositions(nextPositions);
     },
     [setDiagramPositions],
+  );
+
+  const handleNodeDragMove = useCallback(
+    (id: string, event: KonvaEventObject<DragEvent>) => {
+      const node = event.target;
+      setLiveNodePosition({
+        id,
+        x: node.x(),
+        y: node.y(),
+      });
+    },
+    [],
   );
 
   const handleNodeDragStart = useCallback(
@@ -563,7 +613,7 @@ export default function DiagramPanel({
   const findPortAtPoint = useCallback(
     (worldX: number, worldY: number): DiagramPort | null => {
       for (const item of visibleItems) {
-        const pos = positions[item.id];
+        const pos = visualPositions[item.id];
         if (!pos) {
           continue;
         }
@@ -577,7 +627,7 @@ export default function DiagramPanel({
       }
       return null;
     },
-    [positions, visibleItems],
+    [visualPositions, visibleItems],
   );
 
   const handlePortMouseDown = useCallback(
@@ -751,7 +801,7 @@ export default function DiagramPanel({
   const handleNodeMouseEnter = useCallback(
     (item: MarkdownItem) => {
       if (item.observation) {
-        const pos = positions[item.id];
+        const pos = visualPositions[item.id];
         if (pos) {
           const stage = stageRef.current;
           if (stage) {
@@ -765,7 +815,7 @@ export default function DiagramPanel({
         }
       }
     },
-    [positions],
+    [visualPositions],
   );
 
   const handleNodeMouseLeave = useCallback(() => {
@@ -840,8 +890,8 @@ export default function DiagramPanel({
       >
         <Layer listening={visibleEdges.length > 0}>
           {visibleEdges.map((edge) => {
-            const fromPos = positions[edge.from];
-            const toPos = positions[edge.to];
+            const fromPos = visualPositions[edge.from];
+            const toPos = visualPositions[edge.to];
             if (!fromPos || !toPos) {
               return null;
             }
@@ -896,7 +946,7 @@ export default function DiagramPanel({
                 if (!visibleItemIds.has(pending.fromId)) {
                   return null;
                 }
-                const fromPos = positions[pending.fromId];
+                const fromPos = visualPositions[pending.fromId];
                 if (!fromPos) {
                   return null;
                 }
@@ -926,7 +976,7 @@ export default function DiagramPanel({
 
         <Layer ref={nodesLayerRef}>
           {visibleItems.map((item) => {
-            const pos = positions[item.id];
+            const pos = visualPositions[item.id];
             if (!pos) {
               return null;
             }
@@ -946,6 +996,7 @@ export default function DiagramPanel({
                 y={pos.y}
                 draggable
                 onDragStart={handleNodeDragStart}
+                onDragMove={(event) => handleNodeDragMove(item.id, event)}
                 onDragEnd={(event) => handleNodeDragEnd(item.id, event)}
                 onClick={() => onSelectItem(item)}
                 onTap={() => onSelectItem(item)}
