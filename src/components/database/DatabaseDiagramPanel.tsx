@@ -603,12 +603,36 @@ export default function DatabaseDiagramPanel({
       node.position({ x, y });
       setLiveTablePosition({ id, x, y });
       const current = stateRef.current;
+      // descarta caminhos customizados das relações que tocam a tabela movida
+      // para evitar segmentos diagonais quando os pontos intermediários ficam
+      // desalinhados em relação aos novos endpoints
+      let nextRelationPaths = current.relationPaths;
+      if (nextRelationPaths) {
+        const filtered: typeof nextRelationPaths = {};
+        let removed = false;
+        for (const [relationId, path] of Object.entries(nextRelationPaths)) {
+          const relation = relations.find((r) => r.id === relationId);
+          if (
+            relation &&
+            (relation.fromTable === id || relation.toTable === id)
+          ) {
+            removed = true;
+            continue;
+          }
+          filtered[relationId] = path;
+        }
+        if (removed) {
+          nextRelationPaths =
+            Object.keys(filtered).length > 0 ? filtered : undefined;
+        }
+      }
       onStateChange({
         ...current,
         positions: { ...current.positions, [id]: { x, y } },
+        relationPaths: nextRelationPaths,
       });
     },
-    [onStateChange],
+    [onStateChange, relations],
   );
 
   const handleTableDragMove = useCallback(
