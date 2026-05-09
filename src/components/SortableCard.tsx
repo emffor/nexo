@@ -39,12 +39,11 @@ export function SortableCard({
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
     ...(isDragging
       ? {
           zIndex: 50,
-          scale: "1.02",
           opacity: 0.9,
           boxShadow: "0 12px 28px rgba(0,0,0,0.25)",
         }

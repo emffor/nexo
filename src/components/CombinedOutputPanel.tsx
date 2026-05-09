@@ -65,12 +65,11 @@ function PreviewGridCard({
     ...sortableAttributes
   } = attributes;
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
     ...(isDragging
       ? {
           zIndex: 50,
-          scale: "1.015",
           opacity: 0.92,
           boxShadow: "0 14px 34px rgba(0,0,0,0.28)",
         }
