@@ -345,15 +345,33 @@ export function AppShell({
                 )}
               </>
             )}
-            {isDatabaseMode && onResetDatabaseLayout && (
-              <button
-                type="button"
-                onClick={onResetDatabaseLayout}
-                className="toolbar-button border-transparent bg-transparent"
-                title="Reorganizar layout do diagrama de banco"
-              >
-                Resetar layout
-              </button>
+            {isDatabaseMode && (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSetDiagramEdgeStyle(
+                      diagramEdgeStyle === "curve" ? "square" : "curve",
+                    )
+                  }
+                  className="toolbar-button border-transparent bg-transparent"
+                  title="Alternar estilo das linhas do banco"
+                >
+                  {diagramEdgeStyle === "curve"
+                    ? "Linha curva"
+                    : "Linha quadrada"}
+                </button>
+                {onResetDatabaseLayout && (
+                  <button
+                    type="button"
+                    onClick={onResetDatabaseLayout}
+                    className="toolbar-button border-transparent bg-transparent"
+                    title="Restaurar exemplo inicial do banco"
+                  >
+                    Resetar banco
+                  </button>
+                )}
+              </>
             )}
           </ToolbarGroup>
 

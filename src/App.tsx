@@ -756,6 +756,7 @@ export default function App() {
               onStateChange={handleDatabaseStateChange}
               onRenameTable={handleRenameDatabaseTable}
               onRenameColumn={handleRenameDatabaseColumn}
+              edgeStyle={diagramEdgeStyle}
               resetSignal={databaseResetSignal}
             />
           ) : viewMode === "diagram" ? (

@@ -21,7 +21,7 @@ import {
 import type { KonvaEventObject } from "konva/lib/Node";
 import Konva from "konva";
 
-import type { AppTheme } from "../../lib/preferences";
+import type { AppTheme, DiagramEdgeStyle } from "../../lib/preferences";
 import {
   isValidDbmlColumnIdentifier,
   isValidDbmlIdentifier,
@@ -57,6 +57,7 @@ interface DatabaseDiagramPanelProps {
     columnName: string,
     nextName: string,
   ) => boolean;
+  edgeStyle?: DiagramEdgeStyle;
   resetSignal?: number;
 }
 
@@ -326,6 +327,21 @@ function buildOrthogonalPathData(points: number[]): string {
   return data;
 }
 
+function buildCurvePathData(
+  from: { x: number; y: number },
+  fromSide: DatabaseRelationSide,
+  to: { x: number; y: number },
+  toSide: DatabaseRelationSide,
+): string {
+  const fromDirection = fromSide === "right" ? 1 : -1;
+  const toDirection = toSide === "right" ? 1 : -1;
+  const distance = Math.max(80, Math.abs(to.x - from.x) * 0.45);
+  const controlFromX = from.x + fromDirection * distance;
+  const controlToX = to.x + toDirection * distance;
+
+  return `M ${from.x} ${from.y} C ${controlFromX} ${from.y}, ${controlToX} ${to.y}, ${to.x} ${to.y}`;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -448,6 +464,7 @@ export default function DatabaseDiagramPanel({
   onStateChange,
   onRenameTable,
   onRenameColumn,
+  edgeStyle = "square",
   resetSignal = 0,
 }: DatabaseDiagramPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -1104,10 +1121,19 @@ export default function DatabaseDiagramPanel({
               fromAnchor,
               toAnchor,
             );
-            const roundedPath = buildOrthogonalPathData(points);
             const isSelected = selectedRelationId === rel.id;
             const isActive = activeRelationIds.has(rel.id);
             const isEditing = editingRelationId === rel.id;
+            const isCurveEdge = edgeStyle === "curve" && !isEditing;
+            const roundedPath = buildOrthogonalPathData(points);
+            const relationPath = isCurveEdge
+              ? buildCurvePathData(
+                  fromAnchor,
+                  effectiveFromSide,
+                  toAnchor,
+                  effectiveToSide,
+                )
+              : roundedPath;
             const stroke = isActive ? activeEdgeColor : edgeColor;
             const relationMidpoint = buildRelationMidpoint(points);
             const editablePoints = isEditing ? pointArrayToPairs(points) : [];
@@ -1124,11 +1150,11 @@ export default function DatabaseDiagramPanel({
               <Group key={rel.id}>
                 {isActive ? (
                   <Path
-                    data={roundedPath}
+                    data={relationPath}
                     stroke={activeEdgeColor}
                     strokeWidth={6}
-                    lineCap="butt"
-                    lineJoin="miter"
+                    lineCap={isCurveEdge ? "round" : "butt"}
+                    lineJoin={isCurveEdge ? "round" : "miter"}
                     opacity={isSelected ? 0.2 : 0.12}
                     perfectDrawEnabled={false}
                     listening={false}
@@ -1136,11 +1162,11 @@ export default function DatabaseDiagramPanel({
                   />
                 ) : null}
                 <Path
-                  data={roundedPath}
+                  data={relationPath}
                   stroke={stroke}
                   strokeWidth={isActive ? 2.4 : 1.35}
-                  lineCap="butt"
-                  lineJoin="miter"
+                  lineCap={isCurveEdge ? "round" : "butt"}
+                  lineJoin={isCurveEdge ? "round" : "miter"}
                   opacity={isActive ? 1 : 0.82}
                   perfectDrawEnabled={false}
                   shadowForStrokeEnabled={false}
