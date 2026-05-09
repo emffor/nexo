@@ -1,30 +1,32 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Logo M">
   <defs>
-    <linearGradient id="bg" x1="8" y1="6" x2="56" y2="60" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#0F172A"/>
-      <stop offset="1" stop-color="#050A12"/>
+    <linearGradient id="background" x1="10" y1="6" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="1" stop-color="#020617"/>
     </linearGradient>
-    <linearGradient id="active" x1="16" y1="14" x2="46" y2="44" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#2DD4BF"/>
-      <stop offset="1" stop-color="#0F766E"/>
+    <linearGradient id="accent" x1="18" y1="14" x2="46" y2="50" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#14B8A6"/>
     </linearGradient>
-    <filter id="shadow" x="8" y="10" width="48" height="48" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
-      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity=".35"/>
+    <filter id="softShadow" x="8" y="7" width="48" height="52" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity=".35"/>
     </filter>
   </defs>
 
-  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#bg)"/>
-  <path d="M19 21h27M19 43h27M18 32h28" stroke="#334155" stroke-width="3" stroke-linecap="round"/>
-  <path d="M23 21c5 0 7 11 13 11h5M23 43c5 0 7-11 13-11h5" stroke="#94A3B8" stroke-width="2.4" stroke-linecap="round"/>
-
-  <g filter="url(#shadow)">
-    <rect x="13" y="14" width="20" height="14" rx="4" fill="url(#active)" stroke="#5EEAD4" stroke-width="1.5"/>
-    <rect x="31" y="25" width="20" height="14" rx="4" fill="#1E293B" stroke="#64748B" stroke-width="1.5"/>
-    <rect x="13" y="36" width="20" height="14" rx="4" fill="#1E293B" stroke="#64748B" stroke-width="1.5"/>
+  <rect width="64" height="64" rx="16" fill="url(#background)"/>
+  <path d="M13 48h38" stroke="#1E293B" stroke-width="3" stroke-linecap="round"/>
+  <g filter="url(#softShadow)">
+    <path
+      d="M17 47V18h8l7 13 7-13h8v29h-8V31l-7 12-7-12v16h-8Z"
+      fill="url(#accent)"
+    />
+    <path
+      d="M17 47V18h8l7 13 7-13h8v29h-8V31l-7 12-7-12v16h-8Z"
+      fill="none"
+      stroke="#BAE6FD"
+      stroke-linejoin="round"
+      stroke-width="1.5"
+    />
   </g>
-
-  <path d="M18 19h10M18 23h6M36 30h9M36 34h6M18 41h9M18 45h6" stroke="#E2E8F0" stroke-width="1.8" stroke-linecap="round"/>
-  <circle cx="33" cy="21" r="2.6" fill="#5EEAD4" stroke="#0B0F17" stroke-width="1.2"/>
-  <circle cx="31" cy="43" r="2.6" fill="#5EEAD4" stroke="#0B0F17" stroke-width="1.2"/>
-  <circle cx="51" cy="32" r="2.6" fill="#5EEAD4" stroke="#0B0F17" stroke-width="1.2"/>
+  <path d="M21 22v21M43 22v21" stroke="#ECFEFF" stroke-linecap="round" stroke-opacity=".45" stroke-width="2"/>
 </svg>
