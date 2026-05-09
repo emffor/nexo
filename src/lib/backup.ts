@@ -2,6 +2,7 @@ import type { DiagramStatus, MarkdownItem } from '../types/markdown';
 import type { DiagramState } from '../types/diagram';
 import type {
   DatabaseDiagramRecord,
+  DatabaseRelationPathState,
   DatabaseDiagramVisualState,
   DatabaseTablePosition,
 } from '../types/database';
@@ -94,7 +95,51 @@ function parseDatabaseVisualState(value: unknown): DatabaseDiagramVisualState | 
       scale: (raw.viewport as { scale: number }).scale,
     };
   }
-  return { positions, viewport };
+
+  let relationPaths: DatabaseDiagramVisualState['relationPaths'];
+  if (raw.relationPaths && typeof raw.relationPaths === 'object') {
+    relationPaths = {};
+    for (const [key, entry] of Object.entries(raw.relationPaths)) {
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+      const path = entry as Record<string, unknown>;
+      const fromSide = path.fromSide === 'left' || path.fromSide === 'right'
+        ? path.fromSide
+        : undefined;
+      const toSide = path.toSide === 'left' || path.toSide === 'right'
+        ? path.toSide
+        : undefined;
+      const points = Array.isArray(path.points)
+        ? path.points.flatMap((point) => {
+            if (
+              point &&
+              typeof point === 'object' &&
+              typeof (point as { x: unknown }).x === 'number' &&
+              typeof (point as { y: unknown }).y === 'number'
+            ) {
+              return [
+                {
+                  x: (point as { x: number }).x,
+                  y: (point as { y: number }).y,
+                },
+              ];
+            }
+            return [];
+          })
+        : [];
+
+      if (fromSide && toSide && points.length >= 2) {
+        relationPaths[key] = {
+          fromSide,
+          toSide,
+          points,
+        } satisfies DatabaseRelationPathState;
+      }
+    }
+  }
+
+  return { positions, relationPaths, viewport };
 }
 
 function parseDatabaseDiagram(

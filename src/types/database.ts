@@ -81,8 +81,22 @@ export interface DatabaseDiagramViewport {
   scale: number;
 }
 
+export type DatabaseRelationSide = 'left' | 'right';
+
+export interface DatabaseRelationPathPoint {
+  x: number;
+  y: number;
+}
+
+export interface DatabaseRelationPathState {
+  fromSide: DatabaseRelationSide;
+  toSide: DatabaseRelationSide;
+  points: DatabaseRelationPathPoint[];
+}
+
 export interface DatabaseDiagramVisualState {
   positions: Record<string, DatabaseTablePosition>;
+  relationPaths?: Record<string, DatabaseRelationPathState>;
   viewport?: DatabaseDiagramViewport;
 }
 

@@ -77,11 +77,18 @@ vi.mock('react-konva', () => {
 
   function Path({
     onClick,
+    onDblClick,
   }: {
     onClick?: (event: ReturnType<typeof buildEvent>) => void;
+    onDblClick?: (event: ReturnType<typeof buildEvent>) => void;
   }) {
     return onClick ? (
-      <button type="button" aria-label="Selecionar relação" onClick={() => onClick(buildEvent())} />
+      <button
+        type="button"
+        aria-label="Selecionar relação"
+        onClick={() => onClick(buildEvent())}
+        onDoubleClick={() => onDblClick?.(buildEvent())}
+      />
     ) : (
       <span data-testid="path" />
     );

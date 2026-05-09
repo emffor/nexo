@@ -39,6 +39,8 @@ import type {
   DatabaseDiagramViewport,
   DatabaseDiagramVisualState,
   DatabaseRelation,
+  DatabaseRelationPathState,
+  DatabaseRelationSide,
   DatabaseTable,
   DatabaseTablePosition,
 } from "../../types/database";
@@ -63,6 +65,7 @@ const MAX_SCALE = 1.8;
 const SCALE_STEP = 1.05;
 const INITIAL_VIEWPORT: DatabaseDiagramViewport = { x: 0, y: 0, scale: 1 };
 const EDITOR_WIDTH = 280;
+const RELATION_GUIDE_POINT_SPACING = 26;
 
 Konva.pixelRatio = 1;
 
@@ -84,8 +87,6 @@ type LiveTablePosition = {
   y: number;
 };
 
-type RelationSide = "left" | "right";
-
 function columnYCenter(columnIndex: number): number {
   return DB_HEADER_HEIGHT + columnIndex * DB_ROW_HEIGHT + DB_ROW_HEIGHT / 2;
 }
@@ -93,7 +94,7 @@ function columnYCenter(columnIndex: number): number {
 function getColumnAnchor(
   position: DatabaseTablePosition,
   columnIndex: number,
-  side: RelationSide,
+  side: DatabaseRelationSide,
 ): { x: number; y: number } {
   return {
     x: side === "left" ? position.x : position.x + DB_TABLE_WIDTH,
@@ -103,9 +104,9 @@ function getColumnAnchor(
 
 function buildOrthogonalPath(
   from: { x: number; y: number },
-  fromSide: RelationSide,
+  fromSide: DatabaseRelationSide,
   to: { x: number; y: number },
-  toSide: RelationSide,
+  toSide: DatabaseRelationSide,
 ): number[] {
   const handle = 76;
 
@@ -144,12 +145,144 @@ function buildOrthogonalPath(
   ];
 }
 
+function pointArrayToPairs(points: number[]): { x: number; y: number }[] {
+  const result: { x: number; y: number }[] = [];
+  for (let index = 0; index < points.length - 1; index += 2) {
+    result.push({ x: points[index], y: points[index + 1] });
+  }
+  return result;
+}
+
+function pointPairsToArray(points: { x: number; y: number }[]): number[] {
+  return points.flatMap((point) => [point.x, point.y]);
+}
+
+function normalizeRelationPath(
+  path: DatabaseRelationPathState | undefined,
+  fallbackPoints: number[],
+  fromAnchor: { x: number; y: number },
+  toAnchor: { x: number; y: number },
+): number[] {
+  if (!path || path.points.length < 2) {
+    return fallbackPoints;
+  }
+
+  const points = path.points.map((point) => ({ ...point }));
+  points[0] = fromAnchor;
+  points[points.length - 1] = toAnchor;
+
+  return pointPairsToArray(points);
+}
+
+function moveRelationSegment(
+  points: { x: number; y: number }[],
+  segmentIndex: number,
+  nextPosition: { x: number; y: number },
+): { x: number; y: number }[] {
+  const result = points.map((point) => ({ ...point }));
+  const from = result[segmentIndex];
+  const to = result[segmentIndex + 1];
+
+  if (!from || !to) {
+    return result;
+  }
+
+  if (from.x === to.x) {
+    const x = Math.round(nextPosition.x);
+    result[segmentIndex] = { ...from, x };
+    result[segmentIndex + 1] = { ...to, x };
+    return result;
+  }
+
+  if (from.y === to.y) {
+    const y = Math.round(nextPosition.y);
+    result[segmentIndex] = { ...from, y };
+    result[segmentIndex + 1] = { ...to, y };
+  }
+
+  return result;
+}
+
+function buildSegmentHandles(points: { x: number; y: number }[]): {
+  index: number;
+  x: number;
+  y: number;
+  orientation: "horizontal" | "vertical";
+}[] {
+  const handles: {
+    index: number;
+    x: number;
+    y: number;
+    orientation: "horizontal" | "vertical";
+  }[] = [];
+
+  for (let index = 1; index < points.length - 2; index += 1) {
+    const from = points[index];
+    const to = points[index + 1];
+    if (!from || !to) {
+      continue;
+    }
+    if (from.x === to.x) {
+      handles.push({
+        index,
+        x: from.x,
+        y: (from.y + to.y) / 2,
+        orientation: "vertical",
+      });
+    } else if (from.y === to.y) {
+      handles.push({
+        index,
+        x: (from.x + to.x) / 2,
+        y: from.y,
+        orientation: "horizontal",
+      });
+    }
+  }
+
+  return handles;
+}
+
+function buildRelationGuidePoints(
+  points: { x: number; y: number }[],
+): { x: number; y: number }[] {
+  const guidePoints: { x: number; y: number }[] = [];
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const from = points[index];
+    const to = points[index + 1];
+    if (!from || !to) {
+      continue;
+    }
+
+    const deltaX = to.x - from.x;
+    const deltaY = to.y - from.y;
+    const length = Math.hypot(deltaX, deltaY);
+    if (length < RELATION_GUIDE_POINT_SPACING * 1.35) {
+      continue;
+    }
+
+    const steps = Math.max(
+      1,
+      Math.floor(length / RELATION_GUIDE_POINT_SPACING),
+    );
+    for (let step = 1; step < steps; step += 1) {
+      const ratio = step / steps;
+      guidePoints.push({
+        x: from.x + deltaX * ratio,
+        y: from.y + deltaY * ratio,
+      });
+    }
+  }
+
+  return guidePoints;
+}
+
 function chooseRelationSides(
   fromPosition: DatabaseTablePosition,
   fromHeight: number,
   toPosition: DatabaseTablePosition,
   toHeight: number,
-): { fromSide: RelationSide; toSide: RelationSide } {
+): { fromSide: DatabaseRelationSide; toSide: DatabaseRelationSide } {
   const fromCenterX = fromPosition.x + DB_TABLE_WIDTH / 2;
   const toCenterX = toPosition.x + DB_TABLE_WIDTH / 2;
   const horizontalOverlap =
@@ -288,6 +421,9 @@ export default function DatabaseDiagramPanel({
   const [selectedRelationId, setSelectedRelationId] = useState<string | null>(
     null,
   );
+  const [editingRelationId, setEditingRelationId] = useState<string | null>(
+    null,
+  );
   const [hoveredTableId, setHoveredTableId] = useState<string | null>(null);
   const [hoveredRelationId, setHoveredRelationId] = useState<string | null>(
     null,
@@ -356,14 +492,22 @@ export default function DatabaseDiagramPanel({
     if (activeEditor && !validIds.has(activeEditor.tableId)) {
       setActiveEditor(null);
     }
+    if (
+      editingRelationId &&
+      !relations.some((relation) => relation.id === editingRelationId)
+    ) {
+      setEditingRelationId(null);
+    }
     if (liveTablePosition && !validIds.has(liveTablePosition.id)) {
       setLiveTablePosition(null);
     }
   }, [
     activeEditor,
+    editingRelationId,
     hoveredTableId,
     liveTablePosition,
     recordsTableId,
+    relations,
     selectedTableId,
     tables,
   ]);
@@ -434,6 +578,42 @@ export default function DatabaseDiagramPanel({
       });
     },
     [],
+  );
+
+  const saveRelationPath = useCallback(
+    (relationId: string, path: DatabaseRelationPathState) => {
+      const current = stateRef.current;
+      onStateChange({
+        ...current,
+        relationPaths: {
+          ...current.relationPaths,
+          [relationId]: path,
+        },
+      });
+    },
+    [onStateChange],
+  );
+
+  const resetRelationPath = useCallback(
+    (relationId: string) => {
+      const current = stateRef.current;
+      if (!current.relationPaths?.[relationId]) {
+        setEditingRelationId(null);
+        return;
+      }
+
+      const nextRelationPaths = { ...current.relationPaths };
+      delete nextRelationPaths[relationId];
+      onStateChange({
+        ...current,
+        relationPaths:
+          Object.keys(nextRelationPaths).length > 0
+            ? nextRelationPaths
+            : undefined,
+      });
+      setEditingRelationId(null);
+    },
+    [onStateChange],
   );
 
   const handleStageDragEnd = useCallback(
@@ -797,6 +977,7 @@ export default function DatabaseDiagramPanel({
             setActiveEditor(null);
             setSelectedTableId(null);
             setSelectedRelationId(null);
+            setEditingRelationId(null);
           }
         }}
       >
@@ -831,19 +1012,40 @@ export default function DatabaseDiagramPanel({
               toPos,
               toHeight,
             );
-            const fromAnchor = getColumnAnchor(fromPos, fromColIndex, fromSide);
-            const toAnchor = getColumnAnchor(toPos, toColIndex, toSide);
-            const points = buildOrthogonalPath(
+            const customPath = state.relationPaths?.[rel.id];
+            const effectiveFromSide = customPath?.fromSide ?? fromSide;
+            const effectiveToSide = customPath?.toSide ?? toSide;
+            const fromAnchor = getColumnAnchor(
+              fromPos,
+              fromColIndex,
+              effectiveFromSide,
+            );
+            const toAnchor = getColumnAnchor(toPos, toColIndex, effectiveToSide);
+            const fallbackPoints = buildOrthogonalPath(
               fromAnchor,
-              fromSide,
+              effectiveFromSide,
               toAnchor,
-              toSide,
+              effectiveToSide,
+            );
+            const points = normalizeRelationPath(
+              customPath,
+              fallbackPoints,
+              fromAnchor,
+              toAnchor,
             );
             const roundedPath = buildRoundedPathData(points);
             const isSelected = selectedRelationId === rel.id;
             const isActive = activeRelationIds.has(rel.id);
+            const isEditing = editingRelationId === rel.id;
             const stroke = isActive ? activeEdgeColor : edgeColor;
             const relationMidpoint = buildRelationMidpoint(points);
+            const editablePoints = isEditing ? pointArrayToPairs(points) : [];
+            const segmentHandles = isEditing
+              ? buildSegmentHandles(editablePoints)
+              : [];
+            const guidePoints = isEditing
+              ? buildRelationGuidePoints(editablePoints)
+              : [];
             const staticControlPoints = isActive
               ? buildPathControlPoints(points)
               : [];
@@ -885,6 +1087,193 @@ export default function DatabaseDiagramPanel({
                     perfectDrawEnabled={false}
                   />
                 ))}
+                {guidePoints.map((point, index) => (
+                  <Circle
+                    key={`guide-${rel.id}-${index}`}
+                    x={point.x}
+                    y={point.y}
+                    radius={1.75}
+                    fill={activeEdgeColor}
+                    opacity={0.72}
+                    listening={false}
+                    perfectDrawEnabled={false}
+                  />
+                ))}
+                {editablePoints.map((point, pointIndex) => {
+                  const isEndpoint =
+                    pointIndex === 0 || pointIndex === editablePoints.length - 1;
+                  return (
+                    <Circle
+                      key={`edit-${rel.id}-${pointIndex}`}
+                      x={point.x}
+                      y={point.y}
+                      radius={isEndpoint ? 5 : 2.3}
+                      fill={isEndpoint ? "#ffffff" : activeEdgeColor}
+                      stroke={isEndpoint ? "#6366f1" : "#2563eb"}
+                      strokeWidth={isEndpoint ? 2 : 0}
+                      draggable={isEndpoint}
+                      onDragMove={(event) => {
+                        event.cancelBubble = true;
+                        if (!isEndpoint) {
+                          return;
+                        }
+                        const node = event.target;
+                        if (pointIndex === 0) {
+                          const nextSide: DatabaseRelationSide =
+                            node.x() < fromPos.x + DB_TABLE_WIDTH / 2
+                              ? "left"
+                              : "right";
+                          const nextFromAnchor = getColumnAnchor(
+                            fromPos,
+                            fromColIndex,
+                            nextSide,
+                          );
+                          const nextPoints = buildOrthogonalPath(
+                            nextFromAnchor,
+                            nextSide,
+                            toAnchor,
+                            effectiveToSide,
+                          );
+                          saveRelationPath(rel.id, {
+                            fromSide: nextSide,
+                            toSide: effectiveToSide,
+                            points: pointArrayToPairs(nextPoints),
+                          });
+                          return;
+                        }
+
+                        if (pointIndex === editablePoints.length - 1) {
+                          const nextSide: DatabaseRelationSide =
+                            node.x() < toPos.x + DB_TABLE_WIDTH / 2
+                              ? "left"
+                              : "right";
+                          const nextToAnchor = getColumnAnchor(
+                            toPos,
+                            toColIndex,
+                            nextSide,
+                          );
+                          const nextPoints = buildOrthogonalPath(
+                            fromAnchor,
+                            effectiveFromSide,
+                            nextToAnchor,
+                            nextSide,
+                          );
+                          saveRelationPath(rel.id, {
+                            fromSide: effectiveFromSide,
+                            toSide: nextSide,
+                            points: pointArrayToPairs(nextPoints),
+                          });
+                          return;
+                        }
+
+                      }}
+                      onMouseEnter={(event) => {
+                        const stage = event.target.getStage();
+                        if (stage) {
+                          stage.container().style.cursor = "move";
+                        }
+                      }}
+                      onMouseLeave={(event) => {
+                        const stage = event.target.getStage();
+                        if (stage) {
+                          stage.container().style.cursor = "default";
+                        }
+                      }}
+                      perfectDrawEnabled={false}
+                    />
+                  );
+                })}
+                {segmentHandles.map((handle) => (
+                  <Circle
+                    key={`segment-${rel.id}-${handle.index}`}
+                    x={handle.x}
+                    y={handle.y}
+                    radius={5}
+                    fill="#ffffff"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    draggable
+                    onDragMove={(event) => {
+                      event.cancelBubble = true;
+                      const node = event.target;
+                      const nextPoints = moveRelationSegment(
+                        editablePoints,
+                        handle.index,
+                        { x: node.x(), y: node.y() },
+                      );
+                      saveRelationPath(rel.id, {
+                        fromSide: effectiveFromSide,
+                        toSide: effectiveToSide,
+                        points: nextPoints,
+                      });
+                    }}
+                    onMouseEnter={(event) => {
+                      const stage = event.target.getStage();
+                      if (stage) {
+                        stage.container().style.cursor =
+                          handle.orientation === "vertical"
+                            ? "ew-resize"
+                            : "ns-resize";
+                      }
+                    }}
+                    onMouseLeave={(event) => {
+                      const stage = event.target.getStage();
+                      if (stage) {
+                        stage.container().style.cursor = "default";
+                      }
+                    }}
+                    perfectDrawEnabled={false}
+                  />
+                ))}
+                {isEditing ? (
+                  <Group
+                    x={relationMidpoint.x - 18}
+                    y={relationMidpoint.y - 18}
+                    onClick={(event) => {
+                      event.cancelBubble = true;
+                      resetRelationPath(rel.id);
+                    }}
+                    onMouseEnter={(event) => {
+                      const stage = event.target.getStage();
+                      if (stage) {
+                        stage.container().style.cursor = "pointer";
+                      }
+                    }}
+                    onMouseLeave={(event) => {
+                      const stage = event.target.getStage();
+                      if (stage) {
+                        stage.container().style.cursor = "default";
+                      }
+                    }}
+                  >
+                    <Rect
+                      width={18}
+                      height={18}
+                      cornerRadius={4}
+                      fill="#ffffff"
+                      stroke="#818cf8"
+                      strokeWidth={1}
+                      shadowColor="#94a3b8"
+                      shadowBlur={4}
+                      shadowOpacity={0.35}
+                      perfectDrawEnabled={false}
+                    />
+                    <Text
+                      x={0}
+                      y={1}
+                      width={18}
+                      height={18}
+                      align="center"
+                      verticalAlign="middle"
+                      text="C"
+                      fontSize={14}
+                      fontStyle="700"
+                      fontFamily="Inter, system-ui, sans-serif"
+                      fill="#6366f1"
+                      perfectDrawEnabled={false}
+                    />
+                  </Group>
+                ) : null}
                 <Circle
                   x={fromAnchor.x}
                   y={fromAnchor.y}
@@ -908,10 +1297,10 @@ export default function DatabaseDiagramPanel({
                   perfectDrawEnabled={false}
                 />
                 <Text
-                  x={fromAnchor.x + (fromSide === "right" ? 7 : -42)}
+                  x={fromAnchor.x + (effectiveFromSide === "right" ? 7 : -42)}
                   y={fromAnchor.y - 20}
                   width={36}
-                  align={fromSide === "right" ? "left" : "right"}
+                  align={effectiveFromSide === "right" ? "left" : "right"}
                   text={rel.cardinalityLabelFrom ?? ""}
                   fontSize={11}
                   fontStyle={isActive ? "600" : "400"}
@@ -922,10 +1311,10 @@ export default function DatabaseDiagramPanel({
                   perfectDrawEnabled={false}
                 />
                 <Text
-                  x={toAnchor.x + (toSide === "right" ? 7 : -42)}
+                  x={toAnchor.x + (effectiveToSide === "right" ? 7 : -42)}
                   y={toAnchor.y - 20}
                   width={36}
-                  align={toSide === "right" ? "left" : "right"}
+                  align={effectiveToSide === "right" ? "left" : "right"}
                   text={rel.cardinalityLabelTo ?? ""}
                   fontSize={11}
                   fontStyle={isActive ? "600" : "400"}
@@ -968,6 +1357,7 @@ export default function DatabaseDiagramPanel({
                   strokeWidth={16}
                   lineCap="round"
                   lineJoin="round"
+                  listening={!isEditing}
                   perfectDrawEnabled={false}
                   shadowForStrokeEnabled={false}
                   onClick={(event) => {
@@ -975,6 +1365,34 @@ export default function DatabaseDiagramPanel({
                     setSelectedRelationId(rel.id);
                     setSelectedTableId(null);
                     setActiveEditor(null);
+                  }}
+                  onDblClick={(event) => {
+                    event.cancelBubble = true;
+                    setEditingRelationId(rel.id);
+                    setSelectedRelationId(rel.id);
+                    setSelectedTableId(null);
+                    setActiveEditor(null);
+                    if (!customPath) {
+                      saveRelationPath(rel.id, {
+                        fromSide: effectiveFromSide,
+                        toSide: effectiveToSide,
+                        points: pointArrayToPairs(points),
+                      });
+                    }
+                  }}
+                  onDblTap={(event) => {
+                    event.cancelBubble = true;
+                    setEditingRelationId(rel.id);
+                    setSelectedRelationId(rel.id);
+                    setSelectedTableId(null);
+                    setActiveEditor(null);
+                    if (!customPath) {
+                      saveRelationPath(rel.id, {
+                        fromSide: effectiveFromSide,
+                        toSide: effectiveToSide,
+                        points: pointArrayToPairs(points),
+                      });
+                    }
                   }}
                   onMouseEnter={(event) => {
                     setHoveredRelationId(rel.id);
@@ -1016,6 +1434,7 @@ export default function DatabaseDiagramPanel({
                   event.cancelBubble = true;
                   setSelectedTableId(table.id);
                   setSelectedRelationId(null);
+                  setEditingRelationId(null);
                 }}
                 onDragMove={(event) => handleTableDragMove(table.id, event)}
                 onDragEnd={(event) => handleTableDragEnd(table.id, event)}
