@@ -160,7 +160,7 @@ function buildOrthogonalPath(
   to: { x: number; y: number },
   toSide: DatabaseRelationSide,
 ): number[] {
-  const handle = 76;
+  const handle = 44;
 
   if (fromSide === toSide) {
     const direction = fromSide === "right" ? 1 : -1;
@@ -180,7 +180,16 @@ function buildOrthogonalPath(
     x: to.x + (toSide === "right" ? handle : -handle),
     y: to.y,
   };
-  const midX = (fromHandle.x + toHandle.x) / 2;
+  const hasSpaceBetweenAnchors =
+    (fromSide === "right" && toSide === "left" && from.x <= to.x) ||
+    (fromSide === "left" && toSide === "right" && from.x >= to.x);
+  const midX =
+    (hasSpaceBetweenAnchors ? from.x + to.x : fromHandle.x + toHandle.x) / 2;
+
+  if (hasSpaceBetweenAnchors) {
+    return [from.x, from.y, midX, from.y, midX, to.y, to.x, to.y];
+  }
+
   return [
     from.x,
     from.y,
@@ -373,7 +382,7 @@ function chooseRelationSides(
     fromPosition.y < toPosition.y + toHeight &&
     toPosition.y < fromPosition.y + fromHeight;
 
-  if (horizontalOverlap || !verticalOverlap) {
+  if (horizontalOverlap && !verticalOverlap) {
     return { fromSide: "right", toSide: "right" };
   }
 
@@ -400,10 +409,50 @@ function buildOrthogonalPathData(points: number[]): string {
   if (points.length < 4) {
     return "";
   }
+
+  const radius = 10;
   let data = `M ${points[0]} ${points[1]}`;
-  for (let index = 2; index < points.length; index += 2) {
-    data += ` L ${points[index]} ${points[index + 1]}`;
+
+  for (let index = 2; index < points.length - 2; index += 2) {
+    const previous = { x: points[index - 2], y: points[index - 1] };
+    const current = { x: points[index], y: points[index + 1] };
+    const next = { x: points[index + 2], y: points[index + 3] };
+    const incomingLength = Math.hypot(
+      current.x - previous.x,
+      current.y - previous.y,
+    );
+    const outgoingLength = Math.hypot(next.x - current.x, next.y - current.y);
+    const cornerRadius = Math.min(
+      radius,
+      incomingLength / 2,
+      outgoingLength / 2,
+    );
+
+    if (
+      cornerRadius <= 0 ||
+      (previous.x !== current.x &&
+        previous.y !== current.y &&
+        next.x !== current.x &&
+        next.y !== current.y)
+    ) {
+      data += ` L ${current.x} ${current.y}`;
+      continue;
+    }
+
+    const beforeCorner = {
+      x: current.x - Math.sign(current.x - previous.x) * cornerRadius,
+      y: current.y - Math.sign(current.y - previous.y) * cornerRadius,
+    };
+    const afterCorner = {
+      x: current.x + Math.sign(next.x - current.x) * cornerRadius,
+      y: current.y + Math.sign(next.y - current.y) * cornerRadius,
+    };
+
+    data += ` L ${beforeCorner.x} ${beforeCorner.y}`;
+    data += ` Q ${current.x} ${current.y} ${afterCorner.x} ${afterCorner.y}`;
   }
+
+  data += ` L ${points[points.length - 2]} ${points[points.length - 1]}`;
   return data;
 }
 

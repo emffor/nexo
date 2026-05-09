@@ -107,6 +107,7 @@ vi.mock('react-konva', () => {
     Stage,
     Circle: ({
       draggable,
+      onDragStart,
       onDragMove,
       onDragEnd,
       x = 0,
@@ -312,10 +313,15 @@ describe('DatabaseDiagramPanel', () => {
     const dragHandles = screen.getAllByRole('button', {
       name: 'Arrastar ponto da relacao',
     }) as HTMLButtonElement[];
-    const [firstHandle] = dragHandles;
+    const firstHandle = dragHandles[2];
+    const secondHandle = dragHandles[3];
     const firstStart = {
       x: Number(firstHandle.dataset.x),
       y: Number(firstHandle.dataset.y),
+    };
+    const secondStart = {
+      x: Number(secondHandle.dataset.x),
+      y: Number(secondHandle.dataset.y),
     };
 
     fireEvent.mouseDown(firstHandle);
@@ -328,7 +334,13 @@ describe('DatabaseDiagramPanel', () => {
       1,
       3,
     );
-    expect(nextControlPoints[0].y).toBe(nextControlPoints[1].y);
-    expect(nextControlPoints[0].x).not.toBe(firstStart.x);
+    expect(nextControlPoints[0]).toEqual({
+      x: firstStart.x + 24,
+      y: firstStart.y + 24,
+    });
+    expect(nextControlPoints[1]).toEqual({
+      x: secondStart.x + 24,
+      y: secondStart.y + 24,
+    });
   });
 });
