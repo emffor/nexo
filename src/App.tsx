@@ -477,6 +477,16 @@ export default function App() {
     () => parseDbml(databaseDiagram?.content ?? ""),
     [databaseDiagram?.content],
   );
+  const storedDataSizeBytes = useMemo(
+    () =>
+      new Blob([
+        JSON.stringify({
+          items,
+          databaseDiagram,
+        }),
+      ]).size,
+    [databaseDiagram, items],
+  );
 
   const scheduleDatabaseContentSave = useCallback((next: string) => {
     if (databaseContentTimerRef.current) {
@@ -659,6 +669,7 @@ export default function App() {
               }
             : undefined
         }
+        storedDataSizeBytes={storedDataSizeBytes}
         onToggleScrollSync={() => setIsScrollSyncEnabled((current) => !current)}
         onToggleTheme={() =>
           setTheme((current) => (current === "dark" ? "light" : "dark"))

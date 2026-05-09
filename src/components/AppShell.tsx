@@ -16,6 +16,7 @@ interface AppShellProps {
     relations: number;
     errors: number;
   };
+  storedDataSizeBytes: number;
   onResetDatabaseLayout?: () => void;
   isScrollSyncEnabled: boolean;
   theme: AppTheme;
@@ -88,6 +89,14 @@ const VIEW_MODE_ACCESSIBLE_LABELS: Record<ViewMode, string> = {
   database: "Modo banco",
 };
 
+function formatStorageSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  return `${(bytes / 1024).toFixed(2)} KB`;
+}
+
 export function AppShell({
   itemsCount,
   isCompactMode,
@@ -107,6 +116,7 @@ export function AppShell({
   onResetDiagramLayout,
   onResetDatabaseLayout,
   databaseInfo,
+  storedDataSizeBytes,
   onToggleScrollSync,
   onToggleTheme,
   onClearAll,
@@ -195,6 +205,9 @@ export function AppShell({
           </div>
 
           <div className="flex shrink-0 items-center justify-start gap-1 sm:justify-end">
+            <span className="toolbar-badge">
+              {formatStorageSize(storedDataSizeBytes)}
+            </span>
             <button
               type="button"
               onClick={onCopyAll}
