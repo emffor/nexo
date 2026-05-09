@@ -69,6 +69,12 @@ type ActiveEditor =
       error: string | null;
     };
 
+type LiveTablePosition = {
+  id: string;
+  x: number;
+  y: number;
+};
+
 function columnYCenter(columnIndex: number): number {
   return DB_HEADER_HEIGHT + columnIndex * DB_ROW_HEIGHT + DB_ROW_HEIGHT / 2;
 }
@@ -193,6 +199,8 @@ export default function DatabaseDiagramPanel({
   );
   const [activeEditor, setActiveEditor] = useState<ActiveEditor | null>(null);
   const [recordsTableId, setRecordsTableId] = useState<string | null>(null);
+  const [liveTablePosition, setLiveTablePosition] =
+    useState<LiveTablePosition | null>(null);
 
   useEffect(() => {
     stateRef.current = state;
@@ -253,7 +261,32 @@ export default function DatabaseDiagramPanel({
     if (activeEditor && !validIds.has(activeEditor.tableId)) {
       setActiveEditor(null);
     }
-  }, [activeEditor, hoveredTableId, recordsTableId, selectedTableId, tables]);
+    if (liveTablePosition && !validIds.has(liveTablePosition.id)) {
+      setLiveTablePosition(null);
+    }
+  }, [
+    activeEditor,
+    hoveredTableId,
+    liveTablePosition,
+    recordsTableId,
+    selectedTableId,
+    tables,
+  ]);
+
+  useEffect(() => {
+    if (!liveTablePosition) {
+      return;
+    }
+
+    const persisted = state.positions[liveTablePosition.id];
+    if (
+      persisted &&
+      persisted.x === liveTablePosition.x &&
+      persisted.y === liveTablePosition.y
+    ) {
+      setLiveTablePosition(null);
+    }
+  }, [liveTablePosition, state.positions]);
 
   // aplicar viewport
   useEffect(() => {
@@ -286,6 +319,7 @@ export default function DatabaseDiagramPanel({
       const x = Math.round(node.x());
       const y = Math.round(node.y());
       node.position({ x, y });
+      setLiveTablePosition({ id, x, y });
       const current = stateRef.current;
       onStateChange({
         ...current,
@@ -293,6 +327,18 @@ export default function DatabaseDiagramPanel({
       });
     },
     [onStateChange],
+  );
+
+  const handleTableDragMove = useCallback(
+    (id: string, event: KonvaEventObject<DragEvent>) => {
+      const node = event.target;
+      setLiveTablePosition({
+        id,
+        x: Math.round(node.x()),
+        y: Math.round(node.y()),
+      });
+    },
+    [],
   );
 
   const handleStageDragEnd = useCallback(
@@ -548,6 +594,20 @@ export default function DatabaseDiagramPanel({
     return map;
   }, [tables]);
 
+  const visualPositions = useMemo(() => {
+    if (!liveTablePosition) {
+      return state.positions;
+    }
+
+    return {
+      ...state.positions,
+      [liveTablePosition.id]: {
+        x: liveTablePosition.x,
+        y: liveTablePosition.y,
+      },
+    };
+  }, [liveTablePosition, state.positions]);
+
   const activeRelationIds = useMemo(() => {
     if (hoveredRelationId) {
       return new Set([hoveredRelationId]);
@@ -589,7 +649,7 @@ export default function DatabaseDiagramPanel({
       : -1;
   const activeEditorPosition =
     activeEditor && activeEditorTable
-      ? state.positions[activeEditorTable.id]
+      ? visualPositions[activeEditorTable.id]
       : undefined;
   const viewport = state.viewport ?? INITIAL_VIEWPORT;
   const editorLeft = activeEditorPosition
@@ -647,8 +707,8 @@ export default function DatabaseDiagramPanel({
             if (!fromTable || !toTable) {
               return null;
             }
-            const fromPos = state.positions[fromTable.id];
-            const toPos = state.positions[toTable.id];
+            const fromPos = visualPositions[fromTable.id];
+            const toPos = visualPositions[toTable.id];
             if (!fromPos || !toPos) {
               return null;
             }
@@ -835,7 +895,7 @@ export default function DatabaseDiagramPanel({
 
         <Layer>
           {tables.map((table) => {
-            const pos = state.positions[table.id];
+            const pos = visualPositions[table.id];
             if (!pos) {
               return null;
             }
@@ -852,6 +912,7 @@ export default function DatabaseDiagramPanel({
                   setSelectedTableId(table.id);
                   setSelectedRelationId(null);
                 }}
+                onDragMove={(event) => handleTableDragMove(table.id, event)}
                 onDragEnd={(event) => handleTableDragEnd(table.id, event)}
                 onMouseEnter={(event) => {
                   setHoveredTableId(table.id);
