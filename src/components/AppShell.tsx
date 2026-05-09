@@ -406,7 +406,7 @@ export function AppShell({
       <section
         className={`grid flex-1 min-h-0 ${
           isDatabaseMode
-            ? `lg:grid-cols-[minmax(320px,0.4fr)_minmax(0,0.6fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
+            ? `lg:grid-cols-[minmax(280px,0.25fr)_minmax(0,0.75fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
             : isPreviewMaximized
               ? "grid-cols-1"
               : isFullWidthMode
