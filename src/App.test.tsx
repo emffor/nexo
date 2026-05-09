@@ -83,7 +83,10 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /salvar card/i }));
 
     await user.click(screen.getByRole("button", { name: /projetos/i }));
-    await user.click(screen.getAllByRole("button", { name: /^abrir$/i })[0]);
+    const openButtons = await screen.findAllByRole("button", {
+      name: /^abrir$/i,
+    });
+    await user.click(openButtons[0]);
 
     expect(
       await screen.findByRole("heading", {
@@ -133,10 +136,99 @@ describe("App", () => {
     await waitFor(() => expect(blobs).toHaveLength(1));
     const parsed = JSON.parse(await readBlobText(blobs[0]));
 
-    expect(parsed.version).toBe(1);
-    expect(parsed.items).toHaveLength(1);
-    expect(parsed.items[0].content).toBe("# Projeto A");
+    expect(parsed.version).toBe(2);
+    expect(parsed.projects).toHaveLength(1);
+    expect(parsed.projects[0].project.name).toBe("Regularizacao");
+    expect(parsed.projects[0].items[0].content).toBe("# Projeto A");
     clickSpy.mockRestore();
+  });
+
+  it("importa backup completo pela tela de projetos", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const file = new File(
+      [
+        JSON.stringify({
+          version: 2,
+          exportedAt: "2026-05-01T00:00:00.000Z",
+          projects: [
+            {
+              project: {
+                id: "project-a",
+                name: "Regularizacao",
+                order: 0,
+                createdAt: "2026-05-01T00:00:00.000Z",
+                updatedAt: "2026-05-02T00:00:00.000Z",
+              },
+              items: [
+                {
+                  id: "item-a",
+                  content: "# Importado",
+                  order: 0,
+                  createdAt: "2026-05-01T00:00:00.000Z",
+                  updatedAt: "2026-05-02T00:00:00.000Z",
+                },
+              ],
+            },
+          ],
+        }),
+      ],
+      "backup.txt",
+      { type: "text/plain" },
+    );
+
+    await screen.findByRole("heading", { name: /projetos/i });
+    await user.click(screen.getByRole("button", { name: /importar tudo/i }));
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(input).not.toBeNull();
+    await user.upload(input as HTMLInputElement, file);
+
+    expect(await screen.findByText("Regularizacao")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^abrir$/i }));
+    expect(
+      await screen.findByRole("heading", { name: "Importado", level: 1 }),
+    ).toBeInTheDocument();
+  });
+
+  it("importa backup antigo como projeto com nome gerado", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const file = new File(
+      [
+        JSON.stringify({
+          version: 1,
+          exportedAt: "2026-05-01T00:00:00.000Z",
+          items: [
+            {
+              id: "item-a",
+              content: "# Sem nome original",
+              order: 0,
+              createdAt: "2026-05-01T00:00:00.000Z",
+              updatedAt: "2026-05-02T00:00:00.000Z",
+            },
+          ],
+        }),
+      ],
+      "backup-legado.txt",
+      { type: "text/plain" },
+    );
+
+    await screen.findByRole("heading", { name: /projetos/i });
+    await user.click(screen.getByRole("button", { name: /importar tudo/i }));
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(input).not.toBeNull();
+    await user.upload(input as HTMLInputElement, file);
+
+    expect(await screen.findByText(/^Projeto importado /i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^abrir$/i }));
+    expect(
+      await screen.findByRole("heading", {
+        name: "Sem nome original",
+        level: 1,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("adiciona um markdown e reflete o conteudo nas duas colunas", async () => {

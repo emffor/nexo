@@ -1,4 +1,5 @@
 import { db } from './db';
+import type { ParsedProjectBackupFile } from './backup';
 import type { DatabaseDiagramRecord } from '../types/database';
 import type { DiagramState } from '../types/diagram';
 import type { MarkdownItem } from '../types/markdown';
@@ -31,6 +32,69 @@ function buildDefaultProject(): Project {
 
 function normalizeProjectName(name: string): string {
   return name.trim() || 'Projeto sem nome';
+}
+
+function buildImportedProjectName(name?: string): string {
+  const cleanName = name?.trim();
+  if (cleanName) {
+    return cleanName;
+  }
+
+  return `Projeto importado ${crypto.randomUUID().slice(0, 8)}`;
+}
+
+function remapDiagramState(
+  diagramState: DiagramState | undefined,
+  itemIdMap: Map<string, string>,
+): DiagramState | undefined {
+  if (!diagramState) {
+    return undefined;
+  }
+
+  const positions: DiagramState['positions'] = {};
+  for (const [itemId, position] of Object.entries(diagramState.positions)) {
+    const nextItemId = itemIdMap.get(itemId);
+    if (nextItemId) {
+      positions[nextItemId] = position;
+    }
+  }
+
+  const edges: DiagramState['edges'] = diagramState.edges.flatMap((edge) => {
+    const from = itemIdMap.get(edge.from);
+    const to = itemIdMap.get(edge.to);
+    if (!from || !to) {
+      return [];
+    }
+
+    return [
+      {
+        ...edge,
+        id: crypto.randomUUID(),
+        from,
+        to,
+      },
+    ];
+  });
+
+  return {
+    positions,
+    edges,
+    viewport: diagramState.viewport,
+  };
+}
+
+function remapHiddenDiagramItemIds(
+  hiddenDiagramItemIds: string[] | undefined,
+  itemIdMap: Map<string, string>,
+): string[] {
+  if (!hiddenDiagramItemIds) {
+    return [];
+  }
+
+  return hiddenDiagramItemIds.flatMap((itemId) => {
+    const nextItemId = itemIdMap.get(itemId);
+    return nextItemId ? [nextItemId] : [];
+  });
 }
 
 export async function ensureProjectsReady(): Promise<Project[]> {
@@ -220,4 +284,72 @@ export async function getAllProjectsData(): Promise<ProjectData[]> {
   return data.filter(
     (projectData): projectData is ProjectData => projectData !== null,
   );
+}
+
+export async function importProjectsBackup(
+  importedProjects: ParsedProjectBackupFile[],
+): Promise<Project[]> {
+  const currentProjects = await ensureProjectsReady();
+  const createdProjects: Project[] = [];
+  const now = new Date().toISOString();
+
+  await db.transaction(
+    'rw',
+    db.projects,
+    db.items,
+    db.databaseDiagrams,
+    async () => {
+      for (const [index, importedProject] of importedProjects.entries()) {
+        const projectId = crypto.randomUUID();
+        const itemIdMap = new Map<string, string>();
+        const items: MarkdownItem[] = importedProject.items.map((item, order) => {
+          const itemId = crypto.randomUUID();
+          itemIdMap.set(item.id, itemId);
+
+          return {
+            ...item,
+            id: itemId,
+            projectId,
+            order,
+          };
+        });
+        const hiddenDiagramItemIds = remapHiddenDiagramItemIds(
+          importedProject.hiddenDiagramItemIds,
+          itemIdMap,
+        );
+        const project: Project = {
+          id: projectId,
+          name: normalizeProjectName(
+            buildImportedProjectName(importedProject.project?.name),
+          ),
+          order: currentProjects.length + index,
+          createdAt: importedProject.project?.createdAt ?? now,
+          updatedAt: now,
+          diagramState: remapDiagramState(
+            importedProject.diagramState,
+            itemIdMap,
+          ),
+          hiddenDiagramItemIds,
+        };
+
+        await db.projects.put(project);
+        if (items.length > 0) {
+          await db.items.bulkPut(items);
+        }
+
+        if (importedProject.databaseDiagram) {
+          const databaseDiagram: DatabaseDiagramRecord = {
+            ...importedProject.databaseDiagram,
+            id: projectId,
+            projectId,
+          };
+          await db.databaseDiagrams.put(databaseDiagram);
+        }
+
+        createdProjects.push(project);
+      }
+    },
+  );
+
+  return createdProjects;
 }

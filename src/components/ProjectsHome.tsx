@@ -8,12 +8,14 @@ interface ProjectsHomeProps {
   projects: ProjectSummary[];
   isLoading: boolean;
   theme: AppTheme;
+  storedDataSizeBytes: number;
   onCreateProject: (name: string) => Promise<void>;
   onOpenProject: (projectId: string) => void;
   onRenameProject: (projectId: string, name: string) => Promise<void>;
   onDeleteProject: (project: ProjectSummary) => void;
   onExportProject: (projectId: string) => void;
   onExportAll: () => void;
+  onImportAll: () => void;
 }
 
 function formatDate(value: string): string {
@@ -24,16 +26,26 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
+function formatStorageSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  return `${(bytes / 1024).toFixed(2)} KB`;
+}
+
 export function ProjectsHome({
   projects,
   isLoading,
   theme,
+  storedDataSizeBytes,
   onCreateProject,
   onOpenProject,
   onRenameProject,
   onDeleteProject,
   onExportProject,
   onExportAll,
+  onImportAll,
 }: ProjectsHomeProps) {
   const [newProjectName, setNewProjectName] = useState("");
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
@@ -91,14 +103,26 @@ export function ProjectsHome({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={onExportAll}
-            disabled={projects.length === 0}
-            className="toolbar-button toolbar-button--accent self-start md:self-auto"
-          >
-            Exportar tudo
-          </button>
+          <div className="flex shrink-0 items-center gap-2 self-start md:self-auto">
+            <span className="toolbar-badge">
+              {formatStorageSize(storedDataSizeBytes)}
+            </span>
+            <button
+              type="button"
+              onClick={onImportAll}
+              className="toolbar-button"
+            >
+              Importar tudo
+            </button>
+            <button
+              type="button"
+              onClick={onExportAll}
+              disabled={projects.length === 0}
+              className="toolbar-button toolbar-button--accent"
+            >
+              Exportar tudo
+            </button>
+          </div>
         </header>
 
         <form

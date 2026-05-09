@@ -3,6 +3,7 @@ import {
   createBackupText,
   createCompleteBackupText,
   parseBackupFile,
+  parseProjectsBackupFile,
   parseBackupText,
 } from './backup';
 import type { MarkdownItem } from '../types/markdown';
@@ -140,5 +141,35 @@ describe('backup', () => {
     expect(parsed.projects[0].project.name).toBe('Regularizacao');
     expect(parsed.projects[0].items[0].projectId).toBe('project-a');
     expect(parsed.projects[0].hiddenDiagramItemIds).toEqual(['2']);
+  });
+
+  it('restaura backup completo preservando nome dos projetos', () => {
+    const rawText = createCompleteBackupText([
+      {
+        project: {
+          id: 'project-a',
+          name: 'Regularizacao',
+          order: 0,
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-02T00:00:00.000Z',
+        },
+        items,
+      },
+    ]);
+
+    const restored = parseProjectsBackupFile(rawText);
+
+    expect(restored.projects).toHaveLength(1);
+    expect(restored.projects[0].project?.name).toBe('Regularizacao');
+    expect(restored.projects[0].items[0].content).toBe('# A');
+  });
+
+  it('aceita backup antigo como projeto sem nome', () => {
+    const rawText = createBackupText(items);
+    const restored = parseProjectsBackupFile(rawText);
+
+    expect(restored.projects).toHaveLength(1);
+    expect(restored.projects[0].project).toBeUndefined();
+    expect(restored.projects[0].items).toHaveLength(2);
   });
 });

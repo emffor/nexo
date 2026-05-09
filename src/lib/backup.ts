@@ -75,10 +75,141 @@ export interface ParsedBackupFile {
   databaseDiagram?: DatabaseDiagramRecord;
 }
 
+export interface ParsedProjectBackupFile extends ParsedBackupFile {
+  project?: Partial<Project>;
+}
+
+export interface ParsedProjectsBackupFile {
+  projects: ParsedProjectBackupFile[];
+}
+
 export interface ProjectBackupData {
   project: Project;
   items: MarkdownItem[];
   databaseDiagram?: DatabaseDiagramRecord;
+}
+
+function parseMarkdownItems(value: unknown): MarkdownItem[] {
+  if (!Array.isArray(value)) {
+    throw new Error('Arquivo de backup invalido.');
+  }
+
+  return value.map((item, index) => {
+    if (
+      !item ||
+      typeof item !== 'object' ||
+      typeof (item as { id?: unknown }).id !== 'string' ||
+      typeof (item as { content?: unknown }).content !== 'string' ||
+      typeof (item as { createdAt?: unknown }).createdAt !== 'string' ||
+      typeof (item as { updatedAt?: unknown }).updatedAt !== 'string'
+    ) {
+      throw new Error('Arquivo de backup invalido.');
+    }
+
+    return {
+      id: (item as { id: string }).id,
+      title: typeof (item as { title?: unknown }).title === 'string' && (item as { title: string }).title.trim() ? (item as { title: string }).title.trim() : undefined,
+      content: normalizeMarkdownContent((item as { content: string }).content),
+      order: index,
+      createdAt: (item as { createdAt: string }).createdAt,
+      updatedAt: (item as { updatedAt: string }).updatedAt,
+      status: parseStatus((item as { status?: unknown }).status),
+      observation: typeof (item as { observation?: unknown }).observation === 'string' && (item as { observation: string }).observation.trim() ? (item as { observation: string }).observation.trim() : undefined,
+    };
+  });
+}
+
+function parseDiagramState(value: unknown): DiagramState | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+
+  const ds = value as Record<string, unknown>;
+  const positions: Record<string, { x: number; y: number }> = {};
+  const edges: DiagramState['edges'] = [];
+  let viewport: DiagramState['viewport'];
+
+  if (ds.positions && typeof ds.positions === 'object') {
+    for (const [key, entry] of Object.entries(ds.positions)) {
+      if (
+        entry &&
+        typeof entry === 'object' &&
+        typeof (entry as { x: unknown }).x === 'number' &&
+        typeof (entry as { y: unknown }).y === 'number'
+      ) {
+        positions[key] = {
+          x: (entry as { x: number }).x,
+          y: (entry as { y: number }).y,
+        };
+      }
+    }
+  }
+
+  if (Array.isArray(ds.edges)) {
+    for (const edge of ds.edges) {
+      if (
+        edge &&
+        typeof edge === 'object' &&
+        typeof (edge as { id: unknown }).id === 'string' &&
+        typeof (edge as { from: unknown }).from === 'string' &&
+        typeof (edge as { to: unknown }).to === 'string'
+      ) {
+        edges.push({
+          id: (edge as { id: string }).id,
+          from: (edge as { from: string }).from,
+          to: (edge as { to: string }).to,
+          fromPort: parsePortSide((edge as { fromPort?: unknown }).fromPort),
+          toPort: parsePortSide((edge as { toPort?: unknown }).toPort),
+        });
+      }
+    }
+  }
+
+  if (
+    ds.viewport &&
+    typeof ds.viewport === 'object' &&
+    typeof (ds.viewport as { x: unknown }).x === 'number' &&
+    typeof (ds.viewport as { y: unknown }).y === 'number' &&
+    typeof (ds.viewport as { scale: unknown }).scale === 'number'
+  ) {
+    viewport = {
+      x: (ds.viewport as { x: number }).x,
+      y: (ds.viewport as { y: number }).y,
+      scale: (ds.viewport as { scale: number }).scale,
+    };
+  }
+
+  return { positions, edges, viewport };
+}
+
+function parseHiddenDiagramItemIds(
+  value: unknown,
+  items: MarkdownItem[],
+): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const validItemIds = new Set(items.map((item) => item.id));
+  return value.filter(
+    (itemId): itemId is string =>
+      typeof itemId === 'string' && validItemIds.has(itemId),
+  );
+}
+
+function parseProject(value: unknown): Partial<Project> | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+
+  const raw = value as Record<string, unknown>;
+  return {
+    id: typeof raw.id === 'string' ? raw.id : undefined,
+    name: typeof raw.name === 'string' ? raw.name : undefined,
+    order: typeof raw.order === 'number' ? raw.order : undefined,
+    createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : undefined,
+    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : undefined,
+  };
 }
 
 function parseDatabaseVisualState(value: unknown): DatabaseDiagramVisualState | undefined {
@@ -256,98 +387,12 @@ export function parseBackupFile(rawText: string): ParsedBackupFile {
     throw new Error('Arquivo de backup invalido.');
   }
 
-  const items = parsed.items.map((item, index) => {
-    if (
-      !item ||
-      typeof item.id !== 'string' ||
-      typeof item.content !== 'string' ||
-      typeof item.createdAt !== 'string' ||
-      typeof item.updatedAt !== 'string'
-    ) {
-      throw new Error('Arquivo de backup invalido.');
-    }
-
-    return {
-      id: item.id,
-      title: typeof item.title === 'string' && item.title.trim() ? item.title.trim() : undefined,
-      content: normalizeMarkdownContent(item.content),
-      order: index,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-      status: parseStatus((item as { status?: unknown }).status),
-      observation: typeof (item as { observation?: unknown }).observation === 'string' && (item as { observation: string }).observation.trim() ? (item as { observation: string }).observation.trim() : undefined,
-    };
-  });
-
-  let diagramState: DiagramState | undefined;
-  let hiddenDiagramItemIds: string[] | undefined;
-
-  if (parsed.diagramState && typeof parsed.diagramState === 'object') {
-    const ds = parsed.diagramState as unknown as Record<string, unknown>;
-    const positions: Record<string, { x: number; y: number }> = {};
-    const edges: DiagramState['edges'] = [];
-    let viewport: DiagramState['viewport'];
-
-    if (ds.positions && typeof ds.positions === 'object') {
-      for (const [key, value] of Object.entries(ds.positions)) {
-        if (
-          value &&
-          typeof value === 'object' &&
-          typeof (value as { x: unknown }).x === 'number' &&
-          typeof (value as { y: unknown }).y === 'number'
-        ) {
-          positions[key] = {
-            x: (value as { x: number }).x,
-            y: (value as { y: number }).y,
-          };
-        }
-      }
-    }
-
-    if (Array.isArray(ds.edges)) {
-      for (const edge of ds.edges) {
-        if (
-          edge &&
-          typeof edge === 'object' &&
-          typeof (edge as { id: unknown }).id === 'string' &&
-          typeof (edge as { from: unknown }).from === 'string' &&
-          typeof (edge as { to: unknown }).to === 'string'
-        ) {
-          edges.push({
-            id: (edge as { id: string }).id,
-            from: (edge as { from: string }).from,
-            to: (edge as { to: string }).to,
-            fromPort: parsePortSide((edge as { fromPort?: unknown }).fromPort),
-            toPort: parsePortSide((edge as { toPort?: unknown }).toPort),
-          });
-        }
-      }
-    }
-
-    if (
-      ds.viewport &&
-      typeof ds.viewport === 'object' &&
-      typeof (ds.viewport as { x: unknown }).x === 'number' &&
-      typeof (ds.viewport as { y: unknown }).y === 'number' &&
-      typeof (ds.viewport as { scale: unknown }).scale === 'number'
-    ) {
-      viewport = {
-        x: (ds.viewport as { x: number }).x,
-        y: (ds.viewport as { y: number }).y,
-        scale: (ds.viewport as { scale: number }).scale,
-      };
-    }
-
-    diagramState = { positions, edges, viewport };
-  }
-
-  if (Array.isArray(parsed.hiddenDiagramItemIds)) {
-    const validItemIds = new Set(items.map((item) => item.id));
-    hiddenDiagramItemIds = parsed.hiddenDiagramItemIds.filter(
-      (itemId): itemId is string =>
-        typeof itemId === 'string' && validItemIds.has(itemId),
-    );
-  }
+  const items = parseMarkdownItems(parsed.items);
+  const diagramState = parseDiagramState(parsed.diagramState);
+  const hiddenDiagramItemIds = parseHiddenDiagramItemIds(
+    parsed.hiddenDiagramItemIds,
+    items,
+  );
 
   const databaseDiagram = parseDatabaseDiagram(
     (parsed as { databaseDiagram?: unknown }).databaseDiagram,
@@ -358,6 +403,44 @@ export function parseBackupFile(rawText: string): ParsedBackupFile {
     diagramState,
     hiddenDiagramItemIds,
     databaseDiagram,
+  };
+}
+
+export function parseProjectsBackupFile(
+  rawText: string,
+): ParsedProjectsBackupFile {
+  const parsed = JSON.parse(rawText) as Record<string, unknown>;
+
+  if (parsed.version === 1) {
+    return {
+      projects: [parseBackupFile(rawText)],
+    };
+  }
+
+  if (parsed.version !== 2 || !Array.isArray(parsed.projects)) {
+    throw new Error('Arquivo de backup invalido.');
+  }
+
+  return {
+    projects: parsed.projects.map((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        throw new Error('Arquivo de backup invalido.');
+      }
+
+      const rawProject = entry as Record<string, unknown>;
+      const items = parseMarkdownItems(rawProject.items);
+
+      return {
+        project: parseProject(rawProject.project),
+        items,
+        diagramState: parseDiagramState(rawProject.diagramState),
+        hiddenDiagramItemIds: parseHiddenDiagramItemIds(
+          rawProject.hiddenDiagramItemIds,
+          items,
+        ),
+        databaseDiagram: parseDatabaseDiagram(rawProject.databaseDiagram),
+      };
+    }),
   };
 }
 

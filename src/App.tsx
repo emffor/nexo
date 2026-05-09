@@ -18,6 +18,7 @@ import {
   createBackupText,
   createCompleteBackupText,
   parseBackupFile,
+  parseProjectsBackupFile,
 } from "./lib/backup";
 import { buildCombinedContent, getDisplayTitle } from "./lib/items";
 
@@ -62,6 +63,7 @@ import {
   getAllProjectsData,
   getProjectData,
   getProjectSummaries,
+  importProjectsBackup,
   renameProject,
   updateProjectDiagramState,
   updateProjectHiddenDiagramItemIds,
@@ -86,8 +88,22 @@ function downloadTextFile(filename: string, text: string) {
   window.URL.revokeObjectURL(url);
 }
 
+function readTextFile(file: File): Promise<string> {
+  if (typeof file.text === "function") {
+    return file.text();
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result)));
+    reader.addEventListener("error", () => reject(reader.error));
+    reader.readAsText(file);
+  });
+}
+
 export default function App() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [projectsDataSizeBytes, setProjectsDataSizeBytes] = useState(0);
   const [isProjectsLoading, setIsProjectsLoading] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
@@ -95,12 +111,21 @@ export default function App() {
   const [projectToDelete, setProjectToDelete] =
     useState<ProjectSummary | null>(null);
   const [theme, setTheme] = useState<AppTheme>("dark");
+  const projectsImportInputRef = useRef<HTMLInputElement | null>(null);
   const { messages, addToast, dismissToast } = useToast();
 
   const loadProjects = useCallback(async () => {
     setIsProjectsLoading(true);
     const summaries = await getProjectSummaries();
+    const projectsData = await getAllProjectsData();
     setProjects(summaries);
+    setProjectsDataSizeBytes(
+      new Blob([
+        JSON.stringify({
+          projects: projectsData,
+        }),
+      ]).size,
+    );
     setIsProjectsLoading(false);
   }, []);
 
@@ -128,12 +153,7 @@ export default function App() {
       return;
     }
 
-    const backupText = createBackupText(
-      data.items,
-      data.project.diagramState,
-      data.project.hiddenDiagramItemIds,
-      data.databaseDiagram,
-    );
+    const backupText = createCompleteBackupText([data]);
     downloadTextFile(`${data.project.name}-backup.txt`, backupText);
     addToast(`Backup do projeto "${data.project.name}" exportado`);
   };
@@ -143,6 +163,34 @@ export default function App() {
     const backupText = createCompleteBackupText(data);
     downloadTextFile("organizar-markdown-projetos-backup.txt", backupText);
     addToast(`Backup completo exportado com ${data.length} projeto(s)`);
+  };
+
+  const handleImportProjectsClick = () => {
+    projectsImportInputRef.current?.click();
+  };
+
+  const handleImportProjectsFile = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      const rawText = await readTextFile(file);
+      const importedBackup = parseProjectsBackupFile(rawText);
+      const createdProjects = await importProjectsBackup(
+        importedBackup.projects,
+      );
+      await loadProjects();
+      addToast(`${createdProjects.length} projeto(s) importado(s) com sucesso`);
+    } catch {
+      addToast("Nao foi possivel importar este arquivo.", "error");
+    } finally {
+      event.target.value = "";
+    }
   };
 
   const executeDeleteProject = async () => {
@@ -179,6 +227,7 @@ export default function App() {
         projects={projects}
         isLoading={isProjectsLoading}
         theme={theme}
+        storedDataSizeBytes={projectsDataSizeBytes}
         onCreateProject={handleCreateProject}
         onOpenProject={setSelectedProjectId}
         onRenameProject={handleRenameProject}
@@ -188,6 +237,17 @@ export default function App() {
         }}
         onExportAll={() => {
           void handleExportAll();
+        }}
+        onImportAll={handleImportProjectsClick}
+      />
+
+      <input
+        ref={projectsImportInputRef}
+        type="file"
+        accept=".txt,.json,text/plain,application/json"
+        className="hidden"
+        onChange={(event) => {
+          void handleImportProjectsFile(event);
         }}
       />
 
@@ -560,7 +620,7 @@ function ProjectWorkspace({
     }
 
     try {
-      const rawText = await file.text();
+      const rawText = await readTextFile(file);
       const importedBackup = parseBackupFile(rawText);
       await replaceItems(importedBackup.items);
       const nextDiagramState =
