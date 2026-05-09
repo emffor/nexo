@@ -315,52 +315,14 @@ function buildPathControlPoints(points: number[]): { x: number; y: number }[] {
   return result;
 }
 
-function getPointAt(points: number[], index: number): { x: number; y: number } {
-  return { x: points[index], y: points[index + 1] };
-}
-
-function buildRoundedPathData(points: number[], radius = 12): string {
+function buildOrthogonalPathData(points: number[]): string {
   if (points.length < 4) {
     return "";
   }
-
-  const lastIndex = points.length - 2;
   let data = `M ${points[0]} ${points[1]}`;
-
-  for (let index = 2; index < lastIndex; index += 2) {
-    const previous = getPointAt(points, index - 2);
-    const current = getPointAt(points, index);
-    const next = getPointAt(points, index + 2);
-    const incomingLength = Math.hypot(
-      current.x - previous.x,
-      current.y - previous.y,
-    );
-    const outgoingLength = Math.hypot(next.x - current.x, next.y - current.y);
-    const cornerRadius = Math.min(
-      radius,
-      incomingLength / 2,
-      outgoingLength / 2,
-    );
-
-    if (cornerRadius <= 0) {
-      data += ` L ${current.x} ${current.y}`;
-      continue;
-    }
-
-    const beforeCorner = {
-      x: current.x + ((previous.x - current.x) / incomingLength) * cornerRadius,
-      y: current.y + ((previous.y - current.y) / incomingLength) * cornerRadius,
-    };
-    const afterCorner = {
-      x: current.x + ((next.x - current.x) / outgoingLength) * cornerRadius,
-      y: current.y + ((next.y - current.y) / outgoingLength) * cornerRadius,
-    };
-
-    data += ` L ${beforeCorner.x} ${beforeCorner.y}`;
-    data += ` Q ${current.x} ${current.y} ${afterCorner.x} ${afterCorner.y}`;
+  for (let index = 2; index < points.length; index += 2) {
+    data += ` L ${points[index]} ${points[index + 1]}`;
   }
-
-  data += ` L ${points[lastIndex]} ${points[lastIndex + 1]}`;
   return data;
 }
 
@@ -387,6 +349,87 @@ function relationTouchesTable(
   tableId: string,
 ): boolean {
   return relation.fromTable === tableId || relation.toTable === tableId;
+}
+
+function CardinalityMarker({
+  anchor,
+  side,
+  label,
+  color,
+  strokeWidth,
+  opacity,
+}: {
+  anchor: { x: number; y: number };
+  side: DatabaseRelationSide;
+  label: string | undefined;
+  color: string;
+  strokeWidth: number;
+  opacity: number;
+}) {
+  if (!label) {
+    return null;
+  }
+  const dir = side === "right" ? 1 : -1;
+  const isMany = label === "*" || /n/i.test(label);
+  const isOptional = /0/.test(label);
+
+  if (isMany) {
+    const tip = { x: anchor.x + dir * 14, y: anchor.y };
+    const baseX = anchor.x;
+    return (
+      <Group listening={false}>
+        <Line
+          points={[tip.x, tip.y, baseX, anchor.y - 6]}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          opacity={opacity}
+          lineCap="round"
+          perfectDrawEnabled={false}
+        />
+        <Line
+          points={[tip.x, tip.y, baseX, anchor.y]}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          opacity={opacity}
+          lineCap="round"
+          perfectDrawEnabled={false}
+        />
+        <Line
+          points={[tip.x, tip.y, baseX, anchor.y + 6]}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          opacity={opacity}
+          lineCap="round"
+          perfectDrawEnabled={false}
+        />
+      </Group>
+    );
+  }
+
+  const tickX = anchor.x + dir * (isOptional ? 14 : 10);
+  return (
+    <Group listening={false}>
+      <Line
+        points={[tickX, anchor.y - 5, tickX, anchor.y + 5]}
+        stroke={color}
+        strokeWidth={strokeWidth}
+        opacity={opacity}
+        lineCap="round"
+        perfectDrawEnabled={false}
+      />
+      {isOptional ? (
+        <Circle
+          x={anchor.x + dir * 6}
+          y={anchor.y}
+          radius={3}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          opacity={opacity}
+          perfectDrawEnabled={false}
+        />
+      ) : null}
+    </Group>
+  );
 }
 
 function buildRelationMidpoint(points: number[]): { x: number; y: number } {
@@ -1020,7 +1063,11 @@ export default function DatabaseDiagramPanel({
               fromColIndex,
               effectiveFromSide,
             );
-            const toAnchor = getColumnAnchor(toPos, toColIndex, effectiveToSide);
+            const toAnchor = getColumnAnchor(
+              toPos,
+              toColIndex,
+              effectiveToSide,
+            );
             const fallbackPoints = buildOrthogonalPath(
               fromAnchor,
               effectiveFromSide,
@@ -1033,7 +1080,7 @@ export default function DatabaseDiagramPanel({
               fromAnchor,
               toAnchor,
             );
-            const roundedPath = buildRoundedPathData(points);
+            const roundedPath = buildOrthogonalPathData(points);
             const isSelected = selectedRelationId === rel.id;
             const isActive = activeRelationIds.has(rel.id);
             const isEditing = editingRelationId === rel.id;
@@ -1056,8 +1103,8 @@ export default function DatabaseDiagramPanel({
                     data={roundedPath}
                     stroke={activeEdgeColor}
                     strokeWidth={6}
-                    lineCap="round"
-                    lineJoin="round"
+                    lineCap="butt"
+                    lineJoin="miter"
                     opacity={isSelected ? 0.2 : 0.12}
                     perfectDrawEnabled={false}
                     listening={false}
@@ -1068,8 +1115,8 @@ export default function DatabaseDiagramPanel({
                   data={roundedPath}
                   stroke={stroke}
                   strokeWidth={isActive ? 2.4 : 1.35}
-                  lineCap="round"
-                  lineJoin="round"
+                  lineCap="butt"
+                  lineJoin="miter"
                   opacity={isActive ? 1 : 0.82}
                   perfectDrawEnabled={false}
                   shadowForStrokeEnabled={false}
@@ -1101,7 +1148,8 @@ export default function DatabaseDiagramPanel({
                 ))}
                 {editablePoints.map((point, pointIndex) => {
                   const isEndpoint =
-                    pointIndex === 0 || pointIndex === editablePoints.length - 1;
+                    pointIndex === 0 ||
+                    pointIndex === editablePoints.length - 1;
                   return (
                     <Circle
                       key={`edit-${rel.id}-${pointIndex}`}
@@ -1165,7 +1213,6 @@ export default function DatabaseDiagramPanel({
                           });
                           return;
                         }
-
                       }}
                       onMouseEnter={(event) => {
                         const stage = event.target.getStage();
@@ -1274,55 +1321,21 @@ export default function DatabaseDiagramPanel({
                     />
                   </Group>
                 ) : null}
-                <Circle
-                  x={fromAnchor.x}
-                  y={fromAnchor.y}
-                  radius={isActive ? 3 : 2}
-                  fill={isActive ? activeEdgeColor : tableBg}
-                  stroke={stroke}
-                  strokeWidth={isActive ? 1.5 : 1}
+                <CardinalityMarker
+                  anchor={fromAnchor}
+                  side={effectiveFromSide}
+                  label={rel.cardinalityLabelFrom}
+                  color={stroke}
+                  strokeWidth={isActive ? 1.6 : 1.2}
                   opacity={isActive ? 1 : 0.85}
-                  listening={false}
-                  perfectDrawEnabled={false}
                 />
-                <Circle
-                  x={toAnchor.x}
-                  y={toAnchor.y}
-                  radius={isActive ? 3 : 2}
-                  fill={isActive ? activeEdgeColor : tableBg}
-                  stroke={stroke}
-                  strokeWidth={isActive ? 1.5 : 1}
+                <CardinalityMarker
+                  anchor={toAnchor}
+                  side={effectiveToSide}
+                  label={rel.cardinalityLabelTo}
+                  color={stroke}
+                  strokeWidth={isActive ? 1.6 : 1.2}
                   opacity={isActive ? 1 : 0.85}
-                  listening={false}
-                  perfectDrawEnabled={false}
-                />
-                <Text
-                  x={fromAnchor.x + (effectiveFromSide === "right" ? 7 : -42)}
-                  y={fromAnchor.y - 20}
-                  width={36}
-                  align={effectiveFromSide === "right" ? "left" : "right"}
-                  text={rel.cardinalityLabelFrom ?? ""}
-                  fontSize={11}
-                  fontStyle={isActive ? "600" : "400"}
-                  fontFamily="Inter, system-ui, sans-serif"
-                  fill={stroke}
-                  opacity={isActive ? 1 : 0.8}
-                  listening={false}
-                  perfectDrawEnabled={false}
-                />
-                <Text
-                  x={toAnchor.x + (effectiveToSide === "right" ? 7 : -42)}
-                  y={toAnchor.y - 20}
-                  width={36}
-                  align={effectiveToSide === "right" ? "left" : "right"}
-                  text={rel.cardinalityLabelTo ?? ""}
-                  fontSize={11}
-                  fontStyle={isActive ? "600" : "400"}
-                  fontFamily="Inter, system-ui, sans-serif"
-                  fill={stroke}
-                  opacity={isActive ? 1 : 0.8}
-                  listening={false}
-                  perfectDrawEnabled={false}
                 />
                 {isActive && rel.name ? (
                   <Text
@@ -1344,8 +1357,8 @@ export default function DatabaseDiagramPanel({
                     data={roundedPath}
                     stroke={activeEdgeColor}
                     strokeWidth={4.5}
-                    lineCap="round"
-                    lineJoin="round"
+                    lineCap="butt"
+                    lineJoin="miter"
                     opacity={0.12}
                     perfectDrawEnabled={false}
                     listening={false}
@@ -1355,8 +1368,8 @@ export default function DatabaseDiagramPanel({
                   data={roundedPath}
                   stroke="transparent"
                   strokeWidth={16}
-                  lineCap="round"
-                  lineJoin="round"
+                  lineCap="butt"
+                  lineJoin="miter"
                   listening={!isEditing}
                   perfectDrawEnabled={false}
                   shadowForStrokeEnabled={false}
