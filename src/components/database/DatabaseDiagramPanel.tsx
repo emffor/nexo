@@ -31,8 +31,10 @@ import {
   DB_ROW_HEIGHT,
   DB_TABLE_PADDING_BOTTOM,
   DB_TABLE_WIDTH,
+  computeDatabaseAutoLayoutByAlgorithm,
   computeDatabaseAutoLayout,
   computeDatabaseTableHeight,
+  type DatabaseAutoLayoutAlgorithm,
 } from "../../lib/databaseLayout";
 import { reanchorRelationPathsForMovedTable } from "../../lib/databaseDiagramSync";
 import type {
@@ -72,6 +74,39 @@ Konva.pixelRatio = 1;
 
 type InteractionMode = "select" | "pan";
 
+const AUTO_LAYOUT_OPTIONS: {
+  id: DatabaseAutoLayoutAlgorithm;
+  label: string;
+  description: string;
+  shortcut: string;
+  icon: "flow" | "snowflake" | "grid";
+}[] = [
+  {
+    id: "left-right",
+    label: "Esquerda-direita",
+    description:
+      "Organiza tabelas da esquerda para a direita com base na direção dos relacionamentos.",
+    shortcut: "1",
+    icon: "flow",
+  },
+  {
+    id: "snowflake",
+    label: "Floco de neve",
+    description:
+      "Mantém as tabelas mais conectadas no centro e distribui as demais ao redor.",
+    shortcut: "2",
+    icon: "snowflake",
+  },
+  {
+    id: "compact",
+    label: "Compacto",
+    description:
+      "Organiza tabelas em uma grade retangular curta para diagramas menores.",
+    shortcut: "3",
+    icon: "grid",
+  },
+];
+
 type ActiveEditor =
   | { type: "table"; tableId: string; draft: string; error: string | null }
   | {
@@ -99,53 +134,86 @@ type CurveDragSnapshot = {
   points: { x: number; y: number }[];
 };
 
-interface AnimatedRelationPathProps {
-  data: string;
-  stroke: string;
-  strokeWidth: number;
-  isCurveEdge: boolean;
-}
+function AutoLayoutIcon({ icon }: { icon: "flow" | "snowflake" | "grid" }) {
+  if (icon === "grid") {
+    return (
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="h-6 w-6"
+        fill="none"
+        stroke="currentColor"
+      >
+        {[4, 10, 16].flatMap((y) =>
+          [4, 10, 16].map((x) => (
+            <rect
+              key={`${x}-${y}`}
+              x={x}
+              y={y}
+              width="4"
+              height="4"
+              rx="0.8"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+            />
+          )),
+        )}
+      </svg>
+    );
+  }
 
-function AnimatedRelationPath({
-  data,
-  stroke,
-  strokeWidth,
-  isCurveEdge,
-}: AnimatedRelationPathProps) {
-  const pathRef = useRef<Konva.Path | null>(null);
-
-  useEffect(() => {
-    const path = pathRef.current;
-    const layer = path?.getLayer();
-    if (!path || !layer) {
-      return;
-    }
-
-    const animation = new Konva.Animation((frame) => {
-      const offset = ((frame?.time ?? 0) / 42) % 28;
-      path.dashOffset(-offset);
-    }, layer);
-
-    animation.start();
-    return () => {
-      animation.stop();
-    };
-  }, []);
+  const nodes =
+    icon === "snowflake"
+      ? [
+          [10, 10],
+          [4, 4],
+          [16, 4],
+          [4, 16],
+          [16, 16],
+        ]
+      : [
+          [4, 5],
+          [4, 17],
+          [17, 11],
+        ];
 
   return (
-    <Path
-      ref={pathRef}
-      data={data}
-      stroke={stroke}
-      strokeWidth={strokeWidth}
-      dash={[10, 8]}
-      lineCap={isCurveEdge ? "round" : "butt"}
-      lineJoin={isCurveEdge ? "round" : "miter"}
-      opacity={0.95}
-      perfectDrawEnabled={false}
-      listening={false}
-      shadowForStrokeEnabled={false}
-    />
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-6 w-6"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {icon === "snowflake" ? (
+        <>
+          <path d="M10 10 6 6M14 10l4-4M10 14l-4 4M14 14l4 4" />
+          <path d="M12 10v4M10 12h4" />
+        </>
+      ) : (
+        <>
+          <path d="M8 5h5a4 4 0 0 1 4 4v2" />
+          <path d="M8 17h5a4 4 0 0 0 4-4v-2" />
+        </>
+      )}
+      {nodes.map(([x, y]) => (
+        <rect
+          key={`${x}-${y}`}
+          x={x}
+          y={y}
+          width="4"
+          height="4"
+          rx="0.8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+        />
+      ))}
+    </svg>
   );
 }
 
@@ -459,50 +527,10 @@ function buildOrthogonalPathData(points: number[]): string {
   if (points.length < 4) {
     return "";
   }
-
-  const radius = 10;
   let data = `M ${points[0]} ${points[1]}`;
-
-  for (let index = 2; index < points.length - 2; index += 2) {
-    const previous = { x: points[index - 2], y: points[index - 1] };
-    const current = { x: points[index], y: points[index + 1] };
-    const next = { x: points[index + 2], y: points[index + 3] };
-    const incomingLength = Math.hypot(
-      current.x - previous.x,
-      current.y - previous.y,
-    );
-    const outgoingLength = Math.hypot(next.x - current.x, next.y - current.y);
-    const cornerRadius = Math.min(
-      radius,
-      incomingLength / 2,
-      outgoingLength / 2,
-    );
-
-    if (
-      cornerRadius <= 0 ||
-      (previous.x !== current.x &&
-        previous.y !== current.y &&
-        next.x !== current.x &&
-        next.y !== current.y)
-    ) {
-      data += ` L ${current.x} ${current.y}`;
-      continue;
-    }
-
-    const beforeCorner = {
-      x: current.x - Math.sign(current.x - previous.x) * cornerRadius,
-      y: current.y - Math.sign(current.y - previous.y) * cornerRadius,
-    };
-    const afterCorner = {
-      x: current.x + Math.sign(next.x - current.x) * cornerRadius,
-      y: current.y + Math.sign(next.y - current.y) * cornerRadius,
-    };
-
-    data += ` L ${beforeCorner.x} ${beforeCorner.y}`;
-    data += ` Q ${current.x} ${current.y} ${afterCorner.x} ${afterCorner.y}`;
+  for (let index = 2; index < points.length; index += 2) {
+    data += ` L ${points[index]} ${points[index + 1]}`;
   }
-
-  data += ` L ${points[points.length - 2]} ${points[points.length - 1]}`;
   return data;
 }
 
@@ -685,6 +713,7 @@ export default function DatabaseDiagramPanel({
   );
   const [interactionMode, setInteractionMode] =
     useState<InteractionMode>("select");
+  const [isAutoLayoutOpen, setIsAutoLayoutOpen] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedRelationId, setSelectedRelationId] = useState<string | null>(
     null,
@@ -986,60 +1015,134 @@ export default function DatabaseDiagramPanel({
     [onStateChange, size.height, size.width],
   );
 
-  const handleFitToContent = useCallback(() => {
+  const buildFitViewport = useCallback(
+    (positions: DatabaseDiagramVisualState["positions"]) => {
+      if (tables.length === 0) {
+        return null;
+      }
+
+      const bounds = tables.reduce(
+        (acc, table) => {
+          const pos = positions[table.id];
+          if (!pos) {
+            return acc;
+          }
+          const height = computeDatabaseTableHeight(table.columns.length);
+          return {
+            minX: Math.min(acc.minX, pos.x),
+            minY: Math.min(acc.minY, pos.y),
+            maxX: Math.max(acc.maxX, pos.x + DB_TABLE_WIDTH),
+            maxY: Math.max(acc.maxY, pos.y + height),
+          };
+        },
+        {
+          minX: Number.POSITIVE_INFINITY,
+          minY: Number.POSITIVE_INFINITY,
+          maxX: Number.NEGATIVE_INFINITY,
+          maxY: Number.NEGATIVE_INFINITY,
+        },
+      );
+      if (!Number.isFinite(bounds.minX) || !Number.isFinite(bounds.maxX)) {
+        return null;
+      }
+
+      const padding = 72;
+      const contentWidth = Math.max(1, bounds.maxX - bounds.minX);
+      const contentHeight = Math.max(1, bounds.maxY - bounds.minY);
+      const nextScale = clamp(
+        Math.min(
+          (size.width - padding * 2) / contentWidth,
+          (size.height - padding * 2) / contentHeight,
+        ),
+        MIN_SCALE,
+        MAX_SCALE,
+      );
+
+      return {
+        x:
+          (size.width - contentWidth * nextScale) / 2 -
+          bounds.minX * nextScale,
+        y:
+          (size.height - contentHeight * nextScale) / 2 -
+          bounds.minY * nextScale,
+        scale: nextScale,
+      };
+    },
+    [size.height, size.width, tables],
+  );
+
+  const applyViewport = useCallback((next: DatabaseDiagramViewport) => {
     const stage = stageRef.current;
-    if (!stage || tables.length === 0) {
-      return;
-    }
-    const current = stateRef.current;
-    const bounds = tables.reduce(
-      (acc, table) => {
-        const pos = current.positions[table.id];
-        if (!pos) {
-          return acc;
-        }
-        const height = computeDatabaseTableHeight(table.columns.length);
-        return {
-          minX: Math.min(acc.minX, pos.x),
-          minY: Math.min(acc.minY, pos.y),
-          maxX: Math.max(acc.maxX, pos.x + DB_TABLE_WIDTH),
-          maxY: Math.max(acc.maxY, pos.y + height),
-        };
-      },
-      {
-        minX: Number.POSITIVE_INFINITY,
-        minY: Number.POSITIVE_INFINITY,
-        maxX: Number.NEGATIVE_INFINITY,
-        maxY: Number.NEGATIVE_INFINITY,
-      },
-    );
-    if (!Number.isFinite(bounds.minX) || !Number.isFinite(bounds.maxX)) {
+    if (!stage) {
       return;
     }
 
-    const padding = 72;
-    const contentWidth = Math.max(1, bounds.maxX - bounds.minX);
-    const contentHeight = Math.max(1, bounds.maxY - bounds.minY);
-    const nextScale = clamp(
-      Math.min(
-        (size.width - padding * 2) / contentWidth,
-        (size.height - padding * 2) / contentHeight,
-      ),
-      MIN_SCALE,
-      MAX_SCALE,
-    );
-    const next = {
-      x: (size.width - contentWidth * nextScale) / 2 - bounds.minX * nextScale,
-      y:
-        (size.height - contentHeight * nextScale) / 2 - bounds.minY * nextScale,
-      scale: nextScale,
-    };
     stage.scale({ x: next.scale, y: next.scale });
     stage.position({ x: next.x, y: next.y });
     stage.batchDraw();
     setViewportScale(next.scale);
+  }, []);
+
+  const handleFitToContent = useCallback(() => {
+    const current = stateRef.current;
+    const next = buildFitViewport(current.positions);
+    if (!next) {
+      return;
+    }
+    applyViewport(next);
     onStateChange({ ...current, viewport: next });
-  }, [onStateChange, size.height, size.width, tables]);
+  }, [applyViewport, buildFitViewport, onStateChange]);
+
+  const handleApplyAutoLayout = useCallback(
+    (algorithm: DatabaseAutoLayoutAlgorithm) => {
+      const current = stateRef.current;
+      const positions = computeDatabaseAutoLayoutByAlgorithm(
+        tables,
+        relations,
+        algorithm,
+      );
+      const viewport = buildFitViewport(positions) ?? INITIAL_VIEWPORT;
+
+      setLiveTablePosition(null);
+      setLiveRelationPath(null);
+      setSelectedTableId(null);
+      setSelectedRelationId(null);
+      setEditingRelationId(null);
+      setActiveEditor(null);
+      setIsAutoLayoutOpen(false);
+      applyViewport(viewport);
+      onStateChange({
+        ...current,
+        positions,
+        relationPaths: undefined,
+        viewport,
+      });
+    },
+    [applyViewport, buildFitViewport, onStateChange, relations, tables],
+  );
+
+  useEffect(() => {
+    if (!isAutoLayoutOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsAutoLayoutOpen(false);
+        return;
+      }
+
+      const option = AUTO_LAYOUT_OPTIONS.find(
+        (entry) => entry.shortcut === event.key,
+      );
+      if (option) {
+        handleApplyAutoLayout(option.id);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleApplyAutoLayout, isAutoLayoutOpen]);
 
   const openTableEditor = useCallback((table: DatabaseTable) => {
     setSelectedTableId(table.id);
@@ -1332,7 +1435,7 @@ export default function DatabaseDiagramPanel({
             const isSelected = selectedRelationId === rel.id;
             const isActive = activeRelationIds.has(rel.id);
             const isEditing = editingRelationId === rel.id;
-            const isCurveEdge = edgeStyle === "curve";
+            const isCurveEdge = false;
             const roundedPath = buildOrthogonalPathData(points);
             const defaultCurvePoints = buildCurvePoints(
               fromAnchor,
@@ -1344,9 +1447,7 @@ export default function DatabaseDiagramPanel({
               isCurveEdge && customPath?.points.length === 4
                 ? pointArrayToPairs(points)
                 : defaultCurvePoints;
-            const relationPath = isCurveEdge
-              ? buildCurvePathDataFromPoints(curvePoints)
-              : roundedPath;
+            const relationPath = roundedPath;
             const stroke = isActive ? activeEdgeColor : edgeColor;
             const relationMidpoint = buildRelationMidpoint(points);
             const editablePoints = isEditing ? pointArrayToPairs(points) : [];
@@ -1358,21 +1459,19 @@ export default function DatabaseDiagramPanel({
               isEditing && !isCurveEdge
                 ? buildRelationGuidePoints(editablePoints)
                 : [];
-            const staticControlPoints = isActive
-              ? buildPathControlPoints(points)
-              : [];
+            const staticControlPoints: { x: number; y: number }[] = [];
             const curveControlPoints =
               isEditing && isCurveEdge ? curvePoints.slice(1, 3) : [];
             return (
               <Group key={rel.id}>
-                {isActive ? (
+                {isSelected ? (
                   <Path
                     data={relationPath}
                     stroke={activeEdgeColor}
-                    strokeWidth={6}
-                    lineCap={isCurveEdge ? "round" : "butt"}
-                    lineJoin={isCurveEdge ? "round" : "miter"}
-                    opacity={isSelected ? 0.2 : 0.12}
+                    strokeWidth={5}
+                    lineCap="butt"
+                    lineJoin="miter"
+                    opacity={0.12}
                     perfectDrawEnabled={false}
                     listening={false}
                     shadowForStrokeEnabled={false}
@@ -1381,22 +1480,14 @@ export default function DatabaseDiagramPanel({
                 <Path
                   data={relationPath}
                   stroke={stroke}
-                  strokeWidth={isActive ? 2.4 : 1.35}
-                  lineCap={isCurveEdge ? "round" : "butt"}
-                  lineJoin={isCurveEdge ? "round" : "miter"}
-                  opacity={isActive ? 1 : 0.82}
+                  strokeWidth={1.6}
+                  lineCap="butt"
+                  lineJoin="miter"
+                  opacity={isActive ? 1 : 0.86}
                   perfectDrawEnabled={false}
                   shadowForStrokeEnabled={false}
                   listening={false}
                 />
-                {isSelected ? (
-                  <AnimatedRelationPath
-                    data={relationPath}
-                    stroke={activeEdgeColor}
-                    strokeWidth={2.6}
-                    isCurveEdge={isCurveEdge}
-                  />
-                ) : null}
                 {staticControlPoints.map((point, index) => (
                   <Circle
                     key={`static-${point.x}-${point.y}-${index}`}
@@ -1734,18 +1825,6 @@ export default function DatabaseDiagramPanel({
                     fill={activeEdgeColor}
                     listening={false}
                     perfectDrawEnabled={false}
-                  />
-                ) : null}
-                {isSelected ? (
-                  <Path
-                    data={roundedPath}
-                    stroke={activeEdgeColor}
-                    strokeWidth={4.5}
-                    lineCap="butt"
-                    lineJoin="miter"
-                    opacity={0.12}
-                    perfectDrawEnabled={false}
-                    listening={false}
                   />
                 ) : null}
                 <Path
@@ -2202,6 +2281,68 @@ export default function DatabaseDiagramPanel({
         </div>
       ) : null}
 
+      {isAutoLayoutOpen ? (
+        <div
+          role="dialog"
+          aria-label="Escolher algoritmo de auto-organização"
+          className={`absolute bottom-16 left-4 z-50 w-[min(28rem,calc(100%-2rem))] overflow-hidden rounded-xl border shadow-2xl ${
+            isDark
+              ? "border-white/10 bg-slate-950 text-slate-100 shadow-black/40"
+              : "border-slate-200 bg-white text-slate-900 shadow-slate-300/50"
+          }`}
+        >
+          <div
+            className={`border-b px-4 py-3 text-sm font-semibold ${
+              isDark ? "border-white/10" : "border-slate-200"
+            }`}
+          >
+            Escolha o algoritmo de auto-organização
+          </div>
+          <div className="p-2">
+            {AUTO_LAYOUT_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => handleApplyAutoLayout(option.id)}
+                className={`flex w-full items-start gap-4 rounded-lg px-3 py-3 text-left transition ${
+                  isDark ? "hover:bg-white/10" : "hover:bg-slate-100"
+                }`}
+              >
+                <span
+                  className={`mt-1 shrink-0 ${
+                    isDark ? "text-slate-300" : "text-slate-700"
+                  }`}
+                >
+                  <AutoLayoutIcon icon={option.icon} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">
+                    {option.label}
+                  </span>
+                  <span
+                    className={`mt-1 block text-xs leading-5 ${
+                      isDark ? "text-slate-400" : "text-slate-500"
+                    }`}
+                  >
+                    {option.description}
+                  </span>
+                </span>
+                <span
+                  className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-xs font-semibold shadow-sm ${
+                    isDark
+                      ? "border-slate-700 bg-slate-900 text-slate-300"
+                      : "border-slate-200 bg-slate-50 text-slate-600"
+                  }`}
+                  aria-hidden="true"
+                >
+                  {option.shortcut}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div
         className={`absolute bottom-4 left-4 z-40 flex items-center overflow-hidden rounded-lg border shadow-lg ${
           isDark
@@ -2239,6 +2380,20 @@ export default function DatabaseDiagramPanel({
           title="Aumentar zoom"
         >
           +
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsAutoLayoutOpen((current) => !current)}
+          aria-expanded={isAutoLayoutOpen}
+          className={`border-l px-3 py-2 text-xs font-semibold transition ${
+            isAutoLayoutOpen
+              ? "bg-blue-600 text-white"
+              : isDark
+                ? "border-white/10 hover:bg-white/10"
+                : "border-slate-200 hover:bg-slate-100"
+          }`}
+        >
+          Organizar
         </button>
         <button
           type="button"

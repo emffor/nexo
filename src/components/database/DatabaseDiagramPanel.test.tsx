@@ -291,7 +291,48 @@ describe('DatabaseDiagramPanel', () => {
     expect(onStateChange).toHaveBeenCalledTimes(1);
   });
 
-  it('move os pontos de controle da curva em conjunto', async () => {
+  it('aplica auto-organizacao left-right pelo popover', async () => {
+    const user = userEvent.setup();
+    const onStateChange = vi.fn();
+    renderPanel({
+      onStateChange,
+      state: {
+        positions: {
+          users: { x: 40, y: 40 },
+          posts: { x: 360, y: 40 },
+        },
+        relationPaths: {
+          user_posts: {
+            fromSide: 'left',
+            toSide: 'right',
+            points: [
+              { x: 360, y: 71 },
+              { x: 320, y: 71 },
+              { x: 320, y: 45 },
+              { x: 280, y: 45 },
+            ],
+          },
+        },
+      },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Organizar' }));
+    expect(
+      screen.getByRole('dialog', {
+        name: 'Escolher algoritmo de auto-organização',
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Esquerda-direita/ }));
+
+    const nextState = onStateChange.mock.calls[0]?.[0];
+    expect(nextState.positions.posts.x).toBeLessThan(
+      nextState.positions.users.x,
+    );
+    expect(nextState.relationPaths).toBeUndefined();
+  });
+
+  it('mantem relacao do banco em modo ortogonal mesmo com preferencia de curva', async () => {
     const user = userEvent.setup();
     const onStateChange = vi.fn();
     renderPanel({
@@ -307,10 +348,10 @@ describe('DatabaseDiagramPanel', () => {
             fromSide: 'left',
             toSide: 'right',
             points: [
-              { x: 360, y: 71 },
-              { x: 320, y: 71 },
-              { x: 280, y: 45 },
-              { x: 280, y: 45 },
+              { x: 360, y: 111 },
+              { x: 320, y: 111 },
+              { x: 320, y: 85 },
+              { x: 280, y: 85 },
             ],
           },
         },
@@ -324,34 +365,16 @@ describe('DatabaseDiagramPanel', () => {
     const dragHandles = screen.getAllByRole('button', {
       name: 'Arrastar ponto da relacao',
     }) as HTMLButtonElement[];
-    const firstHandle = dragHandles[2];
-    const secondHandle = dragHandles[3];
-    const firstStart = {
-      x: Number(firstHandle.dataset.x),
-      y: Number(firstHandle.dataset.y),
-    };
-    const secondStart = {
-      x: Number(secondHandle.dataset.x),
-      y: Number(secondHandle.dataset.y),
-    };
+    const segmentHandle = dragHandles[2];
+    const startX = Number(segmentHandle.dataset.x);
 
-    fireEvent.mouseDown(firstHandle);
-    fireEvent.mouseMove(firstHandle);
-    fireEvent.mouseUp(firstHandle);
+    fireEvent.mouseMove(segmentHandle);
+    fireEvent.mouseUp(segmentHandle);
 
     expect(onStateChange).toHaveBeenCalledTimes(1);
     const nextState = onStateChange.mock.calls[0]?.[0];
-    const nextControlPoints = nextState.relationPaths.user_posts.points.slice(
-      1,
-      3,
-    );
-    expect(nextControlPoints[0]).toEqual({
-      x: firstStart.x + 24,
-      y: firstStart.y + 24,
-    });
-    expect(nextControlPoints[1]).toEqual({
-      x: secondStart.x + 24,
-      y: secondStart.y + 24,
-    });
+    const nextPoints = nextState.relationPaths.user_posts.points;
+    expect(nextPoints[1].x).toBe(startX + 24);
+    expect(nextPoints[2].x).toBe(startX + 24);
   });
 });
