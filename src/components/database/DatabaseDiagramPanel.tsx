@@ -342,6 +342,35 @@ function buildCurvePathData(
   return `M ${from.x} ${from.y} C ${controlFromX} ${from.y}, ${controlToX} ${to.y}, ${to.x} ${to.y}`;
 }
 
+function buildCurvePoints(
+  from: { x: number; y: number },
+  fromSide: DatabaseRelationSide,
+  to: { x: number; y: number },
+  toSide: DatabaseRelationSide,
+): { x: number; y: number }[] {
+  const fromDirection = fromSide === "right" ? 1 : -1;
+  const toDirection = toSide === "right" ? 1 : -1;
+  const distance = Math.max(80, Math.abs(to.x - from.x) * 0.45);
+
+  return [
+    from,
+    { x: from.x + fromDirection * distance, y: from.y },
+    { x: to.x + toDirection * distance, y: to.y },
+    to,
+  ];
+}
+
+function buildCurvePathDataFromPoints(
+  points: { x: number; y: number }[],
+): string {
+  if (points.length < 4) {
+    return "";
+  }
+
+  const [from, controlFrom, controlTo, to] = points;
+  return `M ${from.x} ${from.y} C ${controlFrom.x} ${controlFrom.y}, ${controlTo.x} ${controlTo.y}, ${to.x} ${to.y}`;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -1124,28 +1153,37 @@ export default function DatabaseDiagramPanel({
             const isSelected = selectedRelationId === rel.id;
             const isActive = activeRelationIds.has(rel.id);
             const isEditing = editingRelationId === rel.id;
-            const isCurveEdge = edgeStyle === "curve" && !isEditing;
+            const isCurveEdge = edgeStyle === "curve";
             const roundedPath = buildOrthogonalPathData(points);
+            const defaultCurvePoints = buildCurvePoints(
+              fromAnchor,
+              effectiveFromSide,
+              toAnchor,
+              effectiveToSide,
+            );
+            const curvePoints =
+              isCurveEdge && customPath?.points.length === 4
+                ? pointArrayToPairs(points)
+                : defaultCurvePoints;
             const relationPath = isCurveEdge
-              ? buildCurvePathData(
-                  fromAnchor,
-                  effectiveFromSide,
-                  toAnchor,
-                  effectiveToSide,
-                )
+              ? buildCurvePathDataFromPoints(curvePoints)
               : roundedPath;
             const stroke = isActive ? activeEdgeColor : edgeColor;
             const relationMidpoint = buildRelationMidpoint(points);
             const editablePoints = isEditing ? pointArrayToPairs(points) : [];
-            const segmentHandles = isEditing
-              ? buildSegmentHandles(editablePoints)
-              : [];
-            const guidePoints = isEditing
-              ? buildRelationGuidePoints(editablePoints)
-              : [];
+            const segmentHandles =
+              isEditing && !isCurveEdge
+                ? buildSegmentHandles(editablePoints)
+                : [];
+            const guidePoints =
+              isEditing && !isCurveEdge
+                ? buildRelationGuidePoints(editablePoints)
+                : [];
             const staticControlPoints = isActive
               ? buildPathControlPoints(points)
               : [];
+            const curveControlPoints =
+              isEditing && isCurveEdge ? curvePoints.slice(1, 3) : [];
             return (
               <Group key={rel.id}>
                 {isActive ? (
@@ -1280,6 +1318,46 @@ export default function DatabaseDiagramPanel({
                     />
                   );
                 })}
+                {curveControlPoints.map((point, controlIndex) => (
+                  <Circle
+                    key={`curve-control-${rel.id}-${controlIndex}`}
+                    x={point.x}
+                    y={point.y}
+                    radius={5}
+                    fill="#ffffff"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    draggable
+                    onDragMove={(event) => {
+                      event.cancelBubble = true;
+                      const nextCurvePoints = curvePoints.map((entry) => ({
+                        ...entry,
+                      }));
+                      nextCurvePoints[controlIndex + 1] = {
+                        x: event.target.x(),
+                        y: event.target.y(),
+                      };
+                      saveRelationPath(rel.id, {
+                        fromSide: effectiveFromSide,
+                        toSide: effectiveToSide,
+                        points: nextCurvePoints,
+                      });
+                    }}
+                    onMouseEnter={(event) => {
+                      const stage = event.target.getStage();
+                      if (stage) {
+                        stage.container().style.cursor = "move";
+                      }
+                    }}
+                    onMouseLeave={(event) => {
+                      const stage = event.target.getStage();
+                      if (stage) {
+                        stage.container().style.cursor = "default";
+                      }
+                    }}
+                    perfectDrawEnabled={false}
+                  />
+                ))}
                 {segmentHandles.map((handle) => (
                   <Circle
                     key={`segment-${rel.id}-${handle.index}`}
