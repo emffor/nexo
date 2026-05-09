@@ -15,6 +15,7 @@ import { useToast } from "./hooks/useToast";
 import { createBackupText, parseBackupFile } from "./lib/backup";
 import {
   getDatabaseDiagram,
+  resetDatabaseDiagram,
   saveDatabaseDiagramContent,
   saveDatabaseDiagramRecord,
   saveDatabaseDiagramState,
@@ -327,7 +328,7 @@ export default function App() {
   };
 
   const handleClearAll = () => {
-    if (items.length === 0) {
+    if (items.length === 0 && !databaseDiagram) {
       return;
     }
     setConfirmClearAll(true);
@@ -339,21 +340,29 @@ export default function App() {
     diagramStateRef.current = null;
     clearDiagramState();
     await clearItems();
-    addToast("Todos os cards foram removidos", "info", {
-      label: "Desfazer",
-      onClick: () => {
-        void replaceItems(snapshot);
+    const nextDatabaseDiagram = await resetDatabaseDiagram();
+    setDatabaseDiagram(nextDatabaseDiagram);
+    addToast(
+      "Dados removidos e banco restaurado para o exemplo inicial",
+      "info",
+      {
+        label: "Desfazer",
+        onClick: () => {
+          void replaceItems(snapshot);
+        },
       },
-    });
+    );
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const diagramState = diagramStateRef.current ?? readDiagramState();
+    const currentDatabaseDiagram =
+      databaseDiagram ?? (await getDatabaseDiagram());
     const backupText = createBackupText(
       items,
       diagramState,
       [...hiddenDiagramItemIds],
-      databaseDiagram,
+      currentDatabaseDiagram,
     );
     const blob = new Blob([backupText], { type: "text/plain;charset=utf-8" });
     const url = window.URL.createObjectURL(blob);
@@ -587,8 +596,11 @@ export default function App() {
   );
 
   const handleResetDatabaseLayout = useCallback(() => {
-    setDatabaseResetSignal((value) => value + 1);
-    addToast("Layout do diagrama de banco reorganizado", "info");
+    void resetDatabaseDiagram().then((nextDatabaseDiagram) => {
+      setDatabaseDiagram(nextDatabaseDiagram);
+      setDatabaseResetSignal((value) => value + 1);
+      addToast("Banco restaurado para o exemplo inicial", "info");
+    });
   }, [addToast]);
 
   useEffect(() => {
@@ -681,7 +693,9 @@ export default function App() {
         onIncreaseFont={() =>
           setFontScale((current) => clampFontScale(current + FONT_SCALE.step))
         }
-        onExport={handleExport}
+        onExport={() => {
+          void handleExport();
+        }}
         onImport={handleImportClick}
         onCopyAll={() => {
           void handleCopyAll();

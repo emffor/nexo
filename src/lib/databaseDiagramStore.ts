@@ -8,7 +8,7 @@ import {
 const MAIN_ID = 'main';
 const DEFAULT_TITLE = 'Diagrama principal';
 
-function buildDefault(): DatabaseDiagramRecord {
+export function buildDefaultDatabaseDiagram(): DatabaseDiagramRecord {
   const now = new Date().toISOString();
   return {
     id: MAIN_ID,
@@ -24,7 +24,8 @@ async function saveDatabaseDiagramPatch(
   patch: Partial<DatabaseDiagramRecord>,
 ): Promise<DatabaseDiagramRecord> {
   return db.transaction('rw', db.databaseDiagrams, async () => {
-    const existing = (await db.databaseDiagrams.get(MAIN_ID)) ?? buildDefault();
+    const existing =
+      (await db.databaseDiagrams.get(MAIN_ID)) ?? buildDefaultDatabaseDiagram();
     const next: DatabaseDiagramRecord = {
       ...existing,
       ...patch,
@@ -44,7 +45,7 @@ export async function getDatabaseDiagram(): Promise<DatabaseDiagramRecord> {
       state: existing.state ?? { positions: {} },
     };
   }
-  const fresh = buildDefault();
+  const fresh = buildDefaultDatabaseDiagram();
   await db.databaseDiagrams.put(fresh);
   return fresh;
 }
@@ -67,4 +68,10 @@ export async function saveDatabaseDiagramRecord(
 
 export async function clearDatabaseDiagram(): Promise<void> {
   await db.databaseDiagrams.delete(MAIN_ID);
+}
+
+export async function resetDatabaseDiagram(): Promise<DatabaseDiagramRecord> {
+  const fresh = buildDefaultDatabaseDiagram();
+  await db.databaseDiagrams.put(fresh);
+  return fresh;
 }

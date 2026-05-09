@@ -109,32 +109,34 @@ export interface DatabaseDiagramRecord {
   updatedAt: string;
 }
 
-export const DEFAULT_DATABASE_DBML = `// Use DBML para definir o schema do seu banco
-// Docs: https://dbml.dbdiagram.io/docs
-
-Table users {
+export const DEFAULT_DATABASE_DBML = `Table usuarios {
   id integer [primary key]
-  username varchar
-  role varchar
-  created_at timestamp
+  nome varchar
+  email varchar
+  criado_em timestamp
 }
 
-Table posts {
+Table produtos {
   id integer [primary key]
-  title varchar
-  body text
-  user_id integer [not null]
+  usuario_id integer [not null]
+  nome varchar
+  preco decimal
   status varchar
-  created_at timestamp
+  criado_em timestamp
 }
 
-Table follows {
-  following_user_id integer
-  followed_user_id integer
-  created_at timestamp
+Table pedidos {
+  id integer [primary key]
+  usuario_id integer [not null]
+  produto_id integer [not null]
+  quantidade integer
+  total decimal
+  status varchar
+  criado_em timestamp
 }
 
-Ref: posts.user_id > users.id
-Ref: follows.following_user_id > users.id
-Ref: follows.followed_user_id > users.id
+Ref: produtos.usuario_id > usuarios.id
+
+Ref: pedidos.usuario_id > usuarios.id
+Ref: pedidos.produto_id > produtos.id
 `;
