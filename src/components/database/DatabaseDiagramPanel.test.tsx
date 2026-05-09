@@ -113,6 +113,7 @@ vi.mock('react-konva', () => {
       y = 0,
     }: {
       draggable?: boolean;
+      onDragStart?: (event: ReturnType<typeof buildDragEvent>) => void;
       onDragMove?: (event: ReturnType<typeof buildDragEvent>) => void;
       onDragEnd?: (event: ReturnType<typeof buildDragEvent>) => void;
       x?: number;
@@ -122,6 +123,9 @@ vi.mock('react-konva', () => {
         <button
           type="button"
           aria-label="Arrastar ponto da relacao"
+          data-x={x}
+          data-y={y}
+          onMouseDown={() => onDragStart?.(buildDragEvent(x, y))}
           onMouseMove={() => onDragMove?.(buildDragEvent(x + 12, y + 12))}
           onMouseUp={() => onDragEnd?.(buildDragEvent(x + 12, y + 12))}
         />
@@ -166,6 +170,7 @@ function renderPanel(overrides?: {
   ) => boolean;
   onStateChange?: (state: DatabaseDiagramVisualState) => void;
   state?: DatabaseDiagramVisualState;
+  edgeStyle?: 'square' | 'curve';
 }) {
   const parsed = parseDbml(content);
   const state: DatabaseDiagramVisualState = overrides?.state ?? {
@@ -184,6 +189,7 @@ function renderPanel(overrides?: {
       onStateChange={overrides?.onStateChange ?? (() => {})}
       onRenameTable={overrides?.onRenameTable}
       onRenameColumn={overrides?.onRenameColumn}
+      edgeStyle={overrides?.edgeStyle}
     />,
   );
 }
@@ -271,5 +277,58 @@ describe('DatabaseDiagramPanel', () => {
 
     fireEvent.mouseUp(dragHandle);
     expect(onStateChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('move os pontos de controle da curva em conjunto', async () => {
+    const user = userEvent.setup();
+    const onStateChange = vi.fn();
+    renderPanel({
+      edgeStyle: 'curve',
+      onStateChange,
+      state: {
+        positions: {
+          users: { x: 40, y: 40 },
+          posts: { x: 360, y: 40 },
+        },
+        relationPaths: {
+          user_posts: {
+            fromSide: 'left',
+            toSide: 'right',
+            points: [
+              { x: 360, y: 71 },
+              { x: 320, y: 71 },
+              { x: 280, y: 45 },
+              { x: 280, y: 45 },
+            ],
+          },
+        },
+      },
+    });
+
+    await user.dblClick(
+      screen.getAllByRole('button', { name: 'Selecionar relação' })[0],
+    );
+
+    const dragHandles = screen.getAllByRole('button', {
+      name: 'Arrastar ponto da relacao',
+    }) as HTMLButtonElement[];
+    const [firstHandle] = dragHandles;
+    const firstStart = {
+      x: Number(firstHandle.dataset.x),
+      y: Number(firstHandle.dataset.y),
+    };
+
+    fireEvent.mouseDown(firstHandle);
+    fireEvent.mouseMove(firstHandle);
+    fireEvent.mouseUp(firstHandle);
+
+    expect(onStateChange).toHaveBeenCalledTimes(1);
+    const nextState = onStateChange.mock.calls[0]?.[0];
+    const nextControlPoints = nextState.relationPaths.user_posts.points.slice(
+      1,
+      3,
+    );
+    expect(nextControlPoints[0].y).toBe(nextControlPoints[1].y);
+    expect(nextControlPoints[0].x).not.toBe(firstStart.x);
   });
 });

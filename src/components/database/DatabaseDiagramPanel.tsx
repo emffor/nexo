@@ -93,6 +93,12 @@ type LiveRelationPath = {
   path: DatabaseRelationPathState;
 };
 
+type CurveDragSnapshot = {
+  relationId: string;
+  controlIndex: number;
+  points: { x: number; y: number }[];
+};
+
 function HandIcon() {
   return (
     <svg
@@ -245,6 +251,35 @@ function moveRelationSegment(
     result[segmentIndex] = { ...from, y };
     result[segmentIndex + 1] = { ...to, y };
   }
+
+  return result;
+}
+
+function moveLinkedCurveControlPoints(
+  points: { x: number; y: number }[],
+  controlIndex: number,
+  nextPosition: { x: number; y: number },
+): { x: number; y: number }[] {
+  const result = points.map((point) => ({ ...point }));
+  const current = result[controlIndex];
+  const pairedIndex = controlIndex === 1 ? 2 : 1;
+  const paired = result[pairedIndex];
+
+  if (!current || !paired || controlIndex < 1 || controlIndex > 2) {
+    return result;
+  }
+
+  const nextX = Math.round(nextPosition.x);
+  const nextY = Math.round(nextPosition.y);
+  const deltaX = nextX - current.x;
+  const deltaY = nextY - current.y;
+
+  result[controlIndex] = { ...current, x: nextX, y: nextY };
+  result[pairedIndex] = {
+    ...paired,
+    x: paired.x + deltaX,
+    y: paired.y + deltaY,
+  };
 
   return result;
 }
@@ -568,6 +603,7 @@ export default function DatabaseDiagramPanel({
     useState<LiveTablePosition | null>(null);
   const [liveRelationPath, setLiveRelationPath] =
     useState<LiveRelationPath | null>(null);
+  const curveDragSnapshotRef = useRef<CurveDragSnapshot | null>(null);
 
   useEffect(() => {
     stateRef.current = state;
@@ -730,6 +766,7 @@ export default function DatabaseDiagramPanel({
   const commitRelationPath = useCallback(
     (relationId: string, path: DatabaseRelationPathState) => {
       setLiveRelationPath(null);
+      curveDragSnapshotRef.current = null;
       saveRelationPath(relationId, path);
     },
     [saveRelationPath],
@@ -740,6 +777,7 @@ export default function DatabaseDiagramPanel({
       const current = stateRef.current;
       if (!current.relationPaths?.[relationId]) {
         setLiveRelationPath(null);
+        curveDragSnapshotRef.current = null;
         setEditingRelationId(null);
         return;
       }
@@ -754,6 +792,7 @@ export default function DatabaseDiagramPanel({
             : undefined,
       });
       setLiveRelationPath(null);
+      curveDragSnapshotRef.current = null;
       setEditingRelationId(null);
     },
     [onStateChange],
@@ -1383,10 +1422,17 @@ export default function DatabaseDiagramPanel({
                     x: number,
                     y: number,
                   ): DatabaseRelationPathState => {
-                    const nextCurvePoints = curvePoints.map((entry) => ({
-                      ...entry,
-                    }));
-                    nextCurvePoints[controlIndex + 1] = { x, y };
+                    const snapshot =
+                      curveDragSnapshotRef.current?.relationId === rel.id &&
+                      curveDragSnapshotRef.current.controlIndex ===
+                        controlIndex + 1
+                        ? curveDragSnapshotRef.current.points
+                        : curvePoints;
+                    const nextCurvePoints = moveLinkedCurveControlPoints(
+                      snapshot,
+                      controlIndex + 1,
+                      { x, y },
+                    );
                     return {
                       fromSide: effectiveFromSide,
                       toSide: effectiveToSide,
@@ -1404,6 +1450,13 @@ export default function DatabaseDiagramPanel({
                       stroke="#6366f1"
                       strokeWidth={2}
                       draggable
+                      onDragStart={() => {
+                        curveDragSnapshotRef.current = {
+                          relationId: rel.id,
+                          controlIndex: controlIndex + 1,
+                          points: curvePoints.map((entry) => ({ ...entry })),
+                        };
+                      }}
                       onDragMove={(event) => {
                         event.cancelBubble = true;
                         previewRelationPath(
