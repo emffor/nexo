@@ -8,7 +8,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { Group, Layer, Line, Rect, Stage, Text } from "react-konva";
+import { Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import Konva from "konva";
 
@@ -116,6 +116,20 @@ function buildOrthogonalPath(
   ];
 }
 
+function buildPathControlPoints(points: number[]): { x: number; y: number }[] {
+  const result: { x: number; y: number }[] = [];
+
+  for (let index = 2; index < points.length - 2; index += 2) {
+    const current = { x: points[index], y: points[index + 1] };
+    const previous = result[result.length - 1];
+    if (!previous || previous.x !== current.x || previous.y !== current.y) {
+      result.push(current);
+    }
+  }
+
+  return result;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -132,6 +146,21 @@ function isRelationEndpoint(
     (relation.fromTable === tableId && relation.fromColumn === columnName) ||
     (relation.toTable === tableId && relation.toColumn === columnName)
   );
+}
+
+function relationTouchesTable(
+  relation: DatabaseRelation,
+  tableId: string,
+): boolean {
+  return relation.fromTable === tableId || relation.toTable === tableId;
+}
+
+function buildRelationMidpoint(points: number[]): { x: number; y: number } {
+  const middleIndex = Math.max(2, Math.floor((points.length - 2) / 4) * 2);
+  return {
+    x: points[middleIndex],
+    y: points[middleIndex + 1],
+  };
 }
 
 export default function DatabaseDiagramPanel({
@@ -156,6 +185,10 @@ export default function DatabaseDiagramPanel({
     useState<InteractionMode>("select");
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedRelationId, setSelectedRelationId] = useState<string | null>(
+    null,
+  );
+  const [hoveredTableId, setHoveredTableId] = useState<string | null>(null);
+  const [hoveredRelationId, setHoveredRelationId] = useState<string | null>(
     null,
   );
   const [activeEditor, setActiveEditor] = useState<ActiveEditor | null>(null);
@@ -211,13 +244,16 @@ export default function DatabaseDiagramPanel({
     if (selectedTableId && !validIds.has(selectedTableId)) {
       setSelectedTableId(null);
     }
+    if (hoveredTableId && !validIds.has(hoveredTableId)) {
+      setHoveredTableId(null);
+    }
     if (recordsTableId && !validIds.has(recordsTableId)) {
       setRecordsTableId(null);
     }
     if (activeEditor && !validIds.has(activeEditor.tableId)) {
       setActiveEditor(null);
     }
-  }, [activeEditor, recordsTableId, selectedTableId, tables]);
+  }, [activeEditor, hoveredTableId, recordsTableId, selectedTableId, tables]);
 
   // aplicar viewport
   useEffect(() => {
@@ -499,8 +535,8 @@ export default function DatabaseDiagramPanel({
   const headerText = "#ffffff";
   const rowText = isDark ? "#d8dee9" : "#263238";
   const typeText = isDark ? "#8f9bad" : "#66727f";
-  const edgeColor = isDark ? "#93a4b7" : "#a7adb5";
-  const selectedEdgeColor = "#3b82f6";
+  const edgeColor = isDark ? "#64748b" : "#b7bdc6";
+  const activeEdgeColor = isDark ? "#60a5fa" : "#2f7ebd";
   const badgeBg = isDark ? "#243247" : "#e8ecef";
   const badgeText = isDark ? "#d7e1ef" : "#4a5562";
   const rowHighlight = isDark ? "#17263c" : "#dceff7";
@@ -512,10 +548,35 @@ export default function DatabaseDiagramPanel({
     return map;
   }, [tables]);
 
-  const selectedRelation = useMemo(
-    () => relations.find((relation) => relation.id === selectedRelationId),
-    [relations, selectedRelationId],
-  );
+  const activeRelationIds = useMemo(() => {
+    if (hoveredRelationId) {
+      return new Set([hoveredRelationId]);
+    }
+    if (hoveredTableId) {
+      return new Set(
+        relations
+          .filter((relation) => relationTouchesTable(relation, hoveredTableId))
+          .map((relation) => relation.id),
+      );
+    }
+    if (selectedTableId) {
+      return new Set(
+        relations
+          .filter((relation) => relationTouchesTable(relation, selectedTableId))
+          .map((relation) => relation.id),
+      );
+    }
+    if (selectedRelationId) {
+      return new Set([selectedRelationId]);
+    }
+    return new Set<string>();
+  }, [
+    hoveredRelationId,
+    hoveredTableId,
+    relations,
+    selectedRelationId,
+    selectedTableId,
+  ]);
 
   const activeEditorTable = activeEditor
     ? tableLookup.get(activeEditor.tableId)
@@ -615,17 +676,135 @@ export default function DatabaseDiagramPanel({
               toSide,
             );
             const isSelected = selectedRelationId === rel.id;
+            const isActive = activeRelationIds.has(rel.id);
+            const stroke = isActive ? activeEdgeColor : edgeColor;
+            const relationMidpoint = buildRelationMidpoint(points);
+            const staticControlPoints = isActive
+              ? buildPathControlPoints(points)
+              : [];
             return (
               <Group key={rel.id}>
+                {isActive ? (
+                  <Line
+                    points={points}
+                    stroke={activeEdgeColor}
+                    strokeWidth={6}
+                    lineCap="round"
+                    lineJoin="round"
+                    opacity={isSelected ? 0.2 : 0.12}
+                    perfectDrawEnabled={false}
+                    listening={false}
+                    shadowForStrokeEnabled={false}
+                  />
+                ) : null}
                 <Line
                   points={points}
-                  stroke={isSelected ? selectedEdgeColor : edgeColor}
-                  strokeWidth={isSelected ? 2.25 : 1.5}
+                  stroke={stroke}
+                  strokeWidth={isActive ? 2.4 : 1.35}
+                  lineCap="round"
+                  lineJoin="round"
+                  opacity={isActive ? 1 : 0.82}
+                  perfectDrawEnabled={false}
+                  shadowForStrokeEnabled={false}
+                  listening={false}
+                />
+                {staticControlPoints.map((point, index) => (
+                  <Circle
+                    key={`static-${point.x}-${point.y}-${index}`}
+                    x={point.x}
+                    y={point.y}
+                    radius={2.15}
+                    fill={stroke}
+                    opacity={0.9}
+                    listening={false}
+                    perfectDrawEnabled={false}
+                  />
+                ))}
+                <Circle
+                  x={fromAnchor.x}
+                  y={fromAnchor.y}
+                  radius={isActive ? 3 : 2}
+                  fill={isActive ? activeEdgeColor : tableBg}
+                  stroke={stroke}
+                  strokeWidth={isActive ? 1.5 : 1}
+                  opacity={isActive ? 1 : 0.85}
+                  listening={false}
+                  perfectDrawEnabled={false}
+                />
+                <Circle
+                  x={toAnchor.x}
+                  y={toAnchor.y}
+                  radius={isActive ? 3 : 2}
+                  fill={isActive ? activeEdgeColor : tableBg}
+                  stroke={stroke}
+                  strokeWidth={isActive ? 1.5 : 1}
+                  opacity={isActive ? 1 : 0.85}
+                  listening={false}
+                  perfectDrawEnabled={false}
+                />
+                <Text
+                  x={fromAnchor.x + (fromSide === "right" ? 7 : -42)}
+                  y={fromAnchor.y - 20}
+                  width={36}
+                  align={fromSide === "right" ? "left" : "right"}
+                  text={rel.cardinalityLabelFrom ?? ""}
+                  fontSize={11}
+                  fontStyle={isActive ? "600" : "400"}
+                  fontFamily="Inter, system-ui, sans-serif"
+                  fill={stroke}
+                  opacity={isActive ? 1 : 0.8}
+                  listening={false}
+                  perfectDrawEnabled={false}
+                />
+                <Text
+                  x={toAnchor.x + (toSide === "right" ? 7 : -42)}
+                  y={toAnchor.y - 20}
+                  width={36}
+                  align={toSide === "right" ? "left" : "right"}
+                  text={rel.cardinalityLabelTo ?? ""}
+                  fontSize={11}
+                  fontStyle={isActive ? "600" : "400"}
+                  fontFamily="Inter, system-ui, sans-serif"
+                  fill={stroke}
+                  opacity={isActive ? 1 : 0.8}
+                  listening={false}
+                  perfectDrawEnabled={false}
+                />
+                {isActive && rel.name ? (
+                  <Text
+                    x={relationMidpoint.x - 52}
+                    y={relationMidpoint.y - 26}
+                    width={96}
+                    align="center"
+                    text={rel.name}
+                    fontSize={12}
+                    fontStyle="500"
+                    fontFamily="Inter, system-ui, sans-serif"
+                    fill={activeEdgeColor}
+                    listening={false}
+                    perfectDrawEnabled={false}
+                  />
+                ) : null}
+                {isSelected ? (
+                  <Line
+                    points={points}
+                    stroke={activeEdgeColor}
+                    strokeWidth={4.5}
+                    lineCap="round"
+                    lineJoin="round"
+                    opacity={0.12}
+                    perfectDrawEnabled={false}
+                    listening={false}
+                  />
+                ) : null}
+                <Line
+                  points={points}
+                  stroke="transparent"
+                  strokeWidth={16}
                   lineCap="round"
                   lineJoin="round"
                   perfectDrawEnabled={false}
                   shadowForStrokeEnabled={false}
-                  hitStrokeWidth={14}
                   onClick={(event) => {
                     event.cancelBubble = true;
                     setSelectedRelationId(rel.id);
@@ -633,41 +812,21 @@ export default function DatabaseDiagramPanel({
                     setActiveEditor(null);
                   }}
                   onMouseEnter={(event) => {
+                    setHoveredRelationId(rel.id);
                     const stage = event.target.getStage();
                     if (stage) {
                       stage.container().style.cursor = "pointer";
                     }
                   }}
                   onMouseLeave={(event) => {
+                    setHoveredRelationId((current) =>
+                      current === rel.id ? null : current,
+                    );
                     const stage = event.target.getStage();
                     if (stage) {
                       stage.container().style.cursor = "default";
                     }
                   }}
-                />
-                <Text
-                  x={fromAnchor.x + (fromSide === "right" ? 8 : -42)}
-                  y={fromAnchor.y - 19}
-                  width={36}
-                  align={fromSide === "right" ? "left" : "right"}
-                  text={rel.cardinalityLabelFrom ?? ""}
-                  fontSize={11}
-                  fontFamily="Inter, system-ui, sans-serif"
-                  fill={isSelected ? selectedEdgeColor : edgeColor}
-                  listening={false}
-                  perfectDrawEnabled={false}
-                />
-                <Text
-                  x={toAnchor.x + (toSide === "right" ? 8 : -42)}
-                  y={toAnchor.y - 19}
-                  width={36}
-                  align={toSide === "right" ? "left" : "right"}
-                  text={rel.cardinalityLabelTo ?? ""}
-                  fontSize={11}
-                  fontFamily="Inter, system-ui, sans-serif"
-                  fill={isSelected ? selectedEdgeColor : edgeColor}
-                  listening={false}
-                  perfectDrawEnabled={false}
                 />
               </Group>
             );
@@ -695,12 +854,16 @@ export default function DatabaseDiagramPanel({
                 }}
                 onDragEnd={(event) => handleTableDragEnd(table.id, event)}
                 onMouseEnter={(event) => {
+                  setHoveredTableId(table.id);
                   const stage = event.target.getStage();
                   if (stage) {
                     stage.container().style.cursor = "grab";
                   }
                 }}
                 onMouseLeave={(event) => {
+                  setHoveredTableId((current) =>
+                    current === table.id ? null : current,
+                  );
                   const stage = event.target.getStage();
                   if (stage) {
                     stage.container().style.cursor = "default";
@@ -782,10 +945,10 @@ export default function DatabaseDiagramPanel({
                     column.isForeignKey ? "FK" : null,
                     column.isNotNull ? "NN" : null,
                   ].filter((badge): badge is string => badge !== null);
-                  const isHighlighted = isRelationEndpoint(
-                    selectedRelation,
-                    table.id,
-                    column.name,
+                  const isHighlighted = relations.some(
+                    (relation) =>
+                      activeRelationIds.has(relation.id) &&
+                      isRelationEndpoint(relation, table.id, column.name),
                   );
                   const isColumnEditing =
                     activeEditor?.type === "column" &&

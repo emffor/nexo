@@ -77,6 +77,7 @@ vi.mock('react-konva', () => {
 
   return {
     Stage,
+    Circle: () => <span data-testid="circle" />,
     Layer: Passthrough,
     Group: Passthrough,
     Rect: () => <span data-testid="rect" />,
