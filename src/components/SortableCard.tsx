@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { getDisplayTitle } from "../lib/items";
 import type { AppTheme } from "../lib/preferences";
 import type { MarkdownItem } from "../types/markdown";
+import { StatusDot } from "./StatusDot";
 
 interface SortableCardProps {
   item: MarkdownItem;
@@ -119,6 +120,11 @@ export function SortableCard({
               >
                 {String(position + 1).padStart(2, "0")}
               </span>
+              <StatusDot
+                status={item.status}
+                theme={theme}
+                className="absolute right-1.5 top-1.5 h-2 w-2"
+              />
               <span className="truncate">
                 {item.title?.trim()
                   ? getDisplayTitle(item, 20)
@@ -136,7 +142,10 @@ export function SortableCard({
               {...attributes}
               {...listeners}
             >
-              {getDisplayTitle(item, 56)}
+              <span className="flex min-w-0 items-center gap-2">
+                <StatusDot status={item.status} theme={theme} />
+                <span className="truncate">{getDisplayTitle(item, 56)}</span>
+              </span>
             </button>
             <div className="flex items-center gap-1.5">
               <button

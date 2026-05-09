@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { db } from "./lib/db";
+import { DIAGRAM_STATUS_PALETTE } from "./types/diagram";
 
 async function createAndOpenProject(
   user: ReturnType<typeof userEvent.setup>,
@@ -499,6 +500,40 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /modo indice/i }),
     ).toBeInTheDocument();
+  });
+
+  it("mostra o indicador de status dos cards nos modos normal, indice e cards", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await createAndOpenProject(user);
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.type(screen.getByLabelText(/conteudo/i), "# Card finalizado");
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+
+    await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
+    await user.selectOptions(screen.getByRole("combobox"), "finalizado");
+
+    await user.click(screen.getByRole("button", { name: /modo normal/i }));
+
+    const finalizadoPalette = DIAGRAM_STATUS_PALETTE.finalizado.dark;
+    const normalIndicators = screen.getAllByTitle(/status: finalizado/i);
+    expect(normalIndicators[0]).toHaveStyle({
+      backgroundColor: finalizadoPalette.fill,
+      borderColor: finalizadoPalette.border,
+    });
+
+    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+    expect(screen.getAllByTitle(/status: finalizado/i)[0]).toHaveStyle({
+      backgroundColor: finalizadoPalette.fill,
+      borderColor: finalizadoPalette.border,
+    });
+
+    await user.click(screen.getByRole("button", { name: /modo cards/i }));
+    expect(screen.getAllByTitle(/status: finalizado/i)[0]).toHaveStyle({
+      backgroundColor: finalizadoPalette.fill,
+      borderColor: finalizadoPalette.border,
+    });
   });
 
   it("abre o modo banco com editor DBML", async () => {

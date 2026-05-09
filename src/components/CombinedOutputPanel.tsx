@@ -30,6 +30,7 @@ import type { AppTheme, ViewMode } from "../lib/preferences";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+import { StatusDot } from "./StatusDot";
 
 interface PreviewGridCardProps {
   item: MarkdownItem;
@@ -122,18 +123,7 @@ function PreviewGridCard({
           >
             {String(position + 1).padStart(2, "0")}
           </span>
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              isActive
-                ? theme === "dark"
-                  ? "bg-teal-300"
-                  : "bg-teal-500"
-                : theme === "dark"
-                  ? "bg-slate-600"
-                  : "bg-slate-300"
-            }`}
-            aria-hidden="true"
-          />
+          <StatusDot status={item.status} theme={theme} className="h-2 w-2" />
         </div>
         <h3
           className={`m-0 mt-2 line-clamp-1 text-[13px] font-semibold leading-5 ${
@@ -369,6 +359,7 @@ export function CombinedOutputPanel({
                     ) + 1,
                   ).padStart(2, "0")}
                 </span>
+                <StatusDot status={selectedPreviewItem.status} theme={theme} />
                 <p
                   className={`m-0 text-xs font-medium uppercase tracking-[0.22em] ${
                     theme === "dark" ? "text-slate-500" : "text-slate-400"
@@ -433,6 +424,7 @@ export function CombinedOutputPanel({
                   >
                     {String(index + 1).padStart(2, "0")}
                   </span>
+                  <StatusDot status={item.status} theme={theme} />
                   <p
                     className={`m-0 text-xs font-medium uppercase tracking-[0.22em] ${theme === "dark" ? "text-slate-500" : "text-slate-400"}`}
                   >
