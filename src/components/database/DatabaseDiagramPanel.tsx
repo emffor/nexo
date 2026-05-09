@@ -107,14 +107,14 @@ function buildOrthogonalPath(
   to: { x: number; y: number },
   toSide: RelationSide,
 ): number[] {
-  const handle = 36;
+  const handle = 76;
 
   if (fromSide === toSide) {
     const direction = fromSide === "right" ? 1 : -1;
     const routeX =
       direction > 0
-        ? Math.max(from.x, to.x) + handle * 1.6
-        : Math.min(from.x, to.x) - handle * 1.6;
+        ? Math.max(from.x, to.x) + handle * 1.55
+        : Math.min(from.x, to.x) - handle * 1.55;
 
     return [from.x, from.y, routeX, from.y, routeX, to.y, to.x, to.y];
   }
@@ -202,11 +202,12 @@ function buildRoundedPathData(points: number[], radius = 12): string {
       current.x - previous.x,
       current.y - previous.y,
     );
-    const outgoingLength = Math.hypot(
-      next.x - current.x,
-      next.y - current.y,
+    const outgoingLength = Math.hypot(next.x - current.x, next.y - current.y);
+    const cornerRadius = Math.min(
+      radius,
+      incomingLength / 2,
+      outgoingLength / 2,
     );
-    const cornerRadius = Math.min(radius, incomingLength / 2, outgoingLength / 2);
 
     if (cornerRadius <= 0) {
       data += ` L ${current.x} ${current.y}`;
@@ -569,8 +570,7 @@ export default function DatabaseDiagramPanel({
     const next = {
       x: (size.width - contentWidth * nextScale) / 2 - bounds.minX * nextScale,
       y:
-        (size.height - contentHeight * nextScale) / 2 -
-        bounds.minY * nextScale,
+        (size.height - contentHeight * nextScale) / 2 - bounds.minY * nextScale,
       scale: nextScale,
     };
     stage.scale({ x: next.scale, y: next.scale });
@@ -621,7 +621,10 @@ export default function DatabaseDiagramPanel({
       const nextName = activeEditor.draft.trim();
       if (activeEditor.type === "table") {
         if (!isValidDbmlIdentifier(nextName)) {
-          setActiveEditor({ ...activeEditor, error: "Nome de tabela inválido" });
+          setActiveEditor({
+            ...activeEditor,
+            error: "Nome de tabela inválido",
+          });
           return;
         }
         if (
@@ -641,7 +644,10 @@ export default function DatabaseDiagramPanel({
         }
       } else {
         if (!isValidDbmlColumnIdentifier(nextName)) {
-          setActiveEditor({ ...activeEditor, error: "Nome de coluna inválido" });
+          setActiveEditor({
+            ...activeEditor,
+            error: "Nome de coluna inválido",
+          });
           return;
         }
         if (
@@ -1334,9 +1340,7 @@ export default function DatabaseDiagramPanel({
                 type="button"
                 onClick={() => setRecordsTableId(null)}
                 className={`rounded-md px-2 py-1 text-sm ${
-                  isDark
-                    ? "hover:bg-white/10"
-                    : "hover:bg-slate-100"
+                  isDark ? "hover:bg-white/10" : "hover:bg-slate-100"
                 }`}
               >
                 Fechar
@@ -1367,9 +1371,7 @@ export default function DatabaseDiagramPanel({
                         <td
                           key={`${rowIndex}-${column.name}`}
                           className={`border px-3 py-2 ${
-                            isDark
-                              ? "border-slate-800"
-                              : "border-slate-200"
+                            isDark ? "border-slate-800" : "border-slate-200"
                           }`}
                         >
                           {row[colIndex] ?? "(null)"}
