@@ -108,6 +108,17 @@ function buildOrthogonalPath(
   toSide: RelationSide,
 ): number[] {
   const handle = 36;
+
+  if (fromSide === toSide) {
+    const direction = fromSide === "right" ? 1 : -1;
+    const routeX =
+      direction > 0
+        ? Math.max(from.x, to.x) + handle * 1.6
+        : Math.min(from.x, to.x) - handle * 1.6;
+
+    return [from.x, from.y, routeX, from.y, routeX, to.y, to.x, to.y];
+  }
+
   const fromHandle = {
     x: from.x + (fromSide === "right" ? handle : -handle),
     y: from.y,
