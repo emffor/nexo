@@ -14,7 +14,7 @@ export function buildDefaultDatabaseDiagram(): DatabaseDiagramRecord {
     id: MAIN_ID,
     title: DEFAULT_TITLE,
     content: DEFAULT_DATABASE_DBML,
-    state: { positions: {} },
+    state: { positions: {}, viewport: { x: 0, y: 0, scale: 1 } },
     createdAt: now,
     updatedAt: now,
   };
@@ -40,9 +40,15 @@ async function saveDatabaseDiagramPatch(
 export async function getDatabaseDiagram(): Promise<DatabaseDiagramRecord> {
   const existing = await db.databaseDiagrams.get(MAIN_ID);
   if (existing) {
+    const state = existing.state ?? { positions: {} };
+    // Garante que o viewport padrão seja scale: 1 (100%)
+    if (!state.viewport || state.viewport.scale !== 1) {
+      state.viewport = { x: 0, y: 0, scale: 1 };
+      await saveDatabaseDiagramPatch({ state });
+    }
     return {
       ...existing,
-      state: existing.state ?? { positions: {} },
+      state,
     };
   }
   const fresh = buildDefaultDatabaseDiagram();
