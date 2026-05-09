@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
   theme: 'organizar-markdown:theme',
   hiddenDiagramItemIds: 'organizar-markdown:hidden-diagram-item-ids',
   diagramEdgeStyle: 'organizar-markdown:diagram-edge-style',
+  databaseEdgeStyle: 'organizar-markdown:database-edge-style',
 } as const;
 
 export type AppTheme = 'dark' | 'light';
@@ -128,4 +129,13 @@ export function readStoredDiagramEdgeStyle(): DiagramEdgeStyle {
 
   const rawValue = window.localStorage.getItem(STORAGE_KEYS.diagramEdgeStyle);
   return rawValue === 'square' ? 'square' : 'curve';
+}
+
+export function readStoredDatabaseEdgeStyle(): DiagramEdgeStyle {
+  if (typeof window === 'undefined') {
+    return 'square';
+  }
+
+  const rawValue = window.localStorage.getItem(STORAGE_KEYS.databaseEdgeStyle);
+  return rawValue === 'curve' ? 'curve' : 'square';
 }

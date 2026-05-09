@@ -47,6 +47,7 @@ import {
   type ViewMode,
   clampFontScale,
   FONT_SCALE,
+  readStoredDatabaseEdgeStyle,
   readStoredDiagramEdgeStyle,
   readStoredCompactMode,
   readStoredFontScale,
@@ -70,6 +71,8 @@ export default function App() {
   const [isDiagramSidebarVisible, setIsDiagramSidebarVisible] = useState(true);
   const [diagramEdgeStyle, setDiagramEdgeStyle] =
     useState<DiagramEdgeStyle>("curve");
+  const [databaseEdgeStyle, setDatabaseEdgeStyle] =
+    useState<DiagramEdgeStyle>("square");
   const [hiddenDiagramItemIds, setHiddenDiagramItemIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -139,6 +142,7 @@ export default function App() {
   useEffect(() => {
     setTheme(readStoredTheme());
     setDiagramEdgeStyle(readStoredDiagramEdgeStyle());
+    setDatabaseEdgeStyle(readStoredDatabaseEdgeStyle());
     setHiddenDiagramItemIds(readStoredHiddenDiagramItemIds());
     setArePreferencesLoaded(true);
   }, []);
@@ -201,6 +205,17 @@ export default function App() {
       diagramEdgeStyle,
     );
   }, [arePreferencesLoaded, diagramEdgeStyle]);
+
+  useEffect(() => {
+    if (!arePreferencesLoaded) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      STORAGE_KEYS.databaseEdgeStyle,
+      databaseEdgeStyle,
+    );
+  }, [arePreferencesLoaded, databaseEdgeStyle]);
 
   useEffect(() => {
     if (!arePreferencesLoaded) {
@@ -523,6 +538,7 @@ export default function App() {
         isPreviewMaximized={isPreviewMaximized}
         isDiagramSidebarVisible={isDiagramSidebarVisible}
         diagramEdgeStyle={diagramEdgeStyle}
+        databaseEdgeStyle={databaseEdgeStyle}
         viewMode={viewMode}
         isScrollSyncEnabled={isScrollSyncEnabled}
         theme={theme}
@@ -536,6 +552,7 @@ export default function App() {
           setIsDiagramSidebarVisible((current) => !current)
         }
         onSetDiagramEdgeStyle={setDiagramEdgeStyle}
+        onSetDatabaseEdgeStyle={setDatabaseEdgeStyle}
         onSetViewMode={handleSetViewMode}
         onResetDiagramLayout={handleResetDiagramLayout}
         onResetDatabaseLayout={handleResetDatabaseLayout}
@@ -623,7 +640,7 @@ export default function App() {
               onStateChange={onDatabaseStateChange}
               onRenameTable={onRenameDatabaseTable}
               onRenameColumn={onRenameDatabaseColumn}
-              edgeStyle={diagramEdgeStyle}
+              edgeStyle={databaseEdgeStyle}
               resetSignal={databaseResetSignal}
             />
           ) : viewMode === "diagram" ? (

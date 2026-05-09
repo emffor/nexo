@@ -371,6 +371,40 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
+  it("mantem estilos de linha isolados entre diagrama e banco", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
+    await user.click(screen.getByRole("button", { name: /linha curva/i }));
+
+    expect(
+      window.localStorage.getItem("organizar-markdown:diagram-edge-style"),
+    ).toBe("square");
+    expect(
+      window.localStorage.getItem("organizar-markdown:database-edge-style"),
+    ).toBe("square");
+
+    await user.click(screen.getByRole("button", { name: /modo banco/i }));
+    expect(
+      await screen.findByRole("button", { name: /linha quadrada/i }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /linha quadrada/i }));
+
+    expect(
+      window.localStorage.getItem("organizar-markdown:database-edge-style"),
+    ).toBe("curve");
+    expect(
+      window.localStorage.getItem("organizar-markdown:diagram-edge-style"),
+    ).toBe("square");
+
+    await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
+    expect(
+      await screen.findByRole("button", { name: /linha quadrada/i }),
+    ).toBeInTheDocument();
+  });
+
   it("mantem compatibilidade com o modo indice antigo ao recarregar", async () => {
     window.localStorage.setItem("organizar-markdown:outline-mode", "true");
 

@@ -10,6 +10,7 @@ interface AppShellProps {
   isPreviewMaximized: boolean;
   isDiagramSidebarVisible: boolean;
   diagramEdgeStyle: DiagramEdgeStyle;
+  databaseEdgeStyle: DiagramEdgeStyle;
   viewMode: ViewMode;
   databaseInfo?: {
     tables: number;
@@ -26,6 +27,7 @@ interface AppShellProps {
   onTogglePreviewMaximized: () => void;
   onToggleDiagramSidebar: () => void;
   onSetDiagramEdgeStyle: (style: DiagramEdgeStyle) => void;
+  onSetDatabaseEdgeStyle: (style: DiagramEdgeStyle) => void;
   onSetViewMode: (mode: ViewMode) => void;
   onResetDiagramLayout?: () => void;
   onToggleScrollSync: () => void;
@@ -103,6 +105,7 @@ export function AppShell({
   isPreviewMaximized,
   isDiagramSidebarVisible,
   diagramEdgeStyle,
+  databaseEdgeStyle,
   viewMode,
   isScrollSyncEnabled,
   theme,
@@ -112,6 +115,7 @@ export function AppShell({
   onTogglePreviewMaximized,
   onToggleDiagramSidebar,
   onSetDiagramEdgeStyle,
+  onSetDatabaseEdgeStyle,
   onSetViewMode,
   onResetDiagramLayout,
   onResetDatabaseLayout,
@@ -350,14 +354,14 @@ export function AppShell({
                 <button
                   type="button"
                   onClick={() =>
-                    onSetDiagramEdgeStyle(
-                      diagramEdgeStyle === "curve" ? "square" : "curve",
+                    onSetDatabaseEdgeStyle(
+                      databaseEdgeStyle === "curve" ? "square" : "curve",
                     )
                   }
                   className="toolbar-button border-transparent bg-transparent"
                   title="Alternar estilo das linhas do banco"
                 >
-                  {diagramEdgeStyle === "curve"
+                  {databaseEdgeStyle === "curve"
                     ? "Linha curva"
                     : "Linha quadrada"}
                 </button>
