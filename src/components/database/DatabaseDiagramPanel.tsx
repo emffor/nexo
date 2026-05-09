@@ -75,6 +75,8 @@ type LiveTablePosition = {
   y: number;
 };
 
+type RelationSide = "left" | "right";
+
 function columnYCenter(columnIndex: number): number {
   return DB_HEADER_HEIGHT + columnIndex * DB_ROW_HEIGHT + DB_ROW_HEIGHT / 2;
 }
@@ -82,7 +84,7 @@ function columnYCenter(columnIndex: number): number {
 function getColumnAnchor(
   position: DatabaseTablePosition,
   columnIndex: number,
-  side: "left" | "right",
+  side: RelationSide,
 ): { x: number; y: number } {
   return {
     x: side === "left" ? position.x : position.x + DB_TABLE_WIDTH,
@@ -92,11 +94,11 @@ function getColumnAnchor(
 
 function buildOrthogonalPath(
   from: { x: number; y: number },
-  fromSide: "left" | "right",
+  fromSide: RelationSide,
   to: { x: number; y: number },
-  toSide: "left" | "right",
+  toSide: RelationSide,
 ): number[] {
-  const handle = 28;
+  const handle = 36;
   const fromHandle = {
     x: from.x + (fromSide === "right" ? handle : -handle),
     y: from.y,
@@ -120,6 +122,31 @@ function buildOrthogonalPath(
     to.x,
     to.y,
   ];
+}
+
+function chooseRelationSides(
+  fromPosition: DatabaseTablePosition,
+  fromHeight: number,
+  toPosition: DatabaseTablePosition,
+  toHeight: number,
+): { fromSide: RelationSide; toSide: RelationSide } {
+  const fromCenterX = fromPosition.x + DB_TABLE_WIDTH / 2;
+  const toCenterX = toPosition.x + DB_TABLE_WIDTH / 2;
+  const fromCenterY = fromPosition.y + fromHeight / 2;
+  const toCenterY = toPosition.y + toHeight / 2;
+  const horizontalOverlap =
+    fromPosition.x < toPosition.x + DB_TABLE_WIDTH &&
+    toPosition.x < fromPosition.x + DB_TABLE_WIDTH;
+  const mostlyVertical =
+    Math.abs(fromCenterY - toCenterY) > Math.abs(fromCenterX - toCenterX);
+
+  if (horizontalOverlap || mostlyVertical) {
+    return { fromSide: "right", toSide: "right" };
+  }
+
+  return toCenterX >= fromCenterX
+    ? { fromSide: "right", toSide: "left" }
+    : { fromSide: "left", toSide: "right" };
 }
 
 function buildPathControlPoints(points: number[]): { x: number; y: number }[] {
@@ -721,12 +748,16 @@ export default function DatabaseDiagramPanel({
             if (fromColIndex < 0 || toColIndex < 0) {
               return null;
             }
-            const fromCenter = fromPos.x + DB_TABLE_WIDTH / 2;
-            const toCenter = toPos.x + DB_TABLE_WIDTH / 2;
-            const fromSide: "left" | "right" =
-              toCenter >= fromCenter ? "right" : "left";
-            const toSide: "left" | "right" =
-              fromCenter >= toCenter ? "right" : "left";
+            const fromHeight = computeDatabaseTableHeight(
+              fromTable.columns.length,
+            );
+            const toHeight = computeDatabaseTableHeight(toTable.columns.length);
+            const { fromSide, toSide } = chooseRelationSides(
+              fromPos,
+              fromHeight,
+              toPos,
+              toHeight,
+            );
             const fromAnchor = getColumnAnchor(fromPos, fromColIndex, fromSide);
             const toAnchor = getColumnAnchor(toPos, toColIndex, toSide);
             const points = buildOrthogonalPath(
