@@ -99,6 +99,56 @@ type CurveDragSnapshot = {
   points: { x: number; y: number }[];
 };
 
+interface AnimatedRelationPathProps {
+  data: string;
+  stroke: string;
+  strokeWidth: number;
+  isCurveEdge: boolean;
+}
+
+function AnimatedRelationPath({
+  data,
+  stroke,
+  strokeWidth,
+  isCurveEdge,
+}: AnimatedRelationPathProps) {
+  const pathRef = useRef<Konva.Path | null>(null);
+
+  useEffect(() => {
+    const path = pathRef.current;
+    const layer = path?.getLayer();
+    if (!path || !layer) {
+      return;
+    }
+
+    const animation = new Konva.Animation((frame) => {
+      const offset = ((frame?.time ?? 0) / 42) % 28;
+      path.dashOffset(-offset);
+    }, layer);
+
+    animation.start();
+    return () => {
+      animation.stop();
+    };
+  }, []);
+
+  return (
+    <Path
+      ref={pathRef}
+      data={data}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      dash={[10, 8]}
+      lineCap={isCurveEdge ? "round" : "butt"}
+      lineJoin={isCurveEdge ? "round" : "miter"}
+      opacity={0.95}
+      perfectDrawEnabled={false}
+      listening={false}
+      shadowForStrokeEnabled={false}
+    />
+  );
+}
+
 function HandIcon() {
   return (
     <svg
@@ -1339,6 +1389,14 @@ export default function DatabaseDiagramPanel({
                   shadowForStrokeEnabled={false}
                   listening={false}
                 />
+                {isSelected ? (
+                  <AnimatedRelationPath
+                    data={relationPath}
+                    stroke={activeEdgeColor}
+                    strokeWidth={2.6}
+                    isCurveEdge={isCurveEdge}
+                  />
+                ) : null}
                 {staticControlPoints.map((point, index) => (
                   <Circle
                     key={`static-${point.x}-${point.y}-${index}`}

@@ -84,13 +84,24 @@ vi.mock('react-konva', () => {
     );
   }
 
-  function Path({
-    onClick,
-    onDblClick,
-  }: {
-    onClick?: (event: ReturnType<typeof buildEvent>) => void;
-    onDblClick?: (event: ReturnType<typeof buildEvent>) => void;
-  }) {
+  const Path = forwardRef<
+    HTMLSpanElement,
+    {
+      onClick?: (event: ReturnType<typeof buildEvent>) => void;
+      onDblClick?: (event: ReturnType<typeof buildEvent>) => void;
+    }
+  >(function Path({ onClick, onDblClick }, ref) {
+    const pathRefValue = {
+      dashOffset: vi.fn(),
+      getLayer: () => null,
+    };
+
+    if (typeof ref === 'function') {
+      ref(pathRefValue as unknown as HTMLSpanElement);
+    } else if (ref) {
+      ref.current = pathRefValue as unknown as HTMLSpanElement;
+    }
+
     return onClick ? (
       <button
         type="button"
@@ -101,7 +112,7 @@ vi.mock('react-konva', () => {
     ) : (
       <span data-testid="path" />
     );
-  }
+  });
 
   return {
     Stage,
