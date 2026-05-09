@@ -105,6 +105,27 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
+  it("mantem o projeto aberto ao remontar a aplicacao", async () => {
+    const user = userEvent.setup();
+    const firstRender = render(<App />);
+
+    await createAndOpenProject(user, "Regularizacao");
+
+    expect(
+      screen.getByRole("heading", { name: "Regularizacao" }),
+    ).toBeInTheDocument();
+
+    firstRender.unmount();
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Regularizacao" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /projetos/i }),
+    ).toBeInTheDocument();
+  });
+
   it("mantem cards isolados entre projetos", async () => {
     const user = userEvent.setup();
     render(<App />);

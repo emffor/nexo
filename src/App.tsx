@@ -53,6 +53,7 @@ import {
   readStoredCompactMode,
   readStoredFontScale,
   readStoredPreviewMaximized,
+  readStoredSelectedProjectId,
   readStoredTheme,
   readStoredViewMode,
   STORAGE_KEYS,
@@ -179,6 +180,17 @@ export default function App() {
     setIsProjectsLoading(true);
     const summaries = await getProjectSummaries();
     const projectsData = await getAllProjectsData();
+    const storedSelectedProjectId = readStoredSelectedProjectId();
+
+    if (
+      storedSelectedProjectId &&
+      summaries.some((project) => project.id === storedSelectedProjectId)
+    ) {
+      setSelectedProjectId(storedSelectedProjectId);
+    } else if (storedSelectedProjectId) {
+      window.localStorage.removeItem(STORAGE_KEYS.selectedProjectId);
+    }
+
     setProjects(summaries);
     setProjectsDataSizeBytes(
       new Blob([
@@ -264,6 +276,11 @@ export default function App() {
     addToast("Projeto removido", "info");
   };
 
+  const handleOpenProject = (projectId: string) => {
+    window.localStorage.setItem(STORAGE_KEYS.selectedProjectId, projectId);
+    setSelectedProjectId(projectId);
+  };
+
   const selectedProject = selectedProjectId
     ? projects.find((project) => project.id === selectedProjectId)
     : null;
@@ -275,6 +292,7 @@ export default function App() {
         project={selectedProject}
         onBackToProjects={() => {
           setTheme(readStoredTheme());
+          window.localStorage.removeItem(STORAGE_KEYS.selectedProjectId);
           setSelectedProjectId(null);
           void loadProjects();
         }}
@@ -290,7 +308,7 @@ export default function App() {
         theme={theme}
         storedDataSizeBytes={projectsDataSizeBytes}
         onCreateProject={handleCreateProject}
-        onOpenProject={setSelectedProjectId}
+        onOpenProject={handleOpenProject}
         onRenameProject={handleRenameProject}
         onDeleteProject={setProjectToDelete}
         onExportProject={(projectId) => {
