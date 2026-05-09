@@ -50,6 +50,46 @@ async function readBlobText(blob: Blob): Promise<string> {
   });
 }
 
+function selectVisibleText(text: string) {
+  const element = screen.getAllByText(text).at(-1);
+
+  if (!element) {
+    throw new Error(`Texto nao encontrado para selecao: ${text}`);
+  }
+
+  const textNode = Array.from(element.childNodes).find(
+    (node) => node.nodeType === Node.TEXT_NODE && node.textContent === text,
+  );
+
+  if (!textNode) {
+    throw new Error(`Texto nao encontrado para selecao: ${text}`);
+  }
+
+  const range = document.createRange();
+  range.selectNodeContents(textNode);
+
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+function expectTextIsStruck(text: string) {
+  expect(
+    Array.from(document.querySelectorAll("del")).some(
+      (element) => element.textContent === text,
+    ),
+  ).toBe(true);
+}
+
+function expectTextIsNotStruck(text: string) {
+  expect(document.body).toHaveTextContent(text);
+  expect(
+    Array.from(document.querySelectorAll("del")).some(
+      (element) => element.textContent === text,
+    ),
+  ).toBe(false);
+}
+
 describe("App", () => {
   it("cria projeto e abre o workspace isolado", async () => {
     const user = userEvent.setup();
@@ -251,6 +291,129 @@ describe("App", () => {
       screen.getByRole("heading", { name: "Bloco A", level: 1 }),
     ).toBeInTheDocument();
     expect(screen.getByText("Texto do card")).toBeInTheDocument();
+  });
+
+  it("aplica texto riscado pelo botao do editor", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await createAndOpenProject(user);
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    const textarea = screen.getByLabelText(/conteudo/i) as HTMLTextAreaElement;
+    fireEvent.change(textarea, {
+      target: {
+        value: "Texto com trecho riscado",
+      },
+    });
+    textarea.focus();
+    textarea.setSelectionRange(10, 24);
+
+    await user.click(screen.getByRole("button", { name: /^riscar texto$/i }));
+
+    expect(textarea).toHaveValue("Texto com ~~trecho riscado~~");
+
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+
+    const strikethroughText = await screen.findByText("trecho riscado");
+    expect(strikethroughText.closest("del")).toBeInTheDocument();
+  });
+
+  it("renderiza texto riscado escrito manualmente em markdown", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await createAndOpenProject(user);
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.type(
+      screen.getByLabelText(/conteudo/i),
+      "Texto com ~~risco manual~~",
+    );
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+
+    const strikethroughText = await screen.findByText("risco manual");
+    expect(strikethroughText.closest("del")).toBeInTheDocument();
+  });
+
+  it("risca texto selecionado diretamente no preview normal", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await createAndOpenProject(user);
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.type(screen.getByLabelText(/conteudo/i), "trecho normal");
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+
+    selectVisibleText("trecho normal");
+    await user.click(
+      screen.getByRole("button", { name: /^riscar seleção$/i }),
+    );
+
+    await waitFor(() => {
+      expectTextIsStruck("trecho normal");
+    });
+  });
+
+  it("risca texto selecionado diretamente no preview em indice", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await createAndOpenProject(user);
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.type(screen.getByLabelText(/conteudo/i), "trecho indice");
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+
+    selectVisibleText("trecho indice");
+    await user.click(
+      screen.getByRole("button", { name: /^riscar seleção$/i }),
+    );
+
+    await waitFor(() => {
+      expectTextIsStruck("trecho indice");
+    });
+  });
+
+  it("risca texto selecionado diretamente no preview em cards", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await createAndOpenProject(user);
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.type(screen.getByLabelText(/conteudo/i), "trecho cards");
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /modo cards/i }));
+
+    selectVisibleText("trecho cards");
+    await user.click(
+      screen.getByRole("button", { name: /^riscar seleção$/i }),
+    );
+
+    await waitFor(() => {
+      expectTextIsStruck("trecho cards");
+    });
+  });
+
+  it("remove texto riscado diretamente no preview", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await createAndOpenProject(user);
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    fireEvent.change(screen.getByLabelText(/conteudo/i), {
+      target: {
+        value: "Texto com ~~trecho desriscado~~",
+      },
+    });
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+
+    selectVisibleText("trecho desriscado");
+    await user.click(
+      screen.getByRole("button", { name: /desriscar seleção/i }),
+    );
+
+    await waitFor(() => {
+      expectTextIsNotStruck("trecho desriscado");
+    });
   });
 
   it("bloqueia o salvamento de conteudo vazio", async () => {

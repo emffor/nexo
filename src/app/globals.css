@@ -260,6 +260,12 @@
     font-weight: 700;
   }
 
+  .markdown-preview del {
+    color: #94a3b8;
+    text-decoration-color: #f87171;
+    text-decoration-thickness: 0.06em;
+  }
+
   .markdown-preview hr {
     border: 0;
     border-top: 1px solid rgba(71, 85, 105, 0.32);

@@ -101,6 +101,67 @@ function readTextFile(file: File): Promise<string> {
   });
 }
 
+function getSelectionPreviewItemId(selection: Selection): string | null {
+  const selectedNode = selection.rangeCount
+    ? selection.getRangeAt(0).commonAncestorContainer
+    : selection.anchorNode;
+  const selectedElement =
+    selectedNode instanceof HTMLElement
+      ? selectedNode
+      : selectedNode?.parentElement;
+
+  return (
+    selectedElement?.closest<HTMLElement>("[data-preview-item-id]")?.dataset
+      .previewItemId ?? null
+  );
+}
+
+function addStrikethroughToContent(
+  content: string,
+  selectedText: string,
+): string | null {
+  const cleanSelectedText = selectedText.trim();
+
+  if (!cleanSelectedText || content.includes(`~~${cleanSelectedText}~~`)) {
+    return null;
+  }
+
+  const selectionIndex = content.indexOf(cleanSelectedText);
+  if (selectionIndex < 0) {
+    return null;
+  }
+
+  return (
+    content.slice(0, selectionIndex) +
+    `~~${cleanSelectedText}~~` +
+    content.slice(selectionIndex + cleanSelectedText.length)
+  );
+}
+
+function removeStrikethroughFromContent(
+  content: string,
+  selectedText: string,
+): string | null {
+  const cleanSelectedText = selectedText.trim();
+
+  if (!cleanSelectedText) {
+    return null;
+  }
+
+  const strikethroughText = `~~${cleanSelectedText}~~`;
+  const selectionIndex = content.indexOf(strikethroughText);
+
+  if (selectionIndex < 0) {
+    return null;
+  }
+
+  return (
+    content.slice(0, selectionIndex) +
+    cleanSelectedText +
+    content.slice(selectionIndex + strikethroughText.length)
+  );
+}
+
 export default function App() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [projectsDataSizeBytes, setProjectsDataSizeBytes] = useState(0);
@@ -707,6 +768,72 @@ function ProjectWorkspace({
     });
   };
 
+  const handleStrikePreviewSelection = useCallback(async () => {
+    const selection = window.getSelection();
+    const selectedText = selection?.toString() ?? "";
+
+    if (!selection || selectedText.trim().length === 0) {
+      addToast("Selecione um texto no preview para riscar", "error");
+      return;
+    }
+
+    const selectedItemId = getSelectionPreviewItemId(selection);
+    const selectedItem = items.find((item) => item.id === selectedItemId);
+
+    if (!selectedItem) {
+      addToast("Selecione um texto dentro de um card do preview", "error");
+      return;
+    }
+
+    const nextContent = addStrikethroughToContent(
+      selectedItem.content,
+      selectedText,
+    );
+
+    if (!nextContent) {
+      addToast("Nao foi possivel localizar esse texto no markdown", "error");
+      return;
+    }
+
+    await updateItem(selectedItem.id, nextContent, selectedItem.title);
+    selection.removeAllRanges();
+    setActiveItemId(selectedItem.id);
+    addToast("Texto riscado no card");
+  }, [addToast, items, updateItem]);
+
+  const handleUnstrikePreviewSelection = useCallback(async () => {
+    const selection = window.getSelection();
+    const selectedText = selection?.toString() ?? "";
+
+    if (!selection || selectedText.trim().length === 0) {
+      addToast("Selecione um texto riscado no preview", "error");
+      return;
+    }
+
+    const selectedItemId = getSelectionPreviewItemId(selection);
+    const selectedItem = items.find((item) => item.id === selectedItemId);
+
+    if (!selectedItem) {
+      addToast("Selecione um texto dentro de um card do preview", "error");
+      return;
+    }
+
+    const nextContent = removeStrikethroughFromContent(
+      selectedItem.content,
+      selectedText,
+    );
+
+    if (!nextContent) {
+      addToast("Esse texto selecionado nao esta riscado no markdown", "error");
+      return;
+    }
+
+    await updateItem(selectedItem.id, nextContent, selectedItem.title);
+    selection.removeAllRanges();
+    setActiveItemId(selectedItem.id);
+    addToast("Texto desriscado no card");
+  }, [addToast, items, updateItem]);
+
   const handleSetViewMode = (mode: ViewMode) => {
     setViewMode(mode);
   };
@@ -905,6 +1032,12 @@ function ProjectWorkspace({
               scrollContainerRef={rightScrollRef}
               onSelect={handleSelectItem}
               onReorder={reorderItems}
+              onStrikeSelection={() => {
+                void handleStrikePreviewSelection();
+              }}
+              onUnstrikeSelection={() => {
+                void handleUnstrikePreviewSelection();
+              }}
             />
           )
         }

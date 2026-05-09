@@ -183,6 +183,8 @@ interface CombinedOutputPanelProps {
   scrollContainerRef?: RefObject<HTMLDivElement>;
   onSelect: (item: MarkdownItem) => void;
   onReorder: (activeId: string, overId: string) => Promise<void>;
+  onStrikeSelection: () => void;
+  onUnstrikeSelection: () => void;
 }
 
 export function CombinedOutputPanel({
@@ -194,6 +196,8 @@ export function CombinedOutputPanel({
   scrollContainerRef,
   onSelect,
   onReorder,
+  onStrikeSelection,
+  onUnstrikeSelection,
 }: CombinedOutputPanelProps) {
   const [selectedPreviewCardId, setSelectedPreviewCardId] = useState<
     string | null
@@ -301,19 +305,45 @@ export function CombinedOutputPanel({
               ? "Preview em cards"
               : "Preview renderizado"}
           </h2>
-          {selectedPreviewItem ? (
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setSelectedPreviewCardId(null)}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={onStrikeSelection}
               className={`inline-flex items-center justify-center self-start rounded-md border px-3 py-2 text-xs font-semibold transition sm:self-auto ${
                 theme === "dark"
-                  ? "border-slate-700 bg-slate-900/70 text-slate-200 hover:border-slate-600 hover:bg-slate-800"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                  ? "border-slate-700 bg-slate-900/70 text-slate-200 hover:border-teal-400/70 hover:bg-slate-800 hover:text-teal-100"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-800"
               }`}
             >
-              Voltar aos cards
+              Riscar seleção
             </button>
-          ) : null}
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={onUnstrikeSelection}
+              className={`inline-flex items-center justify-center self-start rounded-md border px-3 py-2 text-xs font-semibold transition sm:self-auto ${
+                theme === "dark"
+                  ? "border-slate-700 bg-slate-900/70 text-slate-200 hover:border-rose-400/70 hover:bg-slate-800 hover:text-rose-100"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-rose-400 hover:bg-rose-50 hover:text-rose-800"
+              }`}
+            >
+              Desriscar seleção
+            </button>
+            {selectedPreviewItem ? (
+              <button
+                type="button"
+                onClick={() => setSelectedPreviewCardId(null)}
+                className={`inline-flex items-center justify-center self-start rounded-md border px-3 py-2 text-xs font-semibold transition sm:self-auto ${
+                  theme === "dark"
+                    ? "border-slate-700 bg-slate-900/70 text-slate-200 hover:border-slate-600 hover:bg-slate-800"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                Voltar aos cards
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 

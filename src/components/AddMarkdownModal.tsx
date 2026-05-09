@@ -37,6 +37,7 @@ export function AddMarkdownModal({
 }: AddMarkdownModalProps) {
   const isDark = theme === "dark";
   const dialogRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState("");
   const [title, setTitle] = useState("");
   const [error, setError] = useState("");
@@ -93,6 +94,91 @@ export function AddMarkdownModal({
   if (!open) {
     return null;
   }
+
+  const handleApplyStrikethrough = () => {
+    const textarea = textareaRef.current;
+    const placeholder = "texto riscado";
+    const selectionStart = textarea?.selectionStart ?? value.length;
+    const selectionEnd = textarea?.selectionEnd ?? value.length;
+    const selectedText = value.slice(selectionStart, selectionEnd);
+    const textToFormat = selectedText || placeholder;
+    const formattedText = `~~${textToFormat}~~`;
+    const nextValue =
+      value.slice(0, selectionStart) +
+      formattedText +
+      value.slice(selectionEnd);
+
+    setValue(nextValue);
+    if (error) {
+      setError("");
+    }
+
+    window.requestAnimationFrame(() => {
+      textarea?.focus();
+
+      if (selectedText) {
+        textarea?.setSelectionRange(
+          selectionStart,
+          selectionStart + formattedText.length,
+        );
+        return;
+      }
+
+      const placeholderStart = selectionStart + 2;
+      textarea?.setSelectionRange(
+        placeholderStart,
+        placeholderStart + placeholder.length,
+      );
+    });
+  };
+
+  const handleRemoveStrikethrough = () => {
+    const textarea = textareaRef.current;
+    const selectionStart = textarea?.selectionStart ?? value.length;
+    const selectionEnd = textarea?.selectionEnd ?? value.length;
+    const selectedText = value.slice(selectionStart, selectionEnd);
+
+    if (!selectedText) {
+      textarea?.focus();
+      return;
+    }
+
+    const hasSelectedMarkers =
+      selectedText.startsWith("~~") && selectedText.endsWith("~~");
+    const hasAdjacentMarkers =
+      value.slice(selectionStart - 2, selectionStart) === "~~" &&
+      value.slice(selectionEnd, selectionEnd + 2) === "~~";
+
+    if (!hasSelectedMarkers && !hasAdjacentMarkers) {
+      textarea?.focus();
+      return;
+    }
+
+    const cleanText = hasSelectedMarkers
+      ? selectedText.slice(2, -2)
+      : selectedText;
+    const nextValue = hasSelectedMarkers
+      ? value.slice(0, selectionStart) + cleanText + value.slice(selectionEnd)
+      : value.slice(0, selectionStart - 2) +
+        cleanText +
+        value.slice(selectionEnd + 2);
+    const nextSelectionStart = hasSelectedMarkers
+      ? selectionStart
+      : selectionStart - 2;
+
+    setValue(nextValue);
+    if (error) {
+      setError("");
+    }
+
+    window.requestAnimationFrame(() => {
+      textarea?.focus();
+      textarea?.setSelectionRange(
+        nextSelectionStart,
+        nextSelectionStart + cleanText.length,
+      );
+    });
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -181,13 +267,51 @@ export function AddMarkdownModal({
             />
           </label>
 
-          <label
+          <div
             className={`flex flex-col gap-2 text-sm font-medium ${
               isDark ? "text-slate-300" : "text-slate-700"
             }`}
           >
-            Conteudo
+            <label htmlFor="markdown-content">Conteudo</label>
+            <div
+              className={`flex items-center gap-2 rounded-xl border px-2 py-2 ${
+                isDark
+                  ? "border-slate-700 bg-[#0b1118]"
+                  : "border-slate-200 bg-slate-50"
+              }`}
+              aria-label="Ferramentas de formatacao"
+              role="toolbar"
+            >
+              <button
+                type="button"
+                onClick={handleApplyStrikethrough}
+                className={`inline-flex h-8 items-center justify-center rounded-md border px-3 text-sm font-semibold line-through transition ${
+                  isDark
+                    ? "border-slate-600 text-slate-200 hover:border-teal-400 hover:text-teal-200"
+                    : "border-slate-300 text-slate-700 hover:border-teal-500 hover:text-teal-700"
+                }`}
+                aria-label="Riscar texto"
+                title="Riscar texto"
+              >
+                S
+              </button>
+              <button
+                type="button"
+                onClick={handleRemoveStrikethrough}
+                className={`inline-flex h-8 items-center justify-center rounded-md border px-3 text-sm font-semibold transition ${
+                  isDark
+                    ? "border-slate-600 text-slate-200 hover:border-rose-400 hover:text-rose-200"
+                    : "border-slate-300 text-slate-700 hover:border-rose-500 hover:text-rose-700"
+                }`}
+                aria-label="Desriscar texto"
+                title="Desriscar texto"
+              >
+                S
+              </button>
+            </div>
             <textarea
+              id="markdown-content"
+              ref={textareaRef}
               autoFocus
               value={value}
               onChange={(event) => {
@@ -204,7 +328,7 @@ export function AddMarkdownModal({
                   : "border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400"
               }`}
             />
-          </label>
+          </div>
 
           {error ? (
             <p
