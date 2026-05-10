@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import { type RefObject } from "react";
 import type { AppTheme } from "../lib/preferences";
-import type { MarkdownItem } from "../types/markdown";
+import type { DiagramStatus, MarkdownItem } from "../types/markdown";
 import { SortableCard } from "./SortableCard";
 
 interface SortableCardsPanelProps {
@@ -30,6 +30,7 @@ interface SortableCardsPanelProps {
   onSelect: (item: MarkdownItem) => void;
   onEdit: (item: MarkdownItem) => void;
   onDelete: (item: MarkdownItem) => void;
+  onChangeStatus?: (itemId: string, status: DiagramStatus | undefined) => void;
 }
 
 export function SortableCardsPanel({
@@ -43,6 +44,7 @@ export function SortableCardsPanel({
   onSelect,
   onEdit,
   onDelete,
+  onChangeStatus,
 }: SortableCardsPanelProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -165,6 +167,7 @@ export function SortableCardsPanel({
                   onSelect={onSelect}
                   onEdit={onEdit}
                   onDelete={onDelete}
+                  onChangeStatus={onChangeStatus}
                 />
               ))}
             </div>

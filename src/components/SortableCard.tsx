@@ -4,8 +4,9 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { getDisplayTitle } from "../lib/items";
 import type { AppTheme } from "../lib/preferences";
-import type { MarkdownItem } from "../types/markdown";
+import type { DiagramStatus, MarkdownItem } from "../types/markdown";
 import { StatusDot } from "./StatusDot";
+import { StatusPicker } from "./StatusPicker";
 
 interface SortableCardProps {
   item: MarkdownItem;
@@ -16,6 +17,7 @@ interface SortableCardProps {
   onSelect: (item: MarkdownItem) => void;
   onEdit: (item: MarkdownItem) => void;
   onDelete: (item: MarkdownItem) => void;
+  onChangeStatus?: (itemId: string, status: DiagramStatus | undefined) => void;
 }
 
 export function SortableCard({
@@ -27,6 +29,7 @@ export function SortableCard({
   onSelect,
   onEdit,
   onDelete,
+  onChangeStatus,
 }: SortableCardProps) {
   const {
     attributes,
@@ -50,6 +53,7 @@ export function SortableCard({
         }
       : {}),
   };
+  const displayTitle = getDisplayTitle(item, 56);
 
   const outlineContainerClass =
     theme === "dark"
@@ -73,7 +77,7 @@ export function SortableCard({
     <article
       ref={setNodeRef}
       style={style}
-      className={`transition-all duration-200 ${
+      className={`relative transition-all duration-200 ${
         isOutlineMode
           ? `rounded-lg p-0.5 ${outlineContainerClass}`
           : `rounded-[1.1rem] border px-4 py-3 ${
@@ -120,31 +124,51 @@ export function SortableCard({
               >
                 {String(position + 1).padStart(2, "0")}
               </span>
-              <StatusDot
-                status={item.status}
-                theme={theme}
-                className="absolute right-1.5 top-1.5 h-2 w-2"
-              />
               <span className="truncate">
                 {item.title?.trim()
                   ? getDisplayTitle(item, 20)
                   : String(position + 1).padStart(2, "0")}
               </span>
             </button>
+            {onChangeStatus ? (
+              <StatusPicker
+                status={item.status}
+                theme={theme}
+                label={displayTitle}
+                buttonClassName="absolute right-1 top-1 h-5 w-5"
+                dotClassName="h-2 w-2"
+                onChangeStatus={(status) => onChangeStatus(item.id, status)}
+              />
+            ) : (
+              <StatusDot
+                status={item.status}
+                theme={theme}
+                className="absolute right-1.5 top-1.5 h-2 w-2"
+              />
+            )}
           </>
         ) : (
           <>
+            {onChangeStatus ? (
+              <StatusPicker
+                status={item.status}
+                theme={theme}
+                label={displayTitle}
+                onChangeStatus={(status) => onChangeStatus(item.id, status)}
+              />
+            ) : (
+              <StatusDot status={item.status} theme={theme} />
+            )}
             <button
               type="button"
               onClick={() => onSelect(item)}
-              title={getDisplayTitle(item, 56)}
+              title={displayTitle}
               className={`min-w-0 flex-1 cursor-grab truncate text-left text-[1.15rem] font-semibold leading-6 tracking-[-0.02em] active:cursor-grabbing ${theme === "dark" ? "text-slate-100" : "text-slate-950"}`}
               {...attributes}
               {...listeners}
             >
               <span className="flex min-w-0 items-center gap-2">
-                <StatusDot status={item.status} theme={theme} />
-                <span className="truncate">{getDisplayTitle(item, 56)}</span>
+                <span className="truncate">{displayTitle}</span>
               </span>
             </button>
             <div className="flex items-center gap-1.5">

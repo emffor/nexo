@@ -720,6 +720,41 @@ describe("App", () => {
     });
   });
 
+  it("permite trocar status pela bolinha nos modos normal e indice", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await createAndOpenProject(user);
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.type(screen.getByLabelText(/conteudo/i), "# Card com status");
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+
+    await user.click(
+      screen.getAllByRole("button", {
+        name: /alterar status de card com status/i,
+      })[0],
+    );
+    await user.click(screen.getByRole("button", { name: /revisando/i }));
+
+    expect(screen.getAllByTitle(/status: revisando/i)[0]).toHaveStyle({
+      backgroundColor: DIAGRAM_STATUS_PALETTE.revisando.dark.fill,
+      borderColor: DIAGRAM_STATUS_PALETTE.revisando.dark.border,
+    });
+
+    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+    await user.click(
+      screen.getAllByRole("button", {
+        name: /alterar status de card com status/i,
+      })[0],
+    );
+    await user.click(screen.getByRole("button", { name: /impedido/i }));
+
+    expect(screen.getAllByTitle(/status: impedido/i)[0]).toHaveStyle({
+      backgroundColor: DIAGRAM_STATUS_PALETTE.impedido.dark.fill,
+      borderColor: DIAGRAM_STATUS_PALETTE.impedido.dark.border,
+    });
+  });
+
   it("abre o modo banco com editor DBML", async () => {
     const user = userEvent.setup();
     render(<App />);

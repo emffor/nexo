@@ -1006,6 +1006,9 @@ function ProjectWorkspace({
               onDelete={(item) => {
                 void handleDeleteItem(item);
               }}
+              onChangeStatus={(itemId, status) => {
+                void updateItemStatus(itemId, status);
+              }}
             />
           )
         }
@@ -1055,6 +1058,9 @@ function ProjectWorkspace({
               }}
               onUnstrikeSelection={() => {
                 void handleUnstrikePreviewSelection();
+              }}
+              onChangeStatus={(itemId, status) => {
+                void updateItemStatus(itemId, status);
               }}
             />
           )

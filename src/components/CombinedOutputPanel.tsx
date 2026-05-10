@@ -25,12 +25,13 @@ import {
   type MouseEvent,
   type RefObject,
 } from "react";
-import type { MarkdownItem } from "../types/markdown";
+import type { DiagramStatus, MarkdownItem } from "../types/markdown";
 import type { AppTheme, ViewMode } from "../lib/preferences";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import { StatusDot } from "./StatusDot";
+import { StatusPicker } from "./StatusPicker";
 
 interface PreviewGridCardProps {
   item: MarkdownItem;
@@ -185,6 +186,7 @@ interface CombinedOutputPanelProps {
   onReorder: (activeId: string, overId: string) => Promise<void>;
   onStrikeSelection: () => void;
   onUnstrikeSelection: () => void;
+  onChangeStatus?: (itemId: string, status: DiagramStatus | undefined) => void;
 }
 
 export function CombinedOutputPanel({
@@ -198,6 +200,7 @@ export function CombinedOutputPanel({
   onReorder,
   onStrikeSelection,
   onUnstrikeSelection,
+  onChangeStatus,
 }: CombinedOutputPanelProps) {
   const [selectedPreviewCardId, setSelectedPreviewCardId] = useState<
     string | null
@@ -389,7 +392,18 @@ export function CombinedOutputPanel({
                     ) + 1,
                   ).padStart(2, "0")}
                 </span>
-                <StatusDot status={selectedPreviewItem.status} theme={theme} />
+                {onChangeStatus ? (
+                  <StatusPicker
+                    status={selectedPreviewItem.status}
+                    theme={theme}
+                    label={getDisplayTitle(selectedPreviewItem, 72)}
+                    onChangeStatus={(status) =>
+                      onChangeStatus(selectedPreviewItem.id, status)
+                    }
+                  />
+                ) : (
+                  <StatusDot status={selectedPreviewItem.status} theme={theme} />
+                )}
                 <p
                   className={`m-0 text-xs font-medium uppercase tracking-[0.22em] ${
                     theme === "dark" ? "text-slate-500" : "text-slate-400"
@@ -454,7 +468,18 @@ export function CombinedOutputPanel({
                   >
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <StatusDot status={item.status} theme={theme} />
+                  {onChangeStatus ? (
+                    <StatusPicker
+                      status={item.status}
+                      theme={theme}
+                      label={getDisplayTitle(item, 72)}
+                      onChangeStatus={(status) =>
+                        onChangeStatus(item.id, status)
+                      }
+                    />
+                  ) : (
+                    <StatusDot status={item.status} theme={theme} />
+                  )}
                   <p
                     className={`m-0 text-xs font-medium uppercase tracking-[0.22em] ${theme === "dark" ? "text-slate-500" : "text-slate-400"}`}
                   >
