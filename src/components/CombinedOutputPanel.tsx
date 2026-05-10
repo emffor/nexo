@@ -309,30 +309,6 @@ export function CombinedOutputPanel({
               : "Preview renderizado"}
           </h2>
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={onStrikeSelection}
-              className={`inline-flex items-center justify-center self-start rounded-md border px-3 py-2 text-xs font-semibold transition sm:self-auto ${
-                theme === "dark"
-                  ? "border-slate-700 bg-slate-900/70 text-slate-200 hover:border-teal-400/70 hover:bg-slate-800 hover:text-teal-100"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-800"
-              }`}
-            >
-              Riscar seleção
-            </button>
-            <button
-              type="button"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={onUnstrikeSelection}
-              className={`inline-flex items-center justify-center self-start rounded-md border px-3 py-2 text-xs font-semibold transition sm:self-auto ${
-                theme === "dark"
-                  ? "border-slate-700 bg-slate-900/70 text-slate-200 hover:border-rose-400/70 hover:bg-slate-800 hover:text-rose-100"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-rose-400 hover:bg-rose-50 hover:text-rose-800"
-              }`}
-            >
-              Desriscar seleção
-            </button>
             {selectedPreviewItem ? (
               <button
                 type="button"
@@ -352,7 +328,7 @@ export function CombinedOutputPanel({
 
       <div
         ref={scrollContainerRef}
-        className={`app-scrollbar flex-1 overflow-y-auto p-4 sm:p-5 ${theme === "dark" ? "bg-[#0b1118]" : "bg-slate-50/80"}`}
+        className={`app-scrollbar flex-1 overflow-y-auto p-4 pb-28 sm:p-5 sm:pb-28 ${theme === "dark" ? "bg-[#0b1118]" : "bg-slate-50/80"}`}
       >
         {isLoading ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
@@ -525,6 +501,47 @@ export function CombinedOutputPanel({
           </div>
         )}
       </div>
+
+      {!isLoading && items.length > 0 ? (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex flex-col items-center gap-2 rounded-xl border p-2 shadow-2xl backdrop-blur ${
+            theme === "dark"
+              ? "border-slate-700/80 bg-slate-950/80"
+              : "border-slate-200/90 bg-white/90"
+          }`}
+        >
+          <button
+            type="button"
+            title="Riscar seleção"
+            aria-label="Riscar seleção"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onStrikeSelection}
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-md border text-base font-bold transition ${
+              theme === "dark"
+                ? "border-slate-700 bg-slate-900/80 text-slate-200 hover:border-teal-400/70 hover:bg-slate-800 hover:text-teal-100"
+                : "border-slate-200 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-800"
+            }`}
+          >
+            <span className="line-through decoration-2" aria-hidden="true">
+              S
+            </span>
+          </button>
+          <button
+            type="button"
+            title="Desriscar seleção"
+            aria-label="Desriscar seleção"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onUnstrikeSelection}
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-md border text-base font-bold transition ${
+              theme === "dark"
+                ? "border-slate-700 bg-slate-900/80 text-slate-200 hover:border-rose-400/70 hover:bg-slate-800 hover:text-rose-100"
+                : "border-slate-200 bg-white text-slate-700 hover:border-rose-400 hover:bg-rose-50 hover:text-rose-800"
+            }`}
+          >
+            <span aria-hidden="true">S</span>
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }
