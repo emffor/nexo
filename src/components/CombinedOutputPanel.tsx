@@ -514,6 +514,7 @@ export function CombinedOutputPanel({
             type="button"
             title="Riscar seleção"
             aria-label="Riscar seleção"
+            onPointerDown={(event) => event.preventDefault()}
             onMouseDown={(event) => event.preventDefault()}
             onClick={onStrikeSelection}
             className={`inline-flex h-10 w-10 items-center justify-center rounded-md border text-base font-bold transition ${
@@ -530,6 +531,7 @@ export function CombinedOutputPanel({
             type="button"
             title="Desriscar seleção"
             aria-label="Desriscar seleção"
+            onPointerDown={(event) => event.preventDefault()}
             onMouseDown={(event) => event.preventDefault()}
             onClick={onUnstrikeSelection}
             className={`inline-flex h-10 w-10 items-center justify-center rounded-md border text-base font-bold transition ${
