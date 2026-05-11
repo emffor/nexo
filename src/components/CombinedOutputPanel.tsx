@@ -184,8 +184,7 @@ interface CombinedOutputPanelProps {
   scrollContainerRef?: RefObject<HTMLDivElement>;
   onSelect: (item: MarkdownItem) => void;
   onReorder: (activeId: string, overId: string) => Promise<void>;
-  onStrikeSelection: () => void;
-  onUnstrikeSelection: () => void;
+  onToggleStrikethrough: () => void;
   onChangeStatus?: (itemId: string, status: DiagramStatus | undefined) => void;
 }
 
@@ -198,8 +197,7 @@ export function CombinedOutputPanel({
   scrollContainerRef,
   onSelect,
   onReorder,
-  onStrikeSelection,
-  onUnstrikeSelection,
+  onToggleStrikethrough,
   onChangeStatus,
 }: CombinedOutputPanelProps) {
   const [selectedPreviewCardId, setSelectedPreviewCardId] = useState<
@@ -512,11 +510,11 @@ export function CombinedOutputPanel({
         >
           <button
             type="button"
-            title="Riscar seleção"
-            aria-label="Riscar seleção"
+            title="Alternar risco da seleção"
+            aria-label="Alternar risco da seleção"
             onPointerDown={(event) => event.preventDefault()}
             onMouseDown={(event) => event.preventDefault()}
-            onClick={onStrikeSelection}
+            onClick={onToggleStrikethrough}
             className={`inline-flex h-10 w-10 items-center justify-center rounded-md border text-base font-bold transition ${
               theme === "dark"
                 ? "border-slate-700 bg-slate-900/80 text-slate-200 hover:border-teal-400/70 hover:bg-slate-800 hover:text-teal-100"
@@ -526,21 +524,6 @@ export function CombinedOutputPanel({
             <span className="line-through decoration-2" aria-hidden="true">
               S
             </span>
-          </button>
-          <button
-            type="button"
-            title="Desriscar seleção"
-            aria-label="Desriscar seleção"
-            onPointerDown={(event) => event.preventDefault()}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={onUnstrikeSelection}
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-md border text-base font-bold transition ${
-              theme === "dark"
-                ? "border-slate-700 bg-slate-900/80 text-slate-200 hover:border-rose-400/70 hover:bg-slate-800 hover:text-rose-100"
-                : "border-slate-200 bg-white text-slate-700 hover:border-rose-400 hover:bg-rose-50 hover:text-rose-800"
-            }`}
-          >
-            <span aria-hidden="true">S</span>
           </button>
         </div>
       ) : null}

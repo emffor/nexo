@@ -73,6 +73,35 @@ function selectVisibleText(text: string) {
   selection?.addRange(range);
 }
 
+function selectVisibleSubstring(containerText: string, selectedText: string) {
+  const element = screen
+    .getAllByText((_, node) => node?.textContent === containerText)
+    .at(-1);
+
+  if (!element) {
+    throw new Error(`Texto nao encontrado para selecao: ${containerText}`);
+  }
+
+  const textNode = Array.from(element.childNodes).find(
+    (node) =>
+      node.nodeType === Node.TEXT_NODE &&
+      node.textContent?.includes(selectedText),
+  );
+
+  if (!textNode || !textNode.textContent) {
+    throw new Error(`Trecho nao encontrado para selecao: ${selectedText}`);
+  }
+
+  const start = textNode.textContent.indexOf(selectedText);
+  const range = document.createRange();
+  range.setStart(textNode, start);
+  range.setEnd(textNode, start + selectedText.length);
+
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
 function expectTextIsStruck(text: string) {
   expect(
     Array.from(document.querySelectorAll("del")).some(
@@ -366,7 +395,7 @@ describe("App", () => {
 
     selectVisibleText("trecho normal");
     await user.click(
-      screen.getByRole("button", { name: /^riscar seleção$/i }),
+      screen.getByRole("button", { name: /alternar risco da seleção/i }),
     );
 
     await waitFor(() => {
@@ -386,7 +415,7 @@ describe("App", () => {
 
     selectVisibleText("trecho indice");
     await user.click(
-      screen.getByRole("button", { name: /^riscar seleção$/i }),
+      screen.getByRole("button", { name: /alternar risco da seleção/i }),
     );
 
     await waitFor(() => {
@@ -406,7 +435,7 @@ describe("App", () => {
 
     selectVisibleText("trecho cards");
     await user.click(
-      screen.getByRole("button", { name: /^riscar seleção$/i }),
+      screen.getByRole("button", { name: /alternar risco da seleção/i }),
     );
 
     await waitFor(() => {
@@ -429,11 +458,39 @@ describe("App", () => {
 
     selectVisibleText("trecho desriscado");
     await user.click(
-      screen.getByRole("button", { name: /desriscar seleção/i }),
+      screen.getByRole("button", { name: /alternar risco da seleção/i }),
     );
 
     await waitFor(() => {
       expectTextIsNotStruck("trecho desriscado");
+    });
+  });
+
+  it("desrisca apenas o trecho selecionado dentro de um texto riscado", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await createAndOpenProject(user);
+
+    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    fireEvent.change(screen.getByLabelText(/conteudo/i), {
+      target: {
+        value: "Texto com ~~Seleção das regularizações~~",
+      },
+    });
+    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+
+    selectVisibleSubstring("Seleção das regularizações", "regularizações");
+    await user.click(
+      screen.getByRole("button", { name: /alternar risco da seleção/i }),
+    );
+
+    await waitFor(() => {
+      expect(
+        Array.from(document.querySelectorAll("del")).some((element) =>
+          element.textContent?.includes("Seleção das"),
+        ),
+      ).toBe(true);
+      expectTextIsNotStruck("regularizações");
     });
   });
 

@@ -117,29 +117,122 @@ function getSelectionPreviewItemId(selection: Selection): string | null {
   );
 }
 
-function addStrikethroughToContent(
+function findStrikethroughRange(
   content: string,
-  selectedText: string,
-): string | null {
-  const cleanSelectedText = selectedText.trim();
-
-  if (!cleanSelectedText || content.includes(`~~${cleanSelectedText}~~`)) {
-    return null;
-  }
-
-  const selectionIndex = content.indexOf(cleanSelectedText);
-  if (selectionIndex < 0) {
-    return null;
-  }
-
+  selectionIndex: number,
+): { start: number; end: number; textStart: number; textEnd: number } | null {
   return (
-    content.slice(0, selectionIndex) +
-    `~~${cleanSelectedText}~~` +
-    content.slice(selectionIndex + cleanSelectedText.length)
+    findStrikethroughRanges(content).find(
+      (range) =>
+        selectionIndex >= range.textStart && selectionIndex < range.textEnd,
+    ) ?? null
   );
 }
 
-function removeStrikethroughFromContent(
+function findStrikethroughRanges(
+  content: string,
+): Array<{ start: number; end: number; textStart: number; textEnd: number }> {
+  const markerPattern = /~~([\s\S]*?)~~/g;
+  let match: RegExpExecArray | null;
+  const ranges: Array<{
+    start: number;
+    end: number;
+    textStart: number;
+    textEnd: number;
+  }> = [];
+
+  while ((match = markerPattern.exec(content)) !== null) {
+    const start = match.index;
+    const end = start + match[0].length;
+    const textStart = start + 2;
+    const textEnd = end - 2;
+
+    ranges.push({ start, end, textStart, textEnd });
+  }
+
+  return ranges;
+}
+
+function buildStrikethroughPart(value: string): string {
+  const content = value.trim();
+
+  if (!content) {
+    return value;
+  }
+
+  const leadingSpace = value.match(/^\s*/)?.[0] ?? "";
+  const trailingSpace = value.match(/\s*$/)?.[0] ?? "";
+
+  return `${leadingSpace}~~${content}~~${trailingSpace}`;
+}
+
+function findTextIgnoringStrikethroughMarkers(
+  content: string,
+  selectedText: string,
+): { start: number; end: number } | null {
+  const cleanSelectedText = selectedText.trim();
+
+  if (!cleanSelectedText) {
+    return null;
+  }
+
+  let plainContent = "";
+  const markdownIndexByPlainIndex: number[] = [];
+
+  for (let index = 0; index < content.length; index += 1) {
+    if (content.slice(index, index + 2) === "~~") {
+      index += 1;
+      continue;
+    }
+
+    markdownIndexByPlainIndex.push(index);
+    plainContent += content[index];
+  }
+
+  const plainSelectionIndex = plainContent.indexOf(cleanSelectedText);
+
+  if (plainSelectionIndex < 0) {
+    return null;
+  }
+
+  const plainSelectionEnd = plainSelectionIndex + cleanSelectedText.length - 1;
+  const start = markdownIndexByPlainIndex[plainSelectionIndex];
+  const end = markdownIndexByPlainIndex[plainSelectionEnd] + 1;
+
+  return typeof start === "number" && typeof end === "number"
+    ? { start, end }
+    : null;
+}
+
+function isRangeFullyStruck(content: string, start: number, end: number) {
+  const ranges = findStrikethroughRanges(content);
+  let hasText = false;
+
+  for (let index = start; index < end; index += 1) {
+    if (content.slice(index, index + 2) === "~~") {
+      index += 1;
+      continue;
+    }
+
+    if (!content[index] || content[index].trim() === "") {
+      continue;
+    }
+
+    hasText = true;
+
+    const isInsideStrikethrough = ranges.some(
+      (range) => index >= range.textStart && index < range.textEnd,
+    );
+
+    if (!isInsideStrikethrough) {
+      return false;
+    }
+  }
+
+  return hasText;
+}
+
+function toggleStrikethroughInContent(
   content: string,
   selectedText: string,
 ): string | null {
@@ -149,17 +242,73 @@ function removeStrikethroughFromContent(
     return null;
   }
 
-  const strikethroughText = `~~${cleanSelectedText}~~`;
-  const selectionIndex = content.indexOf(strikethroughText);
+  const selectionRange = findTextIgnoringStrikethroughMarkers(
+    content,
+    cleanSelectedText,
+  );
 
-  if (selectionIndex < 0) {
+  if (!selectionRange) {
     return null;
   }
 
+  const selectedMarkdownText = content.slice(
+    selectionRange.start,
+    selectionRange.end,
+  );
+  const selectedMarkdownTextWithoutMarkers = selectedMarkdownText.replace(
+    /~~/g,
+    "",
+  );
+  const isSelectionFullyStruck = isRangeFullyStruck(
+    content,
+    selectionRange.start,
+    selectionRange.end,
+  );
+  const strikethroughRange = findStrikethroughRange(
+    content,
+    selectionRange.start,
+  );
+
+  if (!isSelectionFullyStruck) {
+    return (
+      content.slice(0, selectionRange.start) +
+      `~~${selectedMarkdownTextWithoutMarkers}~~` +
+      content.slice(selectionRange.end)
+    );
+  }
+
+  if (!strikethroughRange && selectedMarkdownText.includes("~~")) {
+    return (
+      content.slice(0, selectionRange.start) +
+      selectedMarkdownTextWithoutMarkers +
+      content.slice(selectionRange.end)
+    );
+  }
+
+  if (!strikethroughRange) {
+    return null;
+  }
+
+  const strikethroughText = content.slice(
+    strikethroughRange.textStart,
+    strikethroughRange.textEnd,
+  );
+  const relativeSelectionIndex =
+    selectionRange.start - strikethroughRange.textStart;
+  const beforeSelection = strikethroughText.slice(0, relativeSelectionIndex);
+  const afterSelection = strikethroughText.slice(
+    relativeSelectionIndex + cleanSelectedText.length,
+  );
+  const nextParts = [
+    beforeSelection ? buildStrikethroughPart(beforeSelection) : "",
+    cleanSelectedText,
+    afterSelection ? buildStrikethroughPart(afterSelection) : "",
+  ];
+
   return (
-    content.slice(0, selectionIndex) +
-    cleanSelectedText +
-    content.slice(selectionIndex + strikethroughText.length)
+    content.slice(0, strikethroughRange.start) +
+    nextParts.join("") +
+    content.slice(strikethroughRange.end)
   );
 }
 
@@ -786,12 +935,12 @@ function ProjectWorkspace({
     });
   };
 
-  const handleStrikePreviewSelection = useCallback(async () => {
+  const handleTogglePreviewStrikethrough = useCallback(async () => {
     const selection = window.getSelection();
     const selectedText = selection?.toString() ?? "";
 
     if (!selection || selectedText.trim().length === 0) {
-      addToast("Selecione um texto no preview para riscar", "error");
+      addToast("Selecione um texto no preview para alternar o risco", "error");
       return;
     }
 
@@ -803,7 +952,7 @@ function ProjectWorkspace({
       return;
     }
 
-    const nextContent = addStrikethroughToContent(
+    const nextContent = toggleStrikethroughInContent(
       selectedItem.content,
       selectedText,
     );
@@ -816,40 +965,7 @@ function ProjectWorkspace({
     await updateItem(selectedItem.id, nextContent, selectedItem.title);
     selection.removeAllRanges();
     setActiveItemId(selectedItem.id);
-    addToast("Texto riscado no card");
-  }, [addToast, items, updateItem]);
-
-  const handleUnstrikePreviewSelection = useCallback(async () => {
-    const selection = window.getSelection();
-    const selectedText = selection?.toString() ?? "";
-
-    if (!selection || selectedText.trim().length === 0) {
-      addToast("Selecione um texto riscado no preview", "error");
-      return;
-    }
-
-    const selectedItemId = getSelectionPreviewItemId(selection);
-    const selectedItem = items.find((item) => item.id === selectedItemId);
-
-    if (!selectedItem) {
-      addToast("Selecione um texto dentro de um card do preview", "error");
-      return;
-    }
-
-    const nextContent = removeStrikethroughFromContent(
-      selectedItem.content,
-      selectedText,
-    );
-
-    if (!nextContent) {
-      addToast("Esse texto selecionado nao esta riscado no markdown", "error");
-      return;
-    }
-
-    await updateItem(selectedItem.id, nextContent, selectedItem.title);
-    selection.removeAllRanges();
-    setActiveItemId(selectedItem.id);
-    addToast("Texto desriscado no card");
+    addToast("Risco alternado no card");
   }, [addToast, items, updateItem]);
 
   const handleSetViewMode = (mode: ViewMode) => {
@@ -1053,11 +1169,8 @@ function ProjectWorkspace({
               scrollContainerRef={rightScrollRef}
               onSelect={handleSelectItem}
               onReorder={reorderItems}
-              onStrikeSelection={() => {
-                void handleStrikePreviewSelection();
-              }}
-              onUnstrikeSelection={() => {
-                void handleUnstrikePreviewSelection();
+              onToggleStrikethrough={() => {
+                void handleTogglePreviewStrikethrough();
               }}
               onChangeStatus={(itemId, status) => {
                 void updateItemStatus(itemId, status);
