@@ -7,19 +7,19 @@
 @layer base {
   html {
     min-height: 100%;
-    background: #0a0f16;
+    background: #0f1117;
   }
 
   html[data-theme="light"] {
-    background: #f3efe7;
+    background: #f8f9fa;
   }
 
   html[data-theme="dark"] {
-    background: #0a0f16;
+    background: #0f1117;
   }
 
   :root {
-    color: #111827;
+    color: #18181b;
   }
 
   * {
@@ -43,67 +43,71 @@
 
 @layer components {
   .panel-surface {
-    @apply rounded-[1.75rem] border border-slate-200/80 bg-white/90 backdrop-blur;
+    @apply rounded-md border border-zinc-200 bg-white;
   }
 
   [data-theme="light"] {
-    background:
-      radial-gradient(
-        circle at top left,
-        rgba(15, 118, 110, 0.05),
-        transparent 24%
-      ),
-      linear-gradient(180deg, #fbf8f1 0%, #f3efe7 100%);
+    background: #f8f9fa;
   }
 
   [data-theme="dark"] {
-    background:
-      radial-gradient(
-        circle at top left,
-        rgba(45, 212, 191, 0.07),
-        transparent 18%
-      ),
-      linear-gradient(180deg, #0a0f16 0%, #0f1722 100%);
+    background: #0f1117;
   }
 
   [data-theme="dark"] .panel-surface {
-    @apply border-slate-800/70 bg-[#121821];
+    @apply border-zinc-800 bg-[#16181d];
   }
 
   [data-theme="dark"] .panel-surface h2 {
-    @apply text-slate-50;
+    @apply text-zinc-100;
   }
 
   [data-theme="dark"] .panel-surface p {
-    @apply text-slate-400;
-  }
-
-  [data-theme="dark"] .panel-surface .text-teal-700\/90 {
-    color: rgb(125 211 252 / 0.85);
+    @apply text-zinc-400;
   }
 
   .toolbar-button {
-    @apply inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] font-medium text-slate-200 transition hover:border-white/15 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-teal-200 focus:ring-offset-1 focus:ring-offset-ink;
+    @apply inline-flex items-center justify-center rounded border border-zinc-300 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-400;
+  }
+
+  [data-theme="dark"] .toolbar-button {
+    @apply border-zinc-700 bg-zinc-800/80 text-zinc-200 hover:border-zinc-600 hover:bg-zinc-700 hover:text-white focus:ring-zinc-500;
   }
 
   .toolbar-button--icon {
-    @apply min-w-7 px-0;
+    @apply min-w-7 px-1;
   }
 
   .toolbar-button--accent {
-    @apply border-transparent bg-teal-400/95 text-slate-950 hover:bg-teal-300;
+    @apply border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800;
+  }
+
+  [data-theme="dark"] .toolbar-button--accent {
+    @apply border-zinc-200 bg-zinc-100 text-zinc-950 hover:bg-white;
   }
 
   .toolbar-button--primary {
-    @apply border-teal-200/20 bg-teal-300/[0.08] text-teal-100 hover:bg-teal-300/[0.12];
+    @apply border-blue-600 bg-blue-600 text-white hover:bg-blue-700;
+  }
+
+  [data-theme="dark"] .toolbar-button--primary {
+    @apply border-blue-600 bg-blue-600 text-white hover:bg-blue-500;
   }
 
   .toolbar-button--danger {
-    @apply border-rose-400/15 bg-rose-500/[0.04] text-rose-100 hover:bg-rose-500/[0.09] focus:ring-rose-300;
+    @apply border-red-300 bg-white text-red-600 hover:bg-red-50 focus:ring-red-400;
+  }
+
+  [data-theme="dark"] .toolbar-button--danger {
+    @apply border-red-900/60 bg-red-950/30 text-red-400 hover:border-red-800 hover:bg-red-950/60 focus:ring-red-500;
   }
 
   .toolbar-badge {
-    @apply inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-slate-300;
+    @apply inline-flex items-center justify-center rounded border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 font-mono;
+  }
+
+  [data-theme="dark"] .toolbar-badge {
+    @apply border-zinc-800 bg-zinc-900 text-zinc-400 font-mono;
   }
 
   .app-scrollbar {

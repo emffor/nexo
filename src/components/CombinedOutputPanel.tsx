@@ -278,51 +278,38 @@ export function CombinedOutputPanel({
 
   return (
     <section
-      className={`flex min-h-[420px] flex-col overflow-hidden rounded-[1.75rem] border lg:min-h-0 ${
+      className={`flex min-h-[420px] flex-col overflow-hidden rounded border lg:min-h-0 ${
         theme === "dark"
-          ? "border-slate-800/70 bg-[#11161c]"
-          : "border-slate-200 bg-white"
+          ? "border-zinc-800 bg-[#161b22]"
+          : "border-zinc-200 bg-white"
       }`}
     >
       <div
-        className={`border-b px-5 py-5 sm:px-6 ${
-          theme === "dark" ? "border-slate-800/70" : "border-slate-200"
+        className={`border-b px-4 py-2.5 flex items-center justify-between ${
+          theme === "dark" ? "border-zinc-800" : "border-zinc-200"
         }`}
       >
-        <p
-          className={`mb-1 text-sm font-medium uppercase tracking-[0.24em] ${
-            theme === "dark" ? "text-sky-300/85" : "text-sky-700/80"
+        <h2
+          className={`m-0 text-xs font-semibold uppercase tracking-wider ${
+            theme === "dark" ? "text-zinc-400" : "text-zinc-500"
           }`}
         >
-          Coluna direita
-        </p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2
-            className={`m-0 text-[2.1rem] font-semibold tracking-[-0.03em] ${
-              theme === "dark" ? "text-slate-50" : "text-slate-950"
-            }`}
-          >
-            {isCardsMode && !selectedPreviewItem
-              ? "Preview em cards"
-              : "Preview renderizado"}
-          </h2>
+          {isCardsMode && !selectedPreviewItem
+            ? "Visualização em Cards"
+            : "Preview Markdown"}
+        </h2>
           <div className="flex flex-wrap items-center gap-2">
             {selectedPreviewItem ? (
               <button
                 type="button"
                 onClick={() => setSelectedPreviewCardId(null)}
-                className={`inline-flex items-center justify-center self-start rounded-md border px-3 py-2 text-xs font-semibold transition sm:self-auto ${
-                  theme === "dark"
-                    ? "border-slate-700 bg-slate-900/70 text-slate-200 hover:border-slate-600 hover:bg-slate-800"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                }`}
+                className="toolbar-button h-6 px-2 text-xs"
               >
                 Voltar aos cards
               </button>
             ) : null}
           </div>
         </div>
-      </div>
 
       <div
         ref={scrollContainerRef}

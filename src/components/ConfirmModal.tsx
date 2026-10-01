@@ -52,20 +52,20 @@ export function ConfirmModal({
 
   const confirmButtonClass =
     variant === "danger"
-      ? "bg-rose-600 text-white hover:bg-rose-500 focus:ring-rose-400"
-      : "bg-teal-600 text-white hover:bg-teal-500 focus:ring-teal-400";
+      ? "border-red-600 bg-red-600 text-white hover:bg-red-500 focus:ring-red-400"
+      : "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white hover:bg-zinc-800 focus:ring-zinc-400";
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
       role="presentation"
       onClick={onCancel}
     >
       <div
-        className={`w-full max-w-md rounded-2xl border p-6 shadow-xl ${
+        className={`w-full max-w-sm rounded border p-5 shadow-lg ${
           isDark
-            ? "border-slate-700/60 bg-[#141b24]"
-            : "border-slate-200/80 bg-white"
+            ? "border-zinc-800 bg-[#161b22] text-zinc-200"
+            : "border-zinc-200 bg-white text-zinc-900"
         }`}
         role="alertdialog"
         aria-modal="true"
@@ -75,41 +75,29 @@ export function ConfirmModal({
       >
         <h2
           id="confirm-modal-title"
-          className={`m-0 text-lg font-semibold ${
-            isDark ? "text-slate-50" : "text-slate-900"
-          }`}
+          className="m-0 text-sm font-semibold text-zinc-900 dark:text-zinc-100"
         >
           {title}
         </h2>
         <p
           id="confirm-modal-desc"
-          className={`mt-2 text-sm leading-6 ${
-            isDark ? "text-slate-400" : "text-slate-600"
-          }`}
+          className="mt-2 text-xs leading-5 text-zinc-600 dark:text-zinc-400"
         >
           {description}
         </p>
-        <div className="mt-6 flex items-center justify-end gap-3">
+        <div className="mt-5 flex items-center justify-end gap-2 border-t pt-3 border-zinc-200 dark:border-zinc-800">
           <button
             ref={cancelRef}
             type="button"
             onClick={onCancel}
-            className={`rounded-full border px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-1 ${
-              isDark
-                ? "border-slate-600 text-slate-300 hover:border-slate-500 hover:text-slate-100 focus:ring-slate-400 focus:ring-offset-[#141b24]"
-                : "border-slate-300 text-slate-700 hover:border-slate-400 hover:text-slate-950 focus:ring-slate-400 focus:ring-offset-white"
-            }`}
+            className="toolbar-button h-7 px-3 text-xs"
           >
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`rounded-full px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-1 ${confirmButtonClass} ${
-              isDark
-                ? "focus:ring-offset-[#141b24]"
-                : "focus:ring-offset-white"
-            }`}
+            className={`inline-flex items-center justify-center rounded border px-3 h-7 text-xs font-medium transition focus:outline-none focus:ring-1 ${confirmButtonClass}`}
           >
             {confirmLabel}
           </button>

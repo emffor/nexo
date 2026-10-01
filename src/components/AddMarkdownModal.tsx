@@ -194,121 +194,82 @@ export function AddMarkdownModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
       role="presentation"
       onClick={safeClose}
     >
       <div
         ref={dialogRef}
-        className={`w-full max-w-3xl rounded-[1.75rem] border p-5 backdrop-blur sm:p-6 ${
+        className={`w-full max-w-3xl rounded border p-5 ${
           isDark
-            ? "border-slate-700/60 bg-[#141b24]"
-            : "border-slate-200/80 bg-white/95"
-        }`}
+            ? "border-zinc-800 bg-[#161b22] text-zinc-200"
+            : "border-zinc-200 bg-white text-zinc-900"
+        } shadow-lg`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-markdown-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p
-                className={`mb-1 text-sm font-medium uppercase tracking-[0.2em] ${
-                  isDark ? "text-teal-300/90" : "text-teal-700"
-                }`}
-              >
-                {mode === "edit" ? "Editar card" : "Novo card"}
-              </p>
-              <h2
-                id="add-markdown-title"
-                className={`m-0 text-2xl font-semibold ${
-                  isDark ? "text-slate-50" : "text-slate-950"
-                }`}
-              >
-                {mode === "edit" ? "Editar markdown" : "Colar markdown"}
-              </h2>
-            </div>
+        <form className="flex flex-col gap-3.5" onSubmit={handleSubmit}>
+          <div className="flex items-center justify-between border-b pb-2.5 border-zinc-200 dark:border-zinc-800">
+            <h2
+              id="add-markdown-title"
+              className="m-0 text-sm font-semibold text-zinc-900 dark:text-zinc-100"
+            >
+              {mode === "edit" ? "Editar Bloco Markdown" : "Novo Bloco Markdown"}
+            </h2>
 
             <button
               type="button"
               onClick={safeClose}
-              className={`rounded-full border px-3 py-2 text-sm font-medium transition ${
-                isDark
-                  ? "border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-200"
-                  : "border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900"
-              }`}
+              className="toolbar-button h-6 px-2 text-xs"
             >
-              Fechar
+              ✕
             </button>
           </div>
 
-          <label
-            className={`flex flex-col gap-1.5 text-sm font-medium ${
-              isDark ? "text-slate-300" : "text-slate-700"
-            }`}
-          >
-            Titulo do card
-            <span
-              className={`text-xs font-normal ${isDark ? "text-slate-500" : "text-slate-400"}`}
-            >
-              Opcional — se vazio, usa a primeira linha do markdown
-            </span>
+          <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+            Título do card (opcional)
             <input
               type="text"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Ex: Criacao de Pedido"
-              className={`rounded-xl border px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-200/40 ${
+              placeholder="Ex: P2M-1185 ou Criacao de Pedido"
+              className={`h-8 rounded border px-2.5 text-xs outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
                 isDark
-                  ? "border-slate-700 bg-[#0b1118] text-slate-200 placeholder:text-slate-600"
-                  : "border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400"
+                  ? "border-zinc-700 bg-zinc-900 text-zinc-100 placeholder:text-zinc-500"
+                  : "border-zinc-300 bg-white text-zinc-900 placeholder:text-zinc-400"
               }`}
             />
           </label>
 
-          <div
-            className={`flex flex-col gap-2 text-sm font-medium ${
-              isDark ? "text-slate-300" : "text-slate-700"
-            }`}
-          >
-            <label htmlFor="markdown-content">Conteudo</label>
-            <div
-              className={`flex items-center gap-2 rounded-xl border px-2 py-2 ${
-                isDark
-                  ? "border-slate-700 bg-[#0b1118]"
-                  : "border-slate-200 bg-slate-50"
-              }`}
-              aria-label="Ferramentas de formatacao"
-              role="toolbar"
-            >
-              <button
-                type="button"
-                onClick={handleApplyStrikethrough}
-                className={`inline-flex h-8 items-center justify-center rounded-md border px-3 text-sm font-semibold line-through transition ${
-                  isDark
-                    ? "border-slate-600 text-slate-200 hover:border-teal-400 hover:text-teal-200"
-                    : "border-slate-300 text-slate-700 hover:border-teal-500 hover:text-teal-700"
-                }`}
-                aria-label="Riscar texto"
-                title="Riscar texto"
+          <div className="flex flex-col gap-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+            <div className="flex items-center justify-between">
+              <label htmlFor="markdown-content">Conteúdo Markdown</label>
+              <div
+                className="flex items-center gap-1"
+                aria-label="Ferramentas de formatacao"
+                role="toolbar"
               >
-                S
-              </button>
-              <button
-                type="button"
-                onClick={handleRemoveStrikethrough}
-                className={`inline-flex h-8 items-center justify-center rounded-md border px-3 text-sm font-semibold transition ${
-                  isDark
-                    ? "border-slate-600 text-slate-200 hover:border-rose-400 hover:text-rose-200"
-                    : "border-slate-300 text-slate-700 hover:border-rose-500 hover:text-rose-700"
-                }`}
-                aria-label="Desriscar texto"
-                title="Desriscar texto"
-              >
-                S
-              </button>
+                <button
+                  type="button"
+                  onClick={handleApplyStrikethrough}
+                  className="toolbar-button h-6 px-2 text-xs line-through"
+                  title="Riscar texto selecionado"
+                >
+                  S
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRemoveStrikethrough}
+                  className="toolbar-button h-6 px-2 text-xs"
+                  title="Desriscar texto selecionado"
+                >
+                  Limpar risco
+                </button>
+              </div>
             </div>
+
             <textarea
               id="markdown-content"
               ref={textareaRef}
@@ -320,52 +281,44 @@ export function AddMarkdownModal({
                   setError("");
                 }
               }}
-              rows={14}
-              placeholder={"# Titulo\n\nCole aqui o bloco em markdown."}
-              className={`min-h-[280px] rounded-2xl border px-4 py-4 font-mono text-sm leading-6 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-200/40 ${
+              rows={12}
+              placeholder={"# Titulo\n\nCole aqui o conteudo em markdown."}
+              className={`rounded border p-3 font-mono text-xs leading-5 outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
                 isDark
-                  ? "border-slate-700 bg-[#0b1118] text-slate-200 placeholder:text-slate-600"
-                  : "border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400"
+                  ? "border-zinc-700 bg-zinc-900 text-zinc-200 placeholder:text-zinc-600"
+                  : "border-zinc-300 bg-white text-zinc-900 placeholder:text-zinc-400"
               }`}
             />
           </div>
 
           {error ? (
-            <p
-              className={`m-0 text-sm font-medium ${isDark ? "text-rose-400" : "text-rose-700"}`}
-            >
+            <p className="m-0 text-xs text-red-500 font-medium">
               {error}
             </p>
           ) : null}
 
-          <div className="flex items-center justify-between gap-3">
-            <p
-              className={`m-0 text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}
-            >
+          <div className="flex items-center justify-between border-t pt-3 border-zinc-200 dark:border-zinc-800">
+            <span className="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">
               {isMac ? "⌘" : "Ctrl"}+Enter para salvar
-            </p>
-            <div className="flex gap-3">
+            </span>
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={safeClose}
-                className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${
-                  isDark
-                    ? "border-slate-600 text-slate-300 hover:border-slate-500 hover:text-slate-100"
-                    : "border-slate-300 text-slate-700 hover:border-slate-400 hover:text-slate-950"
-                }`}
+                className="toolbar-button h-7 px-3 text-xs"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="rounded-full bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-500 disabled:cursor-not-allowed disabled:bg-teal-800 disabled:text-teal-300"
+                className="toolbar-button toolbar-button--accent h-7 px-3 text-xs"
               >
                 {isSaving
                   ? "Salvando..."
                   : mode === "edit"
-                    ? "Salvar alteracoes"
-                    : "Salvar card"}
+                    ? "Salvar alterações"
+                    : "Criar card"}
               </button>
             </div>
           </div>

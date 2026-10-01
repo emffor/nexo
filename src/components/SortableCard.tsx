@@ -58,47 +58,51 @@ export function SortableCard({
   const outlineContainerClass =
     theme === "dark"
       ? isActive
-        ? "border-teal-400/60 bg-teal-400/10 shadow-[0_0_0_1px_rgba(45,212,191,0.12)]"
-        : "border-slate-800/90 bg-[#111823]"
+        ? "border-blue-500 bg-blue-950/20"
+        : "border-zinc-800 bg-[#161b22]"
       : isActive
-        ? "border-teal-500/60 bg-teal-50 shadow-[0_0_0_1px_rgba(13,148,136,0.08)]"
-        : "border-slate-300 bg-white/95 shadow-sm";
+        ? "border-blue-500 bg-blue-50"
+        : "border-zinc-200 bg-white";
 
   const outlineButtonClass =
     theme === "dark"
       ? isActive
-        ? "border-teal-300/70 bg-teal-400/12 text-teal-200"
-        : "border-slate-700/80 bg-slate-900/40 text-slate-400 hover:border-slate-600 hover:bg-slate-800/70 hover:text-slate-200"
+        ? "border-blue-400 bg-blue-900/30 text-blue-200"
+        : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
       : isActive
-        ? "border-teal-400/70 bg-teal-100 text-teal-800"
-        : "border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-400 hover:bg-slate-100 hover:text-slate-900";
+        ? "border-blue-400 bg-blue-100 text-blue-900"
+        : "border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300 hover:text-zinc-900";
 
   return (
     <article
       ref={setNodeRef}
       style={style}
-      className={`relative transition-all duration-200 ${
+      className={`relative transition-all duration-150 ${
         isOutlineMode
-          ? `rounded-lg p-0.5 ${outlineContainerClass}`
-          : `rounded-[1.1rem] border px-4 py-3 ${
+          ? `rounded p-0.5 ${outlineContainerClass}`
+          : `rounded border px-3 py-2 ${
               isDragging
                 ? theme === "dark"
-                  ? "border-teal-400/50 bg-teal-400/10"
-                  : "border-teal-300 bg-teal-50/40"
+                  ? "border-zinc-500 bg-zinc-800"
+                  : "border-zinc-400 bg-zinc-100"
                 : isActive
                   ? theme === "dark"
-                    ? "border-teal-400/40 bg-teal-400/[0.06]"
-                    : "border-teal-200 bg-teal-50/50"
+                    ? "border-blue-500/80 bg-blue-950/20"
+                    : "border-blue-400 bg-blue-50/50"
                   : theme === "dark"
-                    ? "border-slate-700/70 bg-[#141b24]"
-                    : "border-slate-200/80 bg-white"
+                    ? "border-zinc-800 bg-[#161b22] hover:border-zinc-700"
+                    : "border-zinc-200 bg-white hover:border-zinc-300"
             }`
       }`}
     >
-      <div className={`flex items-center ${isOutlineMode ? "gap-1" : "gap-3"}`}>
+      <div className={`flex items-center ${isOutlineMode ? "gap-1" : "gap-2.5"}`}>
         {isOutlineMode ? null : (
           <span
-            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${theme === "dark" ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-500"}`}
+            className={`font-mono text-xs font-medium px-1.5 py-0.5 rounded ${
+              theme === "dark"
+                ? "bg-zinc-800 text-zinc-400"
+                : "bg-zinc-100 text-zinc-600"
+            }`}
           >
             {String(position + 1).padStart(2, "0")}
           </span>
@@ -110,15 +114,15 @@ export function SortableCard({
               onClick={() => onSelect(item)}
               title={getDisplayTitle(item, 56)}
               aria-label={`Ir para ${getDisplayTitle(item, 56)}`}
-              className={`relative flex h-11 w-full cursor-grab items-center justify-center rounded-md border px-2 text-[11px] font-bold tracking-[0.18em] transition active:cursor-grabbing ${outlineButtonClass}`}
+              className={`relative flex h-8 w-full cursor-grab items-center justify-center rounded border px-2 text-xs font-medium transition active:cursor-grabbing ${outlineButtonClass}`}
               {...attributes}
               {...listeners}
             >
               <span
-                className={`absolute left-1.5 top-1.5 rounded-[0.25rem] px-1 font-mono text-[8px] font-semibold leading-3 tracking-[0.12em] ${
+                className={`absolute left-1 top-1 font-mono text-[9px] ${
                   theme === "dark"
-                    ? "bg-slate-800 text-slate-500"
-                    : "bg-slate-100 text-slate-400"
+                    ? "text-zinc-500"
+                    : "text-zinc-400"
                 }`}
                 aria-hidden="true"
               >
@@ -135,15 +139,15 @@ export function SortableCard({
                 status={item.status}
                 theme={theme}
                 label={displayTitle}
-                buttonClassName="absolute right-1 top-1 h-5 w-5"
-                dotClassName="h-2 w-2"
+                buttonClassName="absolute right-1 top-1 h-4 w-4"
+                dotClassName="h-1.5 w-1.5"
                 onChangeStatus={(status) => onChangeStatus(item.id, status)}
               />
             ) : (
               <StatusDot
                 status={item.status}
                 theme={theme}
-                className="absolute right-1.5 top-1.5 h-2 w-2"
+                className="absolute right-1 top-1 h-1.5 w-1.5"
               />
             )}
           </>
@@ -163,30 +167,40 @@ export function SortableCard({
               type="button"
               onClick={() => onSelect(item)}
               title={displayTitle}
-              className={`min-w-0 flex-1 cursor-grab truncate text-left text-[1.15rem] font-semibold leading-6 tracking-[-0.02em] active:cursor-grabbing ${theme === "dark" ? "text-slate-100" : "text-slate-950"}`}
+              className={`min-w-0 flex-1 cursor-grab truncate text-left text-sm font-medium active:cursor-grabbing ${
+                theme === "dark" ? "text-zinc-200" : "text-zinc-900"
+              }`}
               {...attributes}
               {...listeners}
             >
-              <span className="flex min-w-0 items-center gap-2">
-                <span className="truncate">{displayTitle}</span>
-              </span>
+              <span className="truncate">{displayTitle}</span>
             </button>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => onEdit(item)}
                 aria-label={`Editar ${getDisplayTitle(item, 56)}`}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${theme === "dark" ? "border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-600 hover:bg-slate-700 hover:text-slate-200" : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900"}`}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded border text-xs transition ${
+                  theme === "dark"
+                    ? "border-zinc-700 bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+                    : "border-zinc-200 bg-zinc-50 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+                }`}
+                title="Editar card"
               >
-                <span aria-hidden="true">✎</span>
+                ✎
               </button>
               <button
                 type="button"
                 onClick={() => onDelete(item)}
                 aria-label={`Remover ${getDisplayTitle(item, 56)}`}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${theme === "dark" ? "border-slate-700 bg-slate-800 text-rose-400 hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-300" : "border-slate-200 bg-slate-50 text-rose-400 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600"}`}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded border text-xs transition ${
+                  theme === "dark"
+                    ? "border-zinc-700 bg-zinc-800 text-red-400 hover:border-red-900 hover:bg-red-950/40 hover:text-red-300"
+                    : "border-zinc-200 bg-zinc-50 text-red-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                }`}
+                title="Excluir card"
               >
-                <span aria-hidden="true">✕</span>
+                ✕
               </button>
             </div>
           </>

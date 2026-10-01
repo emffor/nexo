@@ -71,39 +71,38 @@ export function ProjectsHome({
   return (
     <main
       data-theme={theme}
-      className={`min-h-screen px-4 py-6 sm:px-6 lg:px-8 ${
-        isDark ? "bg-ink text-white" : "bg-slate-50 text-slate-950"
+      className={`min-h-screen ${
+        isDark ? "bg-[#0d1117] text-zinc-200" : "bg-zinc-50 text-zinc-900"
       }`}
     >
-      <section
-        className={`mx-auto flex max-w-6xl flex-col gap-5 rounded-[1.25rem] border px-5 py-5 sm:px-6 ${
-          isDark
-            ? "border-white/10 bg-[#11161c]"
-            : "border-slate-200 bg-white shadow-sm"
+      {/* Barra superior de navegação sóbria */}
+      <header
+        className={`border-b px-6 py-3 ${
+          isDark ? "border-zinc-800 bg-[#161b22]" : "border-zinc-200 bg-white"
         }`}
       >
-        <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p
-              className={`mb-1 text-[10px] font-medium uppercase tracking-[0.24em] ${
-                isDark ? "text-teal-200/80" : "text-sky-700"
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="font-semibold text-sm tracking-tight text-zinc-100">
+              Nexo
+            </span>
+            <span
+              className={`text-xs ${
+                isDark ? "text-zinc-500" : "text-zinc-400"
               }`}
             >
-              Organizador de conteudo
-            </p>
-            <h1 className="m-0 text-[1.75rem] font-semibold leading-tight">
-              Projetos
-            </h1>
-            <p
-              className={`mt-1 text-sm ${
-                isDark ? "text-slate-300" : "text-slate-600"
+              /
+            </span>
+            <span
+              className={`text-xs font-medium ${
+                isDark ? "text-zinc-400" : "text-zinc-600"
               }`}
             >
-              Separe seus conjuntos de tasks e acesse cada workspace isolado.
-            </p>
+              Workspaces
+            </span>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 self-start md:self-auto">
+          <div className="flex items-center gap-2">
             <span className="toolbar-badge">
               {formatStorageSize(storedDataSizeBytes)}
             </span>
@@ -112,100 +111,119 @@ export function ProjectsHome({
               onClick={onImportAll}
               className="toolbar-button"
             >
-              Importar tudo
+              Importar
             </button>
             <button
               type="button"
               onClick={onExportAll}
               disabled={projects.length === 0}
-              className="toolbar-button toolbar-button--accent"
+              className="toolbar-button"
             >
-              Exportar tudo
+              Exportar
             </button>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <form
-          onSubmit={handleCreate}
-          className={`flex flex-col gap-2 rounded-lg border p-3 sm:flex-row ${
-            isDark
-              ? "border-white/[0.08] bg-white/[0.03]"
-              : "border-slate-200 bg-slate-50"
-          }`}
-        >
-          <label className="sr-only" htmlFor="new-project-name">
-            Nome do projeto
-          </label>
-          <input
-            id="new-project-name"
-            value={newProjectName}
-            onChange={(event) => setNewProjectName(event.target.value)}
-            placeholder="Nome do projeto"
-            className={`min-h-10 flex-1 rounded-md border px-3 text-sm outline-none transition focus:ring-2 focus:ring-teal-300 ${
-              isDark
-                ? "border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-500"
-                : "border-slate-300 bg-white text-slate-900 placeholder:text-slate-400"
-            }`}
-          />
-          <button type="submit" className="toolbar-button toolbar-button--accent">
-            Adicionar projeto
-          </button>
-        </form>
+      {/* Conteúdo central */}
+      <section className="mx-auto max-w-6xl px-6 py-8">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">Projetos</h1>
+            <p
+              className={`mt-0.5 text-xs ${
+                isDark ? "text-zinc-400" : "text-zinc-600"
+              }`}
+            >
+              Gerencie seus workspaces de documentação e diagramas.
+            </p>
+          </div>
+
+          {/* Criação de projeto compacta */}
+          <form onSubmit={handleCreate} className="flex gap-2">
+            <label className="sr-only" htmlFor="new-project-name">
+              Nome do projeto
+            </label>
+            <input
+              id="new-project-name"
+              value={newProjectName}
+              onChange={(event) => setNewProjectName(event.target.value)}
+              placeholder="Criar novo workspace..."
+              className={`h-8 w-64 rounded border px-2.5 text-xs outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
+                isDark
+                  ? "border-zinc-700 bg-zinc-900 text-zinc-100 placeholder:text-zinc-500"
+                  : "border-zinc-300 bg-white text-zinc-900 placeholder:text-zinc-400"
+              }`}
+            />
+            <button
+              type="submit"
+              className="toolbar-button toolbar-button--accent h-8"
+            >
+              Novo Projeto
+            </button>
+          </form>
+        </div>
 
         {isLoading ? (
-          <div className="flex min-h-[240px] items-center justify-center text-sm text-slate-400">
+          <div className="flex min-h-[200px] items-center justify-center text-xs text-zinc-500">
             Carregando projetos...
           </div>
         ) : null}
 
         {!isLoading && projects.length === 0 ? (
           <div
-            className={`rounded-lg border border-dashed px-6 py-10 text-center ${
+            className={`rounded border border-dashed px-6 py-12 text-center text-xs ${
               isDark
-                ? "border-slate-700 bg-[#0c1219] text-slate-400"
-                : "border-slate-300 bg-white text-slate-500"
+                ? "border-zinc-800 bg-zinc-900/50 text-zinc-500"
+                : "border-zinc-300 bg-white text-zinc-500"
             }`}
           >
-            Nenhum projeto ainda.
+            Nenhum projeto cadastrado no banco.
           </div>
         ) : null}
 
         {!isLoading && projects.length > 0 ? (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => {
               const isEditing = editingProjectId === project.id;
               return (
                 <article
                   key={project.id}
-                  className={`rounded-lg border p-4 ${
+                  className={`flex flex-col justify-between rounded border p-4 transition-colors ${
                     isDark
-                      ? "border-slate-800 bg-[#0c1219]"
-                      : "border-slate-200 bg-white shadow-sm"
+                      ? "border-zinc-800 bg-[#161b22] hover:border-zinc-700"
+                      : "border-zinc-200 bg-white hover:border-zinc-300"
                   }`}
                 >
                   {isEditing ? (
                     <form onSubmit={handleRename} className="flex flex-col gap-2">
-                      <label className="sr-only" htmlFor={`project-name-${project.id}`}>
+                      <label
+                        className="sr-only"
+                        htmlFor={`project-name-${project.id}`}
+                      >
                         Nome do projeto
                       </label>
                       <input
                         id={`project-name-${project.id}`}
                         value={editingName}
                         onChange={(event) => setEditingName(event.target.value)}
-                        className={`min-h-10 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-teal-300 ${
+                        className={`h-8 rounded border px-2 text-xs outline-none focus:ring-1 focus:ring-zinc-400 ${
                           isDark
-                            ? "border-slate-700 bg-slate-950 text-slate-100"
-                            : "border-slate-300 bg-white text-slate-900"
+                            ? "border-zinc-700 bg-zinc-900 text-zinc-100"
+                            : "border-zinc-300 bg-white text-zinc-900"
                         }`}
                       />
                       <div className="flex gap-2">
-                        <button type="submit" className="toolbar-button toolbar-button--accent">
+                        <button
+                          type="submit"
+                          className="toolbar-button toolbar-button--accent h-7"
+                        >
                           Salvar
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditingProjectId(null)}
-                          className="toolbar-button"
+                          className="toolbar-button h-7"
                         >
                           Cancelar
                         </button>
@@ -216,53 +234,61 @@ export function ProjectsHome({
                       <button
                         type="button"
                         onClick={() => onOpenProject(project.id)}
-                        className="block w-full text-left"
+                        className="block w-full text-left focus:outline-none"
                       >
-                        <h2 className="m-0 line-clamp-2 text-lg font-semibold">
-                          {project.name}
-                        </h2>
+                        <div className="flex items-start justify-between gap-2">
+                          <h2 className="m-0 line-clamp-1 text-sm font-medium text-zinc-100">
+                            {project.name}
+                          </h2>
+                          <span className="font-mono text-[11px] text-zinc-500 shrink-0">
+                            {project.itemsCount} {project.itemsCount === 1 ? "item" : "itens"}
+                          </span>
+                        </div>
                         <p
-                          className={`mt-2 text-sm ${
-                            isDark ? "text-slate-400" : "text-slate-500"
+                          className={`mt-1.5 text-[11px] ${
+                            isDark ? "text-zinc-400" : "text-zinc-500"
                           }`}
                         >
-                          {project.itemsCount} card
-                          {project.itemsCount === 1 ? "" : "s"} · Atualizado em{" "}
-                          {formatDate(project.updatedAt)}
+                          Modificado em {formatDate(project.updatedAt)}
                         </p>
                       </button>
-                      <div className="mt-4 flex flex-wrap gap-2">
+
+                      <div className="mt-4 flex items-center justify-between border-t pt-3 border-zinc-800/80">
                         <button
                           type="button"
                           onClick={() => onOpenProject(project.id)}
-                          className="toolbar-button toolbar-button--accent"
+                          className="text-xs font-medium text-blue-400 hover:text-blue-300"
                         >
-                          Abrir
+                          Abrir workspace →
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => onExportProject(project.id)}
-                          className="toolbar-button"
-                        >
-                          Exportar projeto
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingProjectId(project.id);
-                            setEditingName(project.name);
-                          }}
-                          className="toolbar-button"
-                        >
-                          Renomear
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDeleteProject(project)}
-                          className="toolbar-button"
-                        >
-                          Excluir
-                        </button>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => onExportProject(project.id)}
+                            className="toolbar-button h-6 px-2 text-[11px]"
+                            title="Exportar JSON deste projeto"
+                          >
+                            Exportar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingProjectId(project.id);
+                              setEditingName(project.name);
+                            }}
+                            className="toolbar-button h-6 px-2 text-[11px]"
+                          >
+                            Renomear
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteProject(project)}
+                            className="toolbar-button toolbar-button--danger h-6 px-2 text-[11px]"
+                          >
+                            Excluir
+                          </button>
+                        </div>
                       </div>
                     </>
                   )}

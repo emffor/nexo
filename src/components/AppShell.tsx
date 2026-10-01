@@ -58,7 +58,7 @@ function ToolbarGroup({
     <div
       role="group"
       aria-label={label}
-      className={`flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-0.5 ${className}`}
+      className={`flex items-center gap-0.5 rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/60 p-0.5 ${className}`}
     >
       {children}
     </div>
@@ -152,106 +152,75 @@ export function AppShell({
       data-theme={theme}
       className={`flex w-full flex-col ${
         isCanvasMode ? "h-screen min-h-0 overflow-hidden" : "min-h-screen"
-      } ${isCompactMode ? "px-2 py-0 sm:px-3" : "px-4 py-6 sm:px-6 lg:px-8"}`}
+      } ${
+        theme === "dark" ? "bg-[#0d1117] text-zinc-200" : "bg-zinc-50 text-zinc-900"
+      }`}
       style={{ ["--font-scale" as string]: String(fontScale) }}
     >
       <header
-        className={`flex flex-col gap-2 border-b shadow-[0_1px_0_rgba(255,255,255,0.04)] ${
+        className={`border-b ${
           theme === "dark"
-            ? "border-white/10 bg-ink text-white"
-            : "border-slate-200 bg-white/90 text-slate-950 shadow-slate-200/80"
-        } ${
-          isCompactMode
-            ? "mb-2 rounded-none px-4 py-2 sm:px-5"
-            : "mb-3 rounded-[1.25rem] px-5 py-3.5 sm:px-6"
-        }`}
+            ? "border-zinc-800 bg-[#161b22] text-zinc-200"
+            : "border-zinc-200 bg-white text-zinc-900"
+        } px-4 py-2.5 sm:px-6`}
       >
-        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-          <div
-            className={`flex min-w-0 items-start gap-3 ${
-              isPreviewMaximized ? "max-w-2xl" : "max-w-4xl"
-            }`}
-          >
-            <div
-              className={`mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg border shadow-[inset_0_0_0_1px_rgba(94,234,212,0.08)] ${
-                theme === "dark"
-                  ? "border-teal-300/20 bg-teal-300/[0.12]"
-                  : "border-teal-500/30 bg-teal-50"
-              }`}
-            >
-              <span
-                className={`font-mono text-[14px] font-semibold leading-none ${
-                  theme === "dark" ? "text-teal-100" : "text-teal-700"
-                }`}
-              >
-                MD
-              </span>
-            </div>
-            <div className="min-w-0">
-              <p
-                className={`mb-1 text-[10px] font-medium uppercase tracking-[0.24em] ${
-                  theme === "dark" ? "text-teal-200/80" : "text-sky-700"
-                }`}
-              >
-                Organizador de conteudo
-              </p>
-              <h1
-                className={`m-0 text-[1.5rem] font-semibold leading-tight ${
-                  theme === "dark" ? "text-slate-50" : "text-slate-950"
-                }`}
-              >
-                {projectName ?? "Jira Markdown"}
-              </h1>
-              <p
-                className={`mt-1 max-w-2xl text-[13px] leading-snug ${
-                  theme === "dark" ? "text-slate-300" : "text-sky-700"
-                }`}
-              >
-                Cole blocos, organize cards e exporte a versao final.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex shrink-0 items-center justify-start gap-1 sm:justify-end">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
             {onBackToProjects ? (
               <button
                 type="button"
                 onClick={onBackToProjects}
-                className="toolbar-button"
+                className="toolbar-button h-7 px-2 text-xs"
+                title="Voltar para a lista de projetos"
               >
-                Projetos
+                ← Projetos
               </button>
             ) : null}
+
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-semibold text-xs tracking-tight text-zinc-400">
+                Workspace /
+              </span>
+              <h1 className="m-0 truncate text-sm font-semibold text-zinc-100">
+                {projectName ?? "Jira Markdown"}
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center justify-start gap-1.5 sm:justify-end">
             <span className="toolbar-badge">
               {formatStorageSize(storedDataSizeBytes)}
             </span>
+            <span className="toolbar-badge">
+              {itemsCount} {itemsCount === 1 ? "card" : "cards"}
+            </span>
+
             <button
               type="button"
               onClick={onCopyAll}
-              className="toolbar-button"
+              className="toolbar-button h-7 px-2.5 text-xs"
               title={`Copiar todo o markdown combinado (${isMac ? "⌘" : "Ctrl"}+Shift+C)`}
             >
               Copiar tudo
             </button>
-            <span className="toolbar-badge">
-              {itemsCount} card{itemsCount === 1 ? "" : "s"}
-            </span>
+
             <button
               type="button"
               onClick={onOpenModal}
-              className="toolbar-button toolbar-button--accent"
+              className="toolbar-button toolbar-button--accent h-7 px-3 text-xs"
               title={isMac ? "⌘N" : "Ctrl+N"}
             >
-              Novo markdown
+              + Novo card
             </button>
+
             <button
               type="button"
               onClick={() => setIsToolbarExpanded((current) => !current)}
-              className="toolbar-button md:hidden"
+              className="toolbar-button h-7 px-2 md:hidden"
               aria-label={isToolbarExpanded ? "Fechar opcoes" : "Mais opcoes"}
               aria-expanded={isToolbarExpanded}
             >
-              {isToolbarExpanded ? "Fechar" : "Opcoes"}
+              {isToolbarExpanded ? "Fechar" : "Opções"}
             </button>
           </div>
         </div>
@@ -272,14 +241,14 @@ export function AppShell({
                   title={title}
                   aria-label={VIEW_MODE_ACCESSIBLE_LABELS[mode]}
                   aria-pressed={isActive}
-                  className={`rounded-md px-2 py-1 text-[11px] font-medium transition focus:outline-none focus:ring-2 focus:ring-teal-200 focus:ring-offset-1 focus:ring-offset-ink ${
+                  className={`rounded px-2.5 py-1 text-xs font-medium transition focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
                     isActive
                       ? theme === "light"
-                        ? "bg-teal-50 text-teal-700 shadow-[inset_0_0_0_1px_rgba(20,184,166,0.3)]"
-                        : "bg-teal-300/[0.14] text-teal-100 shadow-[inset_0_0_0_1px_rgba(94,234,212,0.25)]"
+                        ? "bg-white text-zinc-900 shadow-sm border border-zinc-200"
+                        : "bg-zinc-800 text-zinc-100 shadow-sm border border-zinc-700"
                       : theme === "light"
-                        ? "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                        : "text-slate-300 hover:bg-white/[0.05] hover:text-slate-100"
+                        ? "text-zinc-600 hover:text-zinc-900"
+                        : "text-zinc-400 hover:text-zinc-200"
                   }`}
                 >
                   {label}

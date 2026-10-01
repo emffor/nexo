@@ -76,18 +76,14 @@ export function SortableCardsPanel({
       }`}
     >
       {isOutlineMode ? null : (
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <p
-              className={`mb-1 text-sm font-medium uppercase tracking-[0.24em] ${theme === "dark" ? "text-sky-300/85" : "text-teal-700/90"}`}
-            >
-              Coluna esquerda
-            </p>
-            <h2
-              className={`m-0 text-[1.75rem] font-semibold tracking-[-0.03em] ${theme === "dark" ? "text-slate-50" : "text-slate-950"}`}
-            >
-              Cards em ordem
+        <div className="mb-3 flex items-center justify-between border-b pb-2 border-zinc-200 dark:border-zinc-800">
+          <div className="flex items-center gap-2">
+            <h2 className="m-0 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              Cards
             </h2>
+            <span className="font-mono text-xs text-zinc-400 dark:text-zinc-600">
+              ({items.length})
+            </span>
           </div>
         </div>
       )}
