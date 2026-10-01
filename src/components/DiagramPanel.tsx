@@ -380,7 +380,13 @@ export default function DiagramPanel({
       edges: edgesRef.current,
       viewport: INITIAL_STAGE_TRANSFORM,
     });
-  }, [applyStageTransform, emitDiagramState, items, resetLayoutSignal, setDiagramPositions]);
+  }, [
+    applyStageTransform,
+    emitDiagramState,
+    items,
+    resetLayoutSignal,
+    setDiagramPositions,
+  ]);
 
   useEffect(() => {
     if (clearEdgesSignal === 0) {
@@ -591,18 +597,21 @@ export default function DiagramPanel({
     [persistCurrentDiagramState],
   );
 
-  const handleEdgeClick = useCallback((edgeId: string) => {
-    setEdges((current) => {
-      const nextEdges = current.filter((edge) => edge.id !== edgeId);
-      edgesRef.current = nextEdges;
-      emitDiagramState({
-        positions: positionsRef.current,
-        edges: nextEdges,
-        viewport: stageTransformRef.current,
+  const handleEdgeClick = useCallback(
+    (edgeId: string) => {
+      setEdges((current) => {
+        const nextEdges = current.filter((edge) => edge.id !== edgeId);
+        edgesRef.current = nextEdges;
+        emitDiagramState({
+          positions: positionsRef.current,
+          edges: nextEdges,
+          viewport: stageTransformRef.current,
+        });
+        return nextEdges;
       });
-      return nextEdges;
-    });
-  }, [emitDiagramState]);
+    },
+    [emitDiagramState],
+  );
 
   const isDark = theme === "dark";
   const stageBg = isDark ? "#0b0f17" : "#f8fafc";
