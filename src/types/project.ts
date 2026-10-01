@@ -9,3 +9,7 @@ export interface Project {
   diagramState?: DiagramState;
   hiddenDiagramItemIds?: string[];
 }
+
+export interface ProjectSummary extends Project {
+  itemsCount: number;
+}

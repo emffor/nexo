@@ -408,8 +408,10 @@ export default function App() {
       );
       await loadProjects();
       addToast(`${createdProjects.length} projeto(s) importado(s) com sucesso`);
-    } catch {
-      addToast("Nao foi possivel importar este arquivo.", "error");
+    } catch (err) {
+      console.error("Erro ao importar backup:", err);
+      const msg = err instanceof Error ? err.message : "Nao foi possivel importar este arquivo.";
+      addToast(msg, "error");
     } finally {
       event.target.value = "";
     }

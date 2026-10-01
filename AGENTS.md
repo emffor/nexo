@@ -26,7 +26,8 @@
 - React 18
 - TypeScript
 - Tailwind CSS
-- Dexie / IndexedDB
+- PostgreSQL (Docker)
+- Prisma ORM
 - React Markdown
 - dnd-kit
 - Vitest

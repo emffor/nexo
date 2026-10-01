@@ -1,0 +1,53 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Project {
+  id                   String           @id @default(uuid())
+  name                 String
+  order                Int              @default(0)
+  diagramState         Json?
+  hiddenDiagramItemIds String[]         @default([])
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  items                MarkdownItem[]
+  databaseDiagram      DatabaseDiagram?
+
+  @@map("projects")
+}
+
+model MarkdownItem {
+  id          String   @id @default(uuid())
+  projectId   String
+  title       String?
+  content     String
+  order       Int      @default(0)
+  status      String?
+  observation String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, order])
+  @@map("markdown_items")
+}
+
+model DatabaseDiagram {
+  id        String   @id @default(uuid())
+  projectId String   @unique
+  title     String   @default("Diagrama principal")
+  content   String   @default("")
+  state     Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("database_diagrams")
+}

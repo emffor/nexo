@@ -1,15 +1,21 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { db } from '../lib/db';
 import {
   buildCombinedContent,
   isContentBlank,
   normalizeMarkdownContent,
   reorderMarkdownItems,
 } from '../lib/items';
-import { touchProject } from '../lib/projects';
 import type { DiagramStatus, MarkdownItem } from '../types/markdown';
+import { fetchProjectDetails } from '../services/projectsApi';
+import {
+  clearProjectItemsApi,
+  createItemApi,
+  deleteItemApi,
+  reorderItemsApi,
+  updateItemApi,
+} from '../services/itemsApi';
 
 export interface UseMarkdownBoardResult {
   items: MarkdownItem[];
@@ -25,36 +31,6 @@ export interface UseMarkdownBoardResult {
   replaceItems: (nextItems: MarkdownItem[]) => Promise<void>;
 }
 
-async function loadItems(projectId: string): Promise<MarkdownItem[]> {
-  const storedItems = await db.items
-    .where('projectId')
-    .equals(projectId)
-    .sortBy('order');
-  let hasNormalizedItem = false;
-
-  const normalizedItems = storedItems.map((item) => {
-    const normalizedContent = normalizeMarkdownContent(item.content);
-
-    if (normalizedContent === item.content) {
-      return item;
-    }
-
-    hasNormalizedItem = true;
-
-    return {
-      ...item,
-      content: normalizedContent,
-      updatedAt: new Date().toISOString(),
-    };
-  });
-
-  if (hasNormalizedItem) {
-    await db.items.bulkPut(normalizedItems);
-  }
-
-  return normalizedItems;
-}
-
 export function useMarkdownBoard(projectId: string): UseMarkdownBoardResult {
   const [items, setItems] = useState<MarkdownItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,14 +40,18 @@ export function useMarkdownBoard(projectId: string): UseMarkdownBoardResult {
     setIsLoading(true);
 
     const hydrate = async () => {
-      const storedItems = await loadItems(projectId);
+      try {
+        const details = await fetchProjectDetails(projectId);
+        if (!isMounted) return;
 
-      if (!isMounted) {
-        return;
+        setItems(details.items || []);
+      } catch (err) {
+        console.error('Erro ao carregar itens:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
-
-      setItems(storedItems);
-      setIsLoading(false);
     };
 
     void hydrate();
@@ -91,20 +71,14 @@ export function useMarkdownBoard(projectId: string): UseMarkdownBoardResult {
     }
 
     const cleanTitle = title?.trim() || undefined;
-    const timestamp = new Date().toISOString();
-    const nextItem: MarkdownItem = {
-      id: crypto.randomUUID(),
-      projectId,
-      title: cleanTitle,
-      content: normalizedContent,
-      order: items.length,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
 
-    setItems((currentItems) => [...currentItems, nextItem]);
-    await db.items.put(nextItem);
-    await touchProject(projectId);
+    const created = await createItemApi({
+      projectId,
+      content: normalizedContent,
+      title: cleanTitle,
+    });
+
+    setItems((currentItems) => [...currentItems, created]);
   };
 
   const updateItem = async (itemId: string, content: string, title?: string) => {
@@ -114,80 +88,60 @@ export function useMarkdownBoard(projectId: string): UseMarkdownBoardResult {
       return;
     }
 
-    const currentItem = items.find((item) => item.id === itemId);
-    if (!currentItem) {
-      return;
-    }
-
     const cleanTitle = title?.trim() || undefined;
-    const timestamp = new Date().toISOString();
-    const updatedItem: MarkdownItem = {
-      ...currentItem,
-      title: cleanTitle,
-      content: normalizedContent,
-      updatedAt: timestamp,
-    };
 
+    // Atualização otimista
     setItems((currentItems) =>
-      currentItems.map((item) => (item.id === itemId ? updatedItem : item)),
+      currentItems.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              title: cleanTitle,
+              content: normalizedContent,
+              updatedAt: new Date().toISOString(),
+            }
+          : item
+      )
     );
-    await db.items.put(updatedItem);
-    await touchProject(projectId);
+
+    await updateItemApi(itemId, {
+      content: normalizedContent,
+      title: cleanTitle,
+    });
   };
 
   const deleteItem = async (itemId: string) => {
-    const now = new Date().toISOString();
     const remaining = items
       .filter((item) => item.id !== itemId)
-      .map((item, index) => ({ ...item, order: index, updatedAt: now }));
+      .map((item, index) => ({ ...item, order: index }));
 
     setItems(remaining);
-    await db.transaction('rw', db.items, db.projects, async () => {
-      await db.items.delete(itemId);
-      if (remaining.length > 0) {
-        await db.items.bulkPut(remaining);
-      }
-    });
-    await touchProject(projectId);
+    await deleteItemApi(itemId);
   };
 
-  const updateItemStatus = async (itemId: string, status: DiagramStatus | undefined) => {
-    const currentItem = items.find((item) => item.id === itemId);
-    if (!currentItem) {
-      return;
-    }
-
-    const updatedItem: MarkdownItem = {
-      ...currentItem,
-      status,
-      updatedAt: new Date().toISOString(),
-    };
-
+  const updateItemStatus = async (
+    itemId: string,
+    status: DiagramStatus | undefined
+  ) => {
     setItems((currentItems) =>
-      currentItems.map((item) => (item.id === itemId ? updatedItem : item)),
+      currentItems.map((item) =>
+        item.id === itemId ? { ...item, status } : item
+      )
     );
-    await db.items.put(updatedItem);
-    await touchProject(projectId);
+    await updateItemApi(itemId, { status });
   };
 
-  const updateItemObservation = async (itemId: string, observation: string) => {
-    const currentItem = items.find((item) => item.id === itemId);
-    if (!currentItem) {
-      return;
-    }
-
+  const updateItemObservation = async (
+    itemId: string,
+    observation: string
+  ) => {
     const cleanObservation = observation.trim() || undefined;
-    const updatedItem: MarkdownItem = {
-      ...currentItem,
-      observation: cleanObservation,
-      updatedAt: new Date().toISOString(),
-    };
-
     setItems((currentItems) =>
-      currentItems.map((item) => (item.id === itemId ? updatedItem : item)),
+      currentItems.map((item) =>
+        item.id === itemId ? { ...item, observation: cleanObservation } : item
+      )
     );
-    await db.items.put(updatedItem);
-    await touchProject(projectId);
+    await updateItemApi(itemId, { observation: cleanObservation });
   };
 
   const reorderItems = async (activeId: string, overId: string) => {
@@ -198,37 +152,32 @@ export function useMarkdownBoard(projectId: string): UseMarkdownBoardResult {
     }
 
     setItems(reorderedItems);
-    await db.transaction('rw', db.items, async () => {
-      await db.items.bulkPut(reorderedItems);
-    });
-    await touchProject(projectId);
+    await reorderItemsApi(
+      reorderedItems.map((it, idx) => ({ id: it.id, order: idx }))
+    );
   };
-
 
   const clearItems = async () => {
     setItems([]);
-    await db.transaction('rw', db.items, async () => {
-      await db.items.where('projectId').equals(projectId).delete();
-    });
-    await touchProject(projectId);
+    await clearProjectItemsApi(projectId);
   };
 
   const replaceItems = async (nextItems: MarkdownItem[]) => {
-    const normalizedItems = nextItems.map((item, index) => ({
-      ...item,
-      projectId,
-      order: index,
-      content: normalizeMarkdownContent(item.content),
-    }));
+    await clearProjectItemsApi(projectId);
+    const createdList: MarkdownItem[] = [];
 
-    setItems(normalizedItems);
-    await db.transaction('rw', db.items, async () => {
-      await db.items.where('projectId').equals(projectId).delete();
-      if (normalizedItems.length > 0) {
-        await db.items.bulkPut(normalizedItems);
-      }
-    });
-    await touchProject(projectId);
+    for (const item of nextItems) {
+      const created = await createItemApi({
+        projectId,
+        content: normalizeMarkdownContent(item.content),
+        title: item.title,
+        status: item.status,
+        observation: item.observation,
+      });
+      createdList.push(created);
+    }
+
+    setItems(createdList);
   };
 
   return {

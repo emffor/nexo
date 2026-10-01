@@ -1,4 +1,3 @@
-import { arrayMove } from '@dnd-kit/sortable';
 import type { MarkdownItem } from '../types/markdown';
 
 export function buildCombinedContent(items: Pick<MarkdownItem, 'content'>[]): string {
@@ -12,9 +11,16 @@ export function normalizeMarkdownContent(content: string): string {
 }
 
 function decodeHtmlEntities(text: string): string {
-  const textarea = document.createElement('textarea');
-  textarea.innerHTML = text;
-  return textarea.value;
+  return text
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16))
+    )
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
 }
 
 function stripMarkdownPrefix(line: string): string {
@@ -55,7 +61,11 @@ export function reorderMarkdownItems(
 
   const now = new Date().toISOString();
 
-  return arrayMove(items, oldIndex, newIndex).map((item, index) => ({
+  const clone = [...items];
+  const [removed] = clone.splice(oldIndex, 1);
+  clone.splice(newIndex, 0, removed);
+
+  return clone.map((item, index) => ({
     ...item,
     order: index,
     updatedAt: now,
