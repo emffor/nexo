@@ -5,3 +5,4 @@ coverage
 dist
 .env
 .env*.local
+DEPLOY.md
