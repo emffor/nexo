@@ -9,6 +9,8 @@ import {
 } from "react";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { isContentBlank } from "../lib/items";
+import { getJiraIssueKey } from "../lib/jiraIssueKey";
+import { getJiraCardApi } from "../services/jiraApi";
 import type { AppTheme } from "../lib/preferences";
 import { ConfirmModal } from "./ConfirmModal";
 
@@ -42,8 +44,49 @@ export function AddMarkdownModal({
   const [title, setTitle] = useState("");
   const [error, setError] = useState("");
   const [showDirtyConfirm, setShowDirtyConfirm] = useState(false);
+  const [showJiraConfirm, setShowJiraConfirm] = useState(false);
+  const [isLoadingJira, setIsLoadingJira] = useState(false);
+  const [jiraMessage, setJiraMessage] = useState("");
+  const jiraRequestRef = useRef<AbortController | null>(null);
+  const jiraTimerRef = useRef<number | undefined>(undefined);
+  const issueKey = getJiraIssueKey(title);
 
-  useFocusTrap(dialogRef, open && !showDirtyConfirm);
+  useFocusTrap(dialogRef, open && !showDirtyConfirm && !showJiraConfirm);
+
+  const loadJira = useCallback(async (key: string) => {
+    window.clearTimeout(jiraTimerRef.current);
+    jiraRequestRef.current?.abort();
+    const controller = new AbortController();
+    jiraRequestRef.current = controller;
+    setIsLoadingJira(true);
+    setError("");
+    setJiraMessage("");
+    try {
+      const card = await getJiraCardApi(key, controller.signal);
+      if (controller.signal.aborted) return;
+      setTitle(card.title);
+      setValue(card.content);
+      setJiraMessage("Task importada do Jira. Revise o conteúdo antes de salvar.");
+    } catch (cause) {
+      if (!controller.signal.aborted) {
+        setError(cause instanceof Error ? cause.message : "Falha ao buscar task no Jira.");
+      }
+    } finally {
+      if (jiraRequestRef.current === controller) setIsLoadingJira(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open || mode !== "create" || !issueKey || !isContentBlank(value)) return;
+    const timer = window.setTimeout(() => { void loadJira(issueKey); }, 700);
+    jiraTimerRef.current = timer;
+    return () => {
+      window.clearTimeout(timer);
+      jiraRequestRef.current?.abort();
+    };
+  }, [open, mode, issueKey, value, loadJira]);
+
+  useEffect(() => () => { jiraRequestRef.current?.abort(); }, [open, initialTitle, initialValue]);
 
   const isDirty = open && (value !== initialValue || title !== initialTitle);
 
@@ -61,12 +104,16 @@ export function AddMarkdownModal({
       setTitle("");
       setError("");
       setShowDirtyConfirm(false);
+      setShowJiraConfirm(false);
+      setIsLoadingJira(false);
+      setJiraMessage("");
       return;
     }
 
     setValue(initialValue);
     setTitle(initialTitle);
     setError("");
+    setJiraMessage("");
   }, [initialValue, initialTitle, open]);
 
   useEffect(() => {
@@ -76,6 +123,7 @@ export function AddMarkdownModal({
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (showJiraConfirm || showDirtyConfirm) return;
         safeClose();
       }
       if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
@@ -89,7 +137,7 @@ export function AddMarkdownModal({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose, safeClose]);
+  }, [open, onClose, safeClose, showJiraConfirm, showDirtyConfirm]);
 
   if (!open) {
     return null;
@@ -182,6 +230,7 @@ export function AddMarkdownModal({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isSaving || isLoadingJira || showJiraConfirm || showDirtyConfirm) return;
 
     if (isContentBlank(value)) {
       setError("Cole algum conteudo em markdown para continuar.");
@@ -233,7 +282,13 @@ export function AddMarkdownModal({
             <input
               type="text"
               value={title}
-              onChange={(event) => setTitle(event.target.value)}
+              onChange={(event) => {
+                jiraRequestRef.current?.abort();
+                setIsLoadingJira(false);
+                setJiraMessage("");
+                setError("");
+                setTitle(event.target.value);
+              }}
               placeholder="Ex: P2M-1185 ou Criacao de Pedido"
               className={`h-8 rounded border px-2.5 text-xs outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
                 isDark
@@ -242,6 +297,29 @@ export function AddMarkdownModal({
               }`}
             />
           </label>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+            <button
+              type="button"
+              className="toolbar-button h-7 px-3 text-xs"
+              disabled={!issueKey || isLoadingJira || isSaving}
+              onClick={() => {
+                if (!issueKey) return;
+                if (!isContentBlank(value)) {
+                  setShowJiraConfirm(true);
+                } else {
+                  void loadJira(issueKey);
+                }
+              }}
+            >
+              {isLoadingJira ? "Buscando no Jira..." : "Buscar no Jira"}
+            </button>
+            <span role="status">
+              {jiraMessage || (isLoadingJira
+                ? "Carregando task..."
+                : "Digite a chave ou URL da task. Cards novos com conteúdo vazio buscam automaticamente.")}
+            </span>
+          </div>
 
           <div className="flex flex-col gap-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
             <div className="flex items-center justify-between">
@@ -254,6 +332,7 @@ export function AddMarkdownModal({
                 <button
                   type="button"
                   onClick={handleApplyStrikethrough}
+                  disabled={isLoadingJira}
                   className="toolbar-button h-6 px-2 text-xs line-through"
                   title="Riscar texto selecionado"
                 >
@@ -262,6 +341,7 @@ export function AddMarkdownModal({
                 <button
                   type="button"
                   onClick={handleRemoveStrikethrough}
+                  disabled={isLoadingJira}
                   className="toolbar-button h-6 px-2 text-xs"
                   title="Desriscar texto selecionado"
                 >
@@ -275,6 +355,7 @@ export function AddMarkdownModal({
               ref={textareaRef}
               autoFocus
               value={value}
+              disabled={isLoadingJira}
               onChange={(event) => {
                 setValue(event.target.value);
                 if (error) {
@@ -292,7 +373,7 @@ export function AddMarkdownModal({
           </div>
 
           {error ? (
-            <p className="m-0 text-xs text-red-500 font-medium">
+            <p role="alert" className="m-0 text-xs text-red-500 font-medium">
               {error}
             </p>
           ) : null}
@@ -311,7 +392,7 @@ export function AddMarkdownModal({
               </button>
               <button
                 type="submit"
-                disabled={isSaving}
+                disabled={isSaving || isLoadingJira}
                 className="toolbar-button toolbar-button--accent h-7 px-3 text-xs"
               >
                 {isSaving
@@ -324,6 +405,19 @@ export function AddMarkdownModal({
           </div>
         </form>
       </div>
+
+      <ConfirmModal
+        open={showJiraConfirm}
+        title="Substituir conteúdo pelo Jira?"
+        description="A busca substituirá o Markdown atual pela versão da task no Jira. O card só será atualizado quando você salvar."
+        confirmLabel="Buscar e substituir"
+        theme={theme}
+        onConfirm={() => {
+          setShowJiraConfirm(false);
+          if (issueKey) void loadJira(issueKey);
+        }}
+        onCancel={() => setShowJiraConfirm(false)}
+      />
 
       <ConfirmModal
         open={showDirtyConfirm}
