@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+
     image: nexo-app
     container_name: nexo-app
     restart: unless-stopped
@@ -14,17 +15,25 @@ services:
     ports:
       - "127.0.0.1:${APP_PORT:-3001}:3000"
 
+    networks:
+      - nexo-network
+
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000').then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
+        ]
       interval: 30s
       timeout: 5s
       start_period: 30s
       retries: 3
 
   postgres:
-    # O banco existente em ~/xxx/nexo-db continua sendo usado pela aplicacao.
-    # Ative este perfil apenas em uma instalacao nova, sem nexo-postgres existente.
     profiles: ["database"]
+
     image: postgres:16-alpine
     container_name: nexo-postgres
     restart: always
@@ -40,5 +49,12 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+    networks:
+      - nexo-network
+
 volumes:
   pgdata:
+
+networks:
+  nexo-network:
+    external: true
