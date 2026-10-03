@@ -1033,6 +1033,21 @@ function ProjectWorkspace({
         onTogglePreviewMaximized={() =>
           setIsPreviewMaximized((current) => !current)
         }
+        isSidebarToggleVisible={
+          viewMode === "normal" ||
+          viewMode === "index" ||
+          viewMode === "diagram"
+        }
+        isSidebarHidden={isPreviewMaximized}
+        isStrikethroughVisible={
+          items.length > 0 &&
+          (viewMode === "normal" ||
+            viewMode === "index" ||
+            viewMode === "cards")
+        }
+        onToggleStrikethrough={() => {
+          void handleTogglePreviewStrikethrough();
+        }}
         onToggleDiagramSidebar={() =>
           setIsDiagramSidebarVisible((current) => !current)
         }
@@ -1161,9 +1176,6 @@ function ProjectWorkspace({
               scrollContainerRef={rightScrollRef}
               onSelect={handleSelectItem}
               onReorder={reorderItems}
-              onToggleStrikethrough={() => {
-                void handleTogglePreviewStrikethrough();
-              }}
               onChangeStatus={(itemId, status) => {
                 void updateItemStatus(itemId, status);
               }}

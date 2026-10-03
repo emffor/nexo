@@ -60,6 +60,48 @@ describe("navegação do workspace", () => {
     expect(screen.getByRole("button", { name: "Scroll sync", exact: true })).toBeDisabled();
   });
 
+  it("exibe o botao flutuante de ocultar a coluna apenas quando habilitado", async () => {
+    const user = userEvent.setup();
+    const props = shellProps();
+    const { rerender } = render(<AppShell {...props} />);
+
+    expect(
+      screen.queryByRole("button", { name: /coluna de cards/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /alternar risco da seleção/i }),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <AppShell
+        {...props}
+        isSidebarToggleVisible
+        isSidebarHidden={false}
+        isStrikethroughVisible
+        onToggleStrikethrough={vi.fn()}
+      />,
+    );
+
+    const toggleButton = screen.getByRole("button", {
+      name: "Ocultar coluna de cards",
+    });
+    expect(toggleButton).toHaveAttribute("aria-pressed", "false");
+    await user.click(toggleButton);
+    expect(props.onTogglePreviewMaximized).toHaveBeenCalledOnce();
+
+    expect(
+      screen.getByRole("button", { name: /alternar risco da seleção/i }),
+    ).toBeInTheDocument();
+
+    rerender(
+      <AppShell {...props} isSidebarToggleVisible isSidebarHidden />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Exibir coluna de cards" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("preserva a criação, abertura, renomeação e ações de projeto", async () => {
     const user = userEvent.setup();
     const project = { id: "project-1", name: "Documentação", itemsCount: 2, createdAt: "2026-10-02T12:00:00Z", updatedAt: "2026-10-02T12:00:00Z" };

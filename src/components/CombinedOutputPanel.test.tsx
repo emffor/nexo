@@ -26,7 +26,6 @@ describe("CombinedOutputPanel no modo normal", () => {
         activeItemId="item-2"
         onSelect={vi.fn()}
         onReorder={vi.fn()}
-        onToggleStrikethrough={vi.fn()}
       />,
     );
 
@@ -45,7 +44,6 @@ describe("CombinedOutputPanel no modo normal", () => {
         activeItemId="item-1"
         onSelect={vi.fn()}
         onReorder={vi.fn()}
-        onToggleStrikethrough={vi.fn()}
       />,
     );
 
@@ -60,7 +58,6 @@ describe("CombinedOutputPanel no modo normal", () => {
         activeItemId="item-2"
         onSelect={vi.fn()}
         onReorder={vi.fn()}
-        onToggleStrikethrough={vi.fn()}
       />,
     );
 
@@ -81,7 +78,6 @@ describe("CombinedOutputPanel no modo indice", () => {
         activeItemId="item-2"
         onSelect={vi.fn()}
         onReorder={vi.fn()}
-        onToggleStrikethrough={vi.fn()}
       />,
     );
 

@@ -40,6 +40,10 @@ interface AppShellProps {
   onImport: () => void;
   onCopyAll: () => void;
   isMac?: boolean;
+  isSidebarToggleVisible?: boolean;
+  isSidebarHidden?: boolean;
+  isStrikethroughVisible?: boolean;
+  onToggleStrikethrough?: () => void;
   leftPanel: ReactNode;
   rightPanel: ReactNode;
 }
@@ -139,6 +143,10 @@ export function AppShell({
   onImport,
   onCopyAll,
   isMac = false,
+  isSidebarToggleVisible = false,
+  isSidebarHidden = false,
+  isStrikethroughVisible = false,
+  onToggleStrikethrough,
   leftPanel,
   rightPanel,
 }: AppShellProps) {
@@ -257,16 +265,6 @@ export function AppShell({
           }`}
         >
           <ToolbarGroup label="Layout">
-            <button
-              type="button"
-              onClick={onTogglePreviewMaximized}
-              className={`toolbar-button border-transparent bg-transparent ${
-                isPreviewMaximized ? "toolbar-button--primary" : ""
-              }`}
-              title="Alternar preview em tela cheia"
-            >
-              {isPreviewMaximized ? "Restaurar colunas" : "Maximizar preview"}
-            </button>
             <button
               type="button"
               onClick={onToggleScrollSync}
@@ -442,6 +440,78 @@ export function AppShell({
           </p>
         ) : null}
       </section>
+
+      {isSidebarToggleVisible || isStrikethroughVisible ? (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex flex-col items-center gap-2 rounded-xl border p-2 shadow-2xl backdrop-blur ${
+            theme === "dark"
+              ? "border-slate-700/80 bg-slate-950/80"
+              : "border-slate-200/90 bg-white/90"
+          }`}
+        >
+          {isSidebarToggleVisible ? (
+            <button
+              type="button"
+              title={
+                isSidebarHidden
+                  ? "Exibir coluna de cards"
+                  : "Ocultar coluna de cards"
+              }
+              aria-label={
+                isSidebarHidden
+                  ? "Exibir coluna de cards"
+                  : "Ocultar coluna de cards"
+              }
+              aria-pressed={isSidebarHidden}
+              onClick={onTogglePreviewMaximized}
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-md border transition ${
+                theme === "dark"
+                  ? "border-slate-700 bg-slate-900/80 text-slate-200 hover:border-teal-400/70 hover:bg-slate-800 hover:text-teal-100"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-800"
+              }`}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <line x1="9.5" y1="4" x2="9.5" y2="20" />
+                {isSidebarHidden ? (
+                  <path d="M13.5 9.5l3 2.5-3 2.5" />
+                ) : (
+                  <path d="M16.5 9.5l-3 2.5 3 2.5" />
+                )}
+              </svg>
+            </button>
+          ) : null}
+          {isStrikethroughVisible ? (
+            <button
+              type="button"
+              title="Alternar risco da seleção"
+              aria-label="Alternar risco da seleção"
+              onPointerDown={(event) => event.preventDefault()}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={onToggleStrikethrough}
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-md border text-base font-bold transition ${
+                theme === "dark"
+                  ? "border-slate-700 bg-slate-900/80 text-slate-200 hover:border-teal-400/70 hover:bg-slate-800 hover:text-teal-100"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-800"
+              }`}
+            >
+              <span className="line-through decoration-2" aria-hidden="true">
+                S
+              </span>
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </main>
   );
 }

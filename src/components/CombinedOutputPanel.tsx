@@ -237,7 +237,6 @@ interface CombinedOutputPanelProps {
   scrollContainerRef?: RefObject<HTMLDivElement>;
   onSelect: (item: MarkdownItem) => void;
   onReorder: (activeId: string, overId: string) => Promise<void>;
-  onToggleStrikethrough: () => void;
   onChangeStatus?: (itemId: string, status: DiagramStatus | undefined) => void;
 }
 
@@ -250,7 +249,6 @@ export function CombinedOutputPanel({
   scrollContainerRef,
   onSelect,
   onReorder,
-  onToggleStrikethrough,
   onChangeStatus,
 }: CombinedOutputPanelProps) {
   const [selectedPreviewCardId, setSelectedPreviewCardId] = useState<
@@ -531,34 +529,6 @@ export function CombinedOutputPanel({
           </div>
         )}
       </div>
-
-      {!isLoading && items.length > 0 ? (
-        <div
-          className={`fixed bottom-6 right-6 z-50 flex flex-col items-center gap-2 rounded-xl border p-2 shadow-2xl backdrop-blur ${
-            theme === "dark"
-              ? "border-slate-700/80 bg-slate-950/80"
-              : "border-slate-200/90 bg-white/90"
-          }`}
-        >
-          <button
-            type="button"
-            title="Alternar risco da seleção"
-            aria-label="Alternar risco da seleção"
-            onPointerDown={(event) => event.preventDefault()}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={onToggleStrikethrough}
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-md border text-base font-bold transition ${
-              theme === "dark"
-                ? "border-slate-700 bg-slate-900/80 text-slate-200 hover:border-teal-400/70 hover:bg-slate-800 hover:text-teal-100"
-                : "border-slate-200 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-800"
-            }`}
-          >
-            <span className="line-through decoration-2" aria-hidden="true">
-              S
-            </span>
-          </button>
-        </div>
-      ) : null}
     </section>
   );
 }

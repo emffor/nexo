@@ -589,7 +589,7 @@ describe("App", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("maximiza o preview escondendo a coluna esquerda", async () => {
+  it("oculta e exibe a coluna de cards pelo botao flutuante", async () => {
     const user = userEvent.setup();
     render(<App />);
     await createAndOpenProject(user);
@@ -597,14 +597,20 @@ describe("App", () => {
     expect(screen.getByText(/cards em ordem/i)).toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", { name: /maximizar preview/i }),
+      screen.getByRole("button", { name: /ocultar coluna de cards/i }),
     );
 
     expect(screen.queryByText(/cards em ordem/i)).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /restaurar colunas/i }),
+      screen.getByRole("button", { name: /exibir coluna de cards/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/preview renderizado/i)).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /exibir coluna de cards/i }),
+    );
+
+    expect(screen.getByText(/cards em ordem/i)).toBeInTheDocument();
   });
 
   it("alterna o tema pela toolbar", async () => {
