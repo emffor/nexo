@@ -1257,13 +1257,13 @@ export default function DatabaseDiagramPanel({
   );
 
   const isDark = theme === "dark";
-  const stageBg = isDark ? "#141414" : "#f9f9f9";
-  const tableBg = isDark ? "#1b1b1b" : "#ffffff";
-  const tableBorder = isDark ? "#343434" : "#e4e4e4";
-  const headerBg = isDark ? "#262626" : "#f2f2f2";
-  const headerText = isDark ? "#f5f5f5" : "#171717";
-  const rowText = isDark ? "#d4d4d4" : "#404040";
-  const typeText = isDark ? "#a3a3a3" : "#727272";
+  const stageBg = isDark ? "#111113" : "#f5f5f7";
+  const tableBg = isDark ? "#1c1c1e" : "#ffffff";
+  const tableBorder = isDark ? "#38383a" : "#dedee3";
+  const headerBg = isDark ? "#2c2c2e" : "#ededf0";
+  const headerText = isDark ? "#f5f5f7" : "#1d1d1f";
+  const rowText = isDark ? "#d2d2d7" : "#424245";
+  const typeText = isDark ? "#a1a1a6" : "#6e6e73";
   const edgeColor = isDark ? "#64748b" : "#b7bdc6";
   const activeEdgeColor = isDark ? "#60a5fa" : "#2f7ebd";
   const badgeBg = isDark ? "#243247" : "#e8ecef";
@@ -1833,7 +1833,7 @@ export default function DatabaseDiagramPanel({
                       text="C"
                       fontSize={14}
                       fontStyle="700"
-                      fontFamily="Inter, system-ui, sans-serif"
+                      fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
                       fill="#6366f1"
                       perfectDrawEnabled={false}
                     />
@@ -1864,7 +1864,7 @@ export default function DatabaseDiagramPanel({
                     text={rel.name}
                     fontSize={12}
                     fontStyle="500"
-                    fontFamily="Inter, system-ui, sans-serif"
+                    fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
                     fill={activeEdgeColor}
                     listening={false}
                     perfectDrawEnabled={false}
@@ -2005,7 +2005,7 @@ export default function DatabaseDiagramPanel({
                   text={table.name}
                   fontSize={13}
                   fontStyle="600"
-                  fontFamily="Inter, system-ui, sans-serif"
+                  fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
                   fill={headerText}
                   ellipsis
                   onClick={(event) => {
@@ -2035,7 +2035,7 @@ export default function DatabaseDiagramPanel({
                     text="REC"
                     fontSize={10}
                     fontStyle="700"
-                    fontFamily="Inter, system-ui, sans-serif"
+                    fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
                     fill="#dbeafe"
                     onClick={(event) => {
                       event.cancelBubble = true;
@@ -2102,7 +2102,7 @@ export default function DatabaseDiagramPanel({
                         text={column.name}
                         fontSize={12}
                         fontStyle={column.isPrimaryKey ? "600" : "400"}
-                        fontFamily="Inter, system-ui, sans-serif"
+                        fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
                         fill={rowText}
                         onMouseEnter={(event) => {
                           const stage = event.target.getStage();
@@ -2156,7 +2156,7 @@ export default function DatabaseDiagramPanel({
                             text={badge}
                             fontSize={9}
                             fontStyle="700"
-                            fontFamily="Inter, system-ui, sans-serif"
+                            fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
                             fill={badgeText}
                             perfectDrawEnabled={false}
                           />

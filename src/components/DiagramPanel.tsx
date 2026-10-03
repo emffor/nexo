@@ -860,10 +860,10 @@ export default function DiagramPanel({
   );
 
   const isDark = theme === "dark";
-  const stageBg = isDark ? "#141414" : "#f9f9f9";
+  const stageBg = isDark ? "#111113" : "#f5f5f7";
   const edgeColor = isDark ? "#94a3b8" : "#475569";
   const edgeHoverColor = isDark ? "#f87171" : "#dc2626";
-  const portColor = isDark ? "#5eead4" : "#0d9488";
+  const portColor = isDark ? "#64b5ff" : "#0071e3";
 
   return (
     <div
@@ -1021,7 +1021,7 @@ export default function DiagramPanel({
                   height={DIAGRAM_NODE_HEIGHT}
                   cornerRadius={12}
                   fill={palette.fill}
-                  stroke={isActive ? "#2dd4bf" : palette.border}
+                  stroke={isActive ? "#0071e3" : palette.border}
                   strokeWidth={isActive ? 2.4 : 1.4}
                   perfectDrawEnabled={false}
                   shadowForStrokeEnabled={false}
@@ -1039,7 +1039,7 @@ export default function DiagramPanel({
                   text={title}
                   fontSize={13}
                   fontStyle="600"
-                  fontFamily="Inter, system-ui, sans-serif"
+                  fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
                   fill={palette.text}
                   lineHeight={1.25}
                   ellipsis
@@ -1056,7 +1056,7 @@ export default function DiagramPanel({
                     text={observation}
                     fontSize={11}
                     fontStyle="400"
-                    fontFamily="Inter, system-ui, sans-serif"
+                    fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
                     fill={palette.text}
                     lineHeight={1.3}
                     ellipsis

@@ -52,8 +52,8 @@ export function ConfirmModal({
 
   const confirmButtonClass =
     variant === "danger"
-      ? "border-red-600 bg-red-600 text-white hover:bg-red-500 focus:ring-red-400"
-      : "border-[#1814f3] bg-[#1814f3] text-white hover:bg-[#2d60ff] focus:ring-blue-400";
+      ? "toolbar-button--destructive"
+      : "toolbar-button--primary";
 
   return (
     <div
@@ -98,7 +98,7 @@ export function ConfirmModal({
           <button
             type="button"
             onClick={onConfirm}
-            className={`inline-flex min-h-10 items-center justify-center rounded-xl border px-4 text-sm font-medium transition focus:outline-none focus:ring-1 ${confirmButtonClass}`}
+            className={`toolbar-button ${confirmButtonClass}`}
           >
             {confirmLabel}
           </button>

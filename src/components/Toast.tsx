@@ -29,7 +29,6 @@ function ToastItem({
   onDismiss: (id: string) => void;
 }) {
   const [isVisible, setIsVisible] = useState(false);
-  const isDark = theme === "dark";
 
   useEffect(() => {
     requestAnimationFrame(() => setIsVisible(true));
@@ -44,24 +43,11 @@ function ToastItem({
     return () => clearTimeout(timer);
   }, [message.id, onDismiss]);
 
-  const darkColorMap: Record<string, string> = {
-    success: "border-teal-500/40 bg-teal-950/90 text-teal-200",
-    error: "border-rose-500/40 bg-rose-950/90 text-rose-200",
-    info: "border-sky-500/40 bg-sky-950/90 text-sky-200",
-  };
-
-  const lightColorMap: Record<string, string> = {
-    success: "border-teal-300 bg-white text-teal-800 shadow-md",
-    error: "border-rose-300 bg-white text-rose-800 shadow-md",
-    info: "border-sky-300 bg-white text-sky-800 shadow-md",
-  };
-
-  const colorMap = isDark ? darkColorMap : lightColorMap;
-  const colors = colorMap[message.type ?? "success"] ?? colorMap.success;
-
   return (
     <div
-      className={`rounded-xl border px-4 py-3 text-sm font-medium shadow-lg backdrop-blur-sm transition-all duration-300 ${colors} ${
+      data-theme={theme}
+      data-kind={message.type ?? "success"}
+      className={`nexo-ui nexo-toast px-4 py-3 text-sm font-medium transition-all duration-300 ${
         isVisible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
       }`}
     >
@@ -73,11 +59,7 @@ function ToastItem({
             message.action?.onClick();
             onDismiss(message.id);
           }}
-          className={`ml-3 rounded-md px-2 py-1 text-xs font-bold uppercase tracking-wide transition ${
-            isDark
-              ? "bg-white/10 hover:bg-white/20"
-              : "bg-black/5 hover:bg-black/10"
-          }`}
+          className="nexo-toast-action ml-3 px-3 py-1 text-sm font-medium transition"
         >
           {message.action.label}
         </button>
@@ -96,7 +78,7 @@ export function ToastContainer({
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-2">
+    <div className="fixed bottom-6 right-4 z-[60] flex max-w-[calc(100vw-2rem)] flex-col gap-2 sm:right-6">
       {messages.map((msg) => (
         <ToastItem
           key={msg.id}

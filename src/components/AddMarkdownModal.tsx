@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import {
   useCallback,
   useEffect,
@@ -272,9 +273,10 @@ export function AddMarkdownModal({
             <button
               type="button"
               onClick={safeClose}
+              aria-label="Fechar modal"
               className="toolbar-button h-6 px-2 text-xs"
             >
-              ✕
+              <Image src="/venture/close.svg" width={16} height={16} alt="" className="nexo-nav-icon" />
             </button>
           </div>
 

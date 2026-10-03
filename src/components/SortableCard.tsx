@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { getDisplayTitle } from "../lib/items";
@@ -189,7 +190,7 @@ export function SortableCard({
                 }`}
                 title="Editar card"
               >
-                ✎
+                <Image src="/venture/edit.svg" width={16} height={16} alt="" className="nexo-nav-icon" />
               </button>
               <button
                 type="button"
@@ -202,7 +203,19 @@ export function SortableCard({
                 }`}
                 title="Excluir card"
               >
-                ✕
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5" />
+                </svg>
               </button>
             </div>
           </>
