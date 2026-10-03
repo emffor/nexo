@@ -172,18 +172,43 @@ export function AppShell({
               <button
                 type="button"
                 onClick={onBackToProjects}
-                className="toolbar-button toolbar-button--back shrink-0 gap-2 h-8 px-3 text-xs rounded-full"
+                className="group inline-flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs font-medium text-[var(--ui-muted)] transition-all hover:bg-[var(--ui-raised)] hover:text-[var(--ui-heading)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]"
                 title="Voltar para a lista de projetos"
+                aria-label="Projetos"
               >
-                <Image src="/venture/logogram.svg" width={20} height={20} alt="" className="nexo-brand-mark" />
-                Projetos
+                <Image
+                  src="/venture/logogram.svg"
+                  width={22}
+                  height={19}
+                  alt=""
+                  className="nexo-brand-mark shrink-0 transition-transform group-hover:scale-105"
+                />
+                <span className="font-semibold text-sm tracking-tight text-[var(--ui-heading)]">Nexo</span>
+                <span className="text-[var(--ui-muted)] opacity-35" aria-hidden="true">/</span>
+                <span>Projetos</span>
               </button>
-            ) : null}
-            <div className="flex min-w-0 flex-col items-start gap-0.5">
-              <span className="text-[11px] font-medium tracking-wide uppercase text-[var(--ui-muted)]">
+            ) : (
+              <div className="inline-flex items-center gap-2 px-1">
+                <Image
+                  src="/venture/logogram.svg"
+                  width={22}
+                  height={19}
+                  alt=""
+                  className="nexo-brand-mark shrink-0"
+                />
+                <span className="font-semibold text-sm tracking-tight text-[var(--ui-heading)]">Nexo</span>
+              </div>
+            )}
+
+            <span className="text-sm text-[var(--ui-muted)] opacity-35 select-none" aria-hidden="true">
+              /
+            </span>
+
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-[var(--ui-raised)] text-[var(--ui-muted)] border border-[var(--ui-line)]">
                 Workspace
               </span>
-              <h1 className="m-0 truncate text-lg font-semibold tracking-tight text-[var(--ui-heading)]">
+              <h1 className="m-0 truncate text-base font-semibold tracking-tight text-[var(--ui-heading)]">
                 {projectName ?? "Jira Markdown"}
               </h1>
             </div>
