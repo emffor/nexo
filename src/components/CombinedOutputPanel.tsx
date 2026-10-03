@@ -139,10 +139,17 @@ function PreviewGridCard({
       role="button"
       tabIndex={0}
       aria-label={`Selecionar card ${displayTitle}`}
-      onClick={(event) => onClick(event, item)}
-      onKeyDown={(event) => onKeyDown(event, item)}
       data-active={isActive}
-      className={`nexo-kanban-card group flex shrink-0 min-h-[160px] scroll-mt-6 cursor-pointer flex-col overflow-hidden rounded-lg border text-left transition-all duration-200 active:cursor-grabbing ${
+      {...sortableAttributes}
+      {...listeners}
+      onClick={(event) => onClick(event, item)}
+      onKeyDown={(event) => {
+        listeners?.onKeyDown?.(event);
+        if (!event.defaultPrevented) {
+          onKeyDown(event, item);
+        }
+      }}
+      className={`nexo-kanban-card group flex shrink-0 min-h-[160px] scroll-mt-6 cursor-grab active:cursor-grabbing select-none flex-col overflow-hidden rounded-lg border text-left transition-all duration-200 ${
         isActive ? "preview-item-active" : ""
       } ${
         isDragging
@@ -163,14 +170,12 @@ function PreviewGridCard({
           </span>
           <div className="flex items-center gap-2">
             <StatusDot status={item.status} theme={theme} className="h-2 w-2" />
-            <button
-              type="button"
-              aria-label={`Mover card ${displayTitle}`}
-              className="cursor-grab touch-none rounded px-1 text-[var(--ui-muted)] hover:bg-[var(--ui-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--ui-accent)]"
-              onClick={(event) => event.stopPropagation()}
-              {...sortableAttributes}
-              {...listeners}
-            >⠿</button>
+            <span
+              aria-hidden="true"
+              className="select-none px-1 text-xs text-[var(--ui-muted)] opacity-60 transition-opacity group-hover:opacity-100"
+            >
+              ⠿
+            </span>
           </div>
         </div>
         <h3
@@ -181,7 +186,7 @@ function PreviewGridCard({
       </div>
 
       <div className="relative flex-1 px-3 py-2.5">
-        <div className="markdown-preview markdown-preview--card max-h-[88px] overflow-hidden">
+        <div className="markdown-preview markdown-preview--card max-h-[88px] overflow-hidden pointer-events-none select-none">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeRaw]}
@@ -350,6 +355,17 @@ export function CombinedOutputPanel({
     }),
   );
 
+  const dragHappenedRef = useRef(false);
+  const dragResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (dragResetTimeoutRef.current) {
+        clearTimeout(dragResetTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleOpenPreviewCard = (item: MarkdownItem) => {
     setSelectedPreviewCardId(item.id);
     onSelect(item);
@@ -359,12 +375,18 @@ export function CombinedOutputPanel({
     _event: MouseEvent<HTMLElement>,
     item: MarkdownItem,
   ) => {
+    if (dragHappenedRef.current || draggedItemId) {
+      return;
+    }
     handleOpenPreviewCard(item);
   };
 
   const handlePreviewCardDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setDraggedItemId(null);
+    dragResetTimeoutRef.current = setTimeout(() => {
+      dragHappenedRef.current = false;
+    }, 120);
 
     if (!over || active.id === over.id) {
       return;
@@ -497,8 +519,20 @@ export function CombinedOutputPanel({
               }
               return args.pointerCoordinates ? [] : closestCorners(args);
             }}
-            onDragStart={({ active }) => setDraggedItemId(String(active.id))}
-            onDragCancel={() => setDraggedItemId(null)}
+            onDragStart={({ active }) => {
+              dragHappenedRef.current = true;
+              if (dragResetTimeoutRef.current) {
+                clearTimeout(dragResetTimeoutRef.current);
+                dragResetTimeoutRef.current = null;
+              }
+              setDraggedItemId(String(active.id));
+            }}
+            onDragCancel={() => {
+              setDraggedItemId(null);
+              dragResetTimeoutRef.current = setTimeout(() => {
+                dragHappenedRef.current = false;
+              }, 120);
+            }}
             onDragEnd={handlePreviewCardDragEnd}
           >
             <div className="grid h-[calc(100dvh-240px)] min-h-[420px] grid-flow-col auto-cols-[minmax(250px,1fr)] gap-3 pb-3">

@@ -213,4 +213,12 @@ describe("CombinedOutputPanel no modo kanban", () => {
     expect(onChangeStatus).not.toHaveBeenCalled();
     expect(onReorder).not.toHaveBeenCalled();
   });
+
+  it("renderiza o card inteiro como elemento interativo e sem botão isolado para mover", () => {
+    renderBoard();
+    const card = screen.getByRole("button", { name: "Selecionar card Primeiro card" });
+    expect(card).toBeInTheDocument();
+    expect(card).toHaveClass("cursor-grab");
+    expect(screen.queryByRole("button", { name: /Mover card/i })).not.toBeInTheDocument();
+  });
 });
