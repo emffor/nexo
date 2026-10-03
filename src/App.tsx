@@ -320,7 +320,7 @@ export default function App() {
   );
   const [projectToDelete, setProjectToDelete] =
     useState<ProjectSummary | null>(null);
-  const [theme, setTheme] = useState<AppTheme>("dark");
+  const [theme, setTheme] = useState<AppTheme>(() => readStoredTheme());
   const projectsImportInputRef = useRef<HTMLInputElement | null>(null);
   const { messages, addToast, dismissToast } = useToast();
 
@@ -351,7 +351,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    setTheme(readStoredTheme());
     void loadProjects();
   }, [loadProjects]);
 
@@ -434,6 +433,23 @@ export default function App() {
   const selectedProject = selectedProjectId
     ? projects.find((project) => project.id === selectedProjectId)
     : null;
+
+  if (isProjectsLoading) {
+    return (
+      <main
+        data-theme={theme}
+        suppressHydrationWarning
+        className="nexo-ui flex min-h-screen items-center justify-center"
+      >
+        <div
+          role="status"
+          className="nexo-loading flex items-center gap-3 text-sm text-[var(--ui-muted)]"
+        >
+          Carregando...
+        </div>
+      </main>
+    );
+  }
 
   if (selectedProject) {
     return (
@@ -518,19 +534,22 @@ function ProjectWorkspace({
   const [editingItem, setEditingItem] = useState<MarkdownItem | null>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [isScrollSyncEnabled, setIsScrollSyncEnabled] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("normal");
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    readStoredViewMode(),
+  );
   const [isDiagramSidebarVisible, setIsDiagramSidebarVisible] = useState(true);
   const [diagramEdgeStyle, setDiagramEdgeStyle] =
-    useState<DiagramEdgeStyle>("curve");
+    useState<DiagramEdgeStyle>(() => readStoredDiagramEdgeStyle());
   const [databaseEdgeStyle, setDatabaseEdgeStyle] =
-    useState<DiagramEdgeStyle>("square");
+    useState<DiagramEdgeStyle>(() => readStoredDatabaseEdgeStyle());
   const [hiddenDiagramItemIds, setHiddenDiagramItemIds] = useState<Set<string>>(
     () => new Set(project.hiddenDiagramItemIds ?? []),
   );
-  const [fontScale, setFontScale] = useState(FONT_SCALE.default);
-  const [isPreviewMaximized, setIsPreviewMaximized] = useState(false);
-  const [theme, setTheme] = useState<AppTheme>("dark");
-  const [arePreferencesLoaded, setArePreferencesLoaded] = useState(false);
+  const [fontScale, setFontScale] = useState(() => readStoredFontScale());
+  const [isPreviewMaximized, setIsPreviewMaximized] = useState(
+    () => readStoredPreviewMaximized(),
+  );
+  const [theme, setTheme] = useState<AppTheme>(() => readStoredTheme());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const diagramStateRef = useRef<DiagramState | null>(
     project.diagramState ?? null,
@@ -577,86 +596,47 @@ function ProjectWorkspace({
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [deletingItem, setDeletingItem] = useState<MarkdownItem | null>(null);
 
-  useEffect(() => {
-    setViewMode(readStoredViewMode());
-  }, []);
+  const isFirstHiddenPersistRef = useRef(true);
 
   useEffect(() => {
-    setFontScale(readStoredFontScale());
-  }, []);
-
-  useEffect(() => {
-    setIsPreviewMaximized(readStoredPreviewMaximized());
-  }, []);
-
-  useEffect(() => {
-    setTheme(readStoredTheme());
-    setDiagramEdgeStyle(readStoredDiagramEdgeStyle());
-    setDatabaseEdgeStyle(readStoredDatabaseEdgeStyle());
-    setArePreferencesLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (!arePreferencesLoaded) {
-      return;
-    }
-
     window.localStorage.setItem(STORAGE_KEYS.fontScale, String(fontScale));
-  }, [arePreferencesLoaded, fontScale]);
+  }, [fontScale]);
 
   useEffect(() => {
-    if (!arePreferencesLoaded) {
-      return;
-    }
-
     window.localStorage.setItem(STORAGE_KEYS.viewMode, viewMode);
-  }, [arePreferencesLoaded, viewMode]);
+  }, [viewMode]);
 
   useEffect(() => {
-    if (!arePreferencesLoaded) {
-      return;
-    }
-
     window.localStorage.setItem(
       STORAGE_KEYS.previewMaximized,
       String(isPreviewMaximized),
     );
-  }, [arePreferencesLoaded, isPreviewMaximized]);
+  }, [isPreviewMaximized]);
 
   useEffect(() => {
-    if (!arePreferencesLoaded) {
-      return;
-    }
-
     window.localStorage.setItem(STORAGE_KEYS.theme, theme);
     document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.style.colorScheme = theme;
     document.body.setAttribute("data-theme", theme);
-  }, [arePreferencesLoaded, theme]);
+  }, [theme]);
 
   useEffect(() => {
-    if (!arePreferencesLoaded) {
-      return;
-    }
-
     window.localStorage.setItem(
       STORAGE_KEYS.diagramEdgeStyle,
       diagramEdgeStyle,
     );
-  }, [arePreferencesLoaded, diagramEdgeStyle]);
+  }, [diagramEdgeStyle]);
 
   useEffect(() => {
-    if (!arePreferencesLoaded) {
-      return;
-    }
-
     window.localStorage.setItem(
       STORAGE_KEYS.databaseEdgeStyle,
       databaseEdgeStyle,
     );
-  }, [arePreferencesLoaded, databaseEdgeStyle]);
+  }, [databaseEdgeStyle]);
 
   useEffect(() => {
-    if (!arePreferencesLoaded) {
+    if (isFirstHiddenPersistRef.current) {
+      isFirstHiddenPersistRef.current = false;
       return;
     }
 
@@ -666,7 +646,7 @@ function ProjectWorkspace({
       hiddenDiagramItemIds: nextHiddenItemIds,
     }));
     void updateProjectHiddenDiagramItemIds(project.id, nextHiddenItemIds);
-  }, [arePreferencesLoaded, hiddenDiagramItemIds, project.id]);
+  }, [hiddenDiagramItemIds, project.id]);
 
   useEffect(() => {
     if (items.length === 0) {

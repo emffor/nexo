@@ -96,6 +96,7 @@ export function ProjectsHome({
   return (
     <main
       data-theme={theme}
+      suppressHydrationWarning
       className="nexo-ui nexo-app-frame nexo-projects-home min-h-screen"
     >
       <header

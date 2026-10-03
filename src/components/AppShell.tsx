@@ -163,6 +163,7 @@ export function AppShell({
     <main
       data-layout-mode="compact"
       data-theme={theme}
+      suppressHydrationWarning
       data-view-mode={viewMode}
       className={`nexo-ui nexo-app-frame flex w-full flex-col ${
         isCanvasMode ? "h-screen min-h-0 overflow-hidden" : "min-h-screen"

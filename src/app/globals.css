@@ -792,10 +792,6 @@
       border-color 0.2s ease;
   }
 
-  [data-theme] {
-    transition: background 0.3s ease;
-  }
-
   .toolbar-button:active {
     transform: scale(0.96);
   }
