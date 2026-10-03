@@ -70,11 +70,6 @@ function ToolbarGroup({
 
 const VIEW_MODE_OPTIONS: { mode: ViewMode; label: string; title: string }[] = [
   { mode: "normal", label: "Normal", title: "Editor + preview lado a lado" },
-  {
-    mode: "index",
-    label: "\u00cdndice",
-    title: "Lista compacta com \u00edndice",
-  },
   { mode: "cards", label: "Cards", title: "Visualiza\u00e7\u00e3o em cards" },
   {
     mode: "diagram",
@@ -239,7 +234,10 @@ export function AppShell({
         <nav aria-label="Visualizações do workspace" className="nexo-view-navigation">
           <ToolbarGroup label="Modo de visualização" className="nexo-view-tabs">
             {VIEW_MODE_OPTIONS.map(({ mode, label, title }) => {
-              const isActive = viewMode === mode;
+              const isActive =
+                mode === "normal"
+                  ? viewMode === "normal" || viewMode === "index"
+                  : viewMode === mode;
               return (
                 <button
                   key={mode}

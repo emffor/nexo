@@ -26,6 +26,7 @@ interface SortableCardsPanelProps {
   activeItemId?: string | null;
   scrollContainerRef?: RefObject<HTMLDivElement>;
   theme?: AppTheme;
+  onToggleOutlineMode?: () => void;
   onReorder: (activeId: string, overId: string) => Promise<void>;
   onSelect: (item: MarkdownItem) => void;
   onEdit: (item: MarkdownItem) => void;
@@ -40,6 +41,7 @@ export function SortableCardsPanel({
   activeItemId,
   scrollContainerRef,
   theme = "dark",
+  onToggleOutlineMode,
   onReorder,
   onSelect,
   onEdit,
@@ -75,8 +77,38 @@ export function SortableCardsPanel({
           : `lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]`
       }`}
     >
-      {isOutlineMode ? null : (
-        <div className="nexo-panel-heading">
+      {isOutlineMode ? (
+        <div className="mb-2 flex items-center justify-between px-1">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ui-muted)]">
+            Índice
+          </span>
+          {onToggleOutlineMode ? (
+            <button
+              type="button"
+              onClick={onToggleOutlineMode}
+              className="toolbar-button h-6 w-6 p-0 text-xs rounded-lg inline-flex items-center justify-center text-[var(--ui-muted)] hover:text-[var(--ui-heading)]"
+              title="Mudar para exibição completa"
+              aria-label="Alternar para modo completo"
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+              </svg>
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <div className="nexo-panel-heading flex items-center justify-between pb-3">
           <div className="flex items-center gap-2">
             <h2 className="m-0 text-xs font-semibold uppercase tracking-wider text-[var(--ui-muted)]">
               Cards
@@ -85,6 +117,35 @@ export function SortableCardsPanel({
               ({items.length})
             </span>
           </div>
+          {onToggleOutlineMode ? (
+            <button
+              type="button"
+              onClick={onToggleOutlineMode}
+              className="toolbar-button h-6 px-2 text-[11px] rounded-lg gap-1.5 text-[var(--ui-muted)] hover:text-[var(--ui-heading)]"
+              title="Mudar para índice compacto"
+              aria-label="Alternar para modo índice"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="10" y1="6" x2="21" y2="6" />
+                <line x1="10" y1="12" x2="21" y2="12" />
+                <line x1="10" y1="18" x2="21" y2="18" />
+                <path d="M4 6h1v4" />
+                <path d="M4 10h2" />
+                <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1" />
+              </svg>
+              <span>Índice</span>
+            </button>
+          ) : null}
         </div>
       )}
 

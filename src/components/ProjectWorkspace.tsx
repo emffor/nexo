@@ -241,6 +241,9 @@ export function ProjectWorkspace({
               items={items}
               isLoading={isLoading}
               isOutlineMode={viewMode === "index"}
+              onToggleOutlineMode={() => {
+                handleSetViewMode(viewMode === "index" ? "normal" : "index");
+              }}
               activeItemId={activeItemId}
               scrollContainerRef={leftScrollRef}
               theme={theme}

@@ -47,7 +47,7 @@ describe("navegação do workspace", () => {
     expect(screen.getByRole("navigation", { name: "Visualizações do workspace" })).toBeInTheDocument();
 
     expect(screen.getByRole("button", { name: "Modo cards" })).toHaveAttribute("aria-pressed", "true");
-    for (const [label, mode] of [["Modo normal", "normal"], ["Modo indice", "index"], ["Modo cards", "cards"], ["Modo diagrama", "diagram"], ["Modo banco", "database"]]) {
+    for (const [label, mode] of [["Modo normal", "normal"], ["Modo cards", "cards"], ["Modo diagrama", "diagram"], ["Modo banco", "database"]]) {
       await user.click(screen.getByRole("button", { name: label }));
       expect(props.onSetViewMode).toHaveBeenLastCalledWith(mode);
     }
