@@ -418,7 +418,7 @@ export function AppShell({
                   ? `lg:grid-cols-[140px_minmax(0,1fr)] gap-3`
                   : isDiagramMode
                     ? `lg:grid-cols-[minmax(240px,0.25fr)_minmax(0,0.75fr)] gap-2`
-                    : `lg:grid-cols-[minmax(280px,0.33fr)_minmax(0,0.67fr)] gap-2`
+                    : `lg:grid-cols-[minmax(240px,0.25fr)_minmax(0,0.75fr)] gap-2`
         }`}
       >
         {isDatabaseMode

@@ -252,16 +252,18 @@
   }
 
   .nexo-ui .nexo-item-number {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     flex-shrink: 0;
     padding: 0;
+    border-radius: 8px;
+    font-size: 11px;
   }
 
   .nexo-ui .nexo-item-card {
     border: 1px solid var(--ui-line);
-    border-radius: 18px;
-    padding: 16px;
+    border-radius: 12px;
+    padding: 8px 12px;
     background: var(--ui-surface);
   }
 
@@ -272,12 +274,12 @@
     background: var(--ui-accent-soft);
   }
 
-  .nexo-ui .nexo-item-title { color: var(--ui-heading); font-size: 14px; line-height: 1.5; }
+  .nexo-ui .nexo-item-title { color: var(--ui-heading); font-size: 13px; line-height: 1.45; }
   .nexo-ui .nexo-card-action {
-    width: 32px;
-    height: 32px;
+    width: 26px;
+    height: 26px;
     border: 0;
-    border-radius: 12px;
+    border-radius: 8px;
     background: transparent;
     color: var(--ui-muted);
   }

@@ -98,7 +98,7 @@ export function SortableCard({
             }`
       }`}
     >
-      <div className={`flex items-center ${isOutlineMode ? "gap-1" : "gap-2.5"}`}>
+      <div className={`flex items-center ${isOutlineMode ? "gap-1" : "gap-2"}`}>
         {isOutlineMode ? null : (
           <span
             className={`nexo-item-number font-mono text-xs font-medium px-1.5 py-0.5 rounded ${
