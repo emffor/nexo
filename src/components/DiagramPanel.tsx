@@ -46,7 +46,9 @@ const DIAGRAM_PORT_SIDES: DiagramPortSide[] = [
   "left",
 ];
 
-Konva.pixelRatio = 1;
+if (typeof window !== "undefined") {
+  Konva.pixelRatio = Math.max(window.devicePixelRatio || 1, 2);
+}
 
 export default function DiagramPanel({
   items,

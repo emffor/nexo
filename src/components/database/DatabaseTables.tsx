@@ -63,6 +63,8 @@ interface DatabaseTablesProps {
   badgeText: string;
 }
 
+const CANVAS_FONT_FAMILY = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
 export function DatabaseTables({
   tables,
   enums,
@@ -140,11 +142,11 @@ export function DatabaseTables({
             height={height}
             cornerRadius={8}
             fill={isDark ? "#18181b" : "#ffffff"}
-            stroke={isTableSelected ? selectedBorder : isDark ? "#27272a" : "#e2e8f0"}
+            stroke={isTableSelected ? selectedBorder : isDark ? "#3f3f46" : "#cbd5e1"}
             strokeWidth={isTableSelected ? 1.5 : 1}
-            shadowColor="#000000"
-            shadowBlur={isTableSelected ? 12 : 6}
-            shadowOpacity={isDark ? 0.35 : 0.08}
+            shadowColor="#0f172a"
+            shadowBlur={isTableSelected ? 14 : 8}
+            shadowOpacity={isDark ? 0.4 : 0.06}
             shadowOffsetY={2}
             perfectDrawEnabled={false}
           />
@@ -155,15 +157,41 @@ export function DatabaseTables({
             fill={table.headerColor ?? (isDark ? "#27272a" : "#f1f5f9")}
             perfectDrawEnabled={false}
           />
+          <Line
+            points={[0, DB_HEADER_HEIGHT, DB_TABLE_WIDTH, DB_HEADER_HEIGHT]}
+            stroke={isDark ? "#3f3f46" : "#e2e8f0"}
+            strokeWidth={1}
+            perfectDrawEnabled={false}
+          />
+          <Group x={12} y={13} listening={false}>
+            <Rect
+              width={13}
+              height={13}
+              cornerRadius={2}
+              stroke={table.headerColor ? tableHeaderText : isDark ? "#a1a1aa" : "#64748b"}
+              strokeWidth={1.2}
+              fill="transparent"
+            />
+            <Line
+              points={[0, 4.5, 13, 4.5]}
+              stroke={table.headerColor ? tableHeaderText : isDark ? "#a1a1aa" : "#64748b"}
+              strokeWidth={1.2}
+            />
+            <Line
+              points={[4.5, 4.5, 4.5, 13]}
+              stroke={table.headerColor ? tableHeaderText : isDark ? "#a1a1aa" : "#64748b"}
+              strokeWidth={1}
+            />
+          </Group>
           <Text
             x={32}
-            y={13}
+            y={12}
             width={DB_TABLE_WIDTH - (table.records ? 146 : 106)}
             text={table.name}
             fontSize={13}
             fontStyle="600"
-            fontFamily={UI_CODE_FONT_FAMILY}
-            fill={table.headerColor ? tableHeaderText : isDark ? "#f4f4f5" : "#1e293b"}
+            fontFamily={CANVAS_FONT_FAMILY}
+            fill={table.headerColor ? tableHeaderText : isDark ? "#f4f4f5" : "#0f172a"}
             ellipsis
             onClick={(event) => {
               event.cancelBubble = true;
@@ -183,7 +211,6 @@ export function DatabaseTables({
             }}
             perfectDrawEnabled={false}
           />
-          <Text x={12} y={12} text="▦" fontSize={16} fill={tableHeaderText} listening={false} />
           {onOpenColor && <DatabaseCanvasIcon x={DB_TABLE_WIDTH - 34} y={6} color={tableHeaderText} kind="palette" onClick={() => onOpenColor({ kind: 'Table', name: table.name })} />}
           {table.note && <DatabaseCanvasIcon x={DB_TABLE_WIDTH - 64} y={6} color={tableHeaderText} kind="note" onClick={() => onInspect({ title: table.name, text: table.note })} />}
           {table.records && table.records.rows.length > 0 ? (
@@ -195,7 +222,7 @@ export function DatabaseTables({
               text="REC"
               fontSize={10}
               fontStyle="700"
-              fontFamily={UI_FONT_FAMILY}
+              fontFamily={CANVAS_FONT_FAMILY}
               fill={colors.tag}
               onClick={(event) => {
                 event.cancelBubble = true;
@@ -246,9 +273,9 @@ export function DatabaseTables({
                 {!isLastRow && (
                   <Line
                     points={[
-                      8,
+                      10,
                       DB_ROW_HEIGHT,
-                      DB_TABLE_WIDTH - 8,
+                      DB_TABLE_WIDTH - 10,
                       DB_ROW_HEIGHT,
                     ]}
                     stroke={isDark ? "#27272a" : "#f1f5f9"}
@@ -264,8 +291,8 @@ export function DatabaseTables({
                   width={DB_TABLE_WIDTH / 2 - 20}
                   ellipsis
                   fontStyle="600"
-                  fontFamily={UI_CODE_FONT_FAMILY}
-                  fill={isDark ? "#e4e4e7" : "#334155"}
+                  fontFamily={CANVAS_FONT_FAMILY}
+                  fill={isDark ? "#f4f4f5" : "#0f172a"}
                   onMouseEnter={(event) => {
                     const stage = event.target.getStage();
                     if (stage) {
@@ -290,7 +317,7 @@ export function DatabaseTables({
                   onClick={enumType ? (event) => { event.cancelBubble = true; onInspect({ title: enumType.name, values: enumType.values }); } : undefined}
                   onTap={enumType ? (event) => { event.cancelBubble = true; onInspect({ title: enumType.name, values: enumType.values }); } : undefined}
                   fontSize={11}
-                  fontFamily={UI_CODE_FONT_FAMILY}
+                  fontFamily={CANVAS_FONT_FAMILY}
                   fill={isDark ? "#a1a1aa" : "#64748b"}
                   ellipsis
                   perfectDrawEnabled={false}
@@ -324,6 +351,20 @@ export function DatabaseTables({
                               ? "#27272a"
                               : "#f1f5f9"
                       }
+                      stroke={
+                        badge === "PK"
+                          ? isDark
+                            ? "#78350f"
+                            : "#fde68a"
+                          : badge === "FK"
+                            ? isDark
+                              ? "#075985"
+                              : "#bae6fd"
+                            : isDark
+                              ? "#3f3f46"
+                              : "#e2e8f0"
+                      }
+                      strokeWidth={1}
                       perfectDrawEnabled={false}
                     />
                     <Text
@@ -334,7 +375,7 @@ export function DatabaseTables({
                       text={badge}
                       fontSize={9}
                       fontStyle="700"
-                      fontFamily={UI_FONT_FAMILY}
+                      fontFamily={CANVAS_FONT_FAMILY}
                       fill={
                         badge === "PK"
                           ? isDark
@@ -344,9 +385,9 @@ export function DatabaseTables({
                             ? isDark
                               ? "#7dd3fc"
                               : "#0369a1"
-                            : isDark
-                              ? "#a1a1aa"
-                              : "#475569"
+                          : isDark
+                            ? "#a1a1aa"
+                            : "#475569"
                       }
                       perfectDrawEnabled={false}
                     />

@@ -23,7 +23,9 @@ const MAX_SCALE = 1.8;
 
 const EDITOR_WIDTH = 280;
 
-Konva.pixelRatio = 1;
+if (typeof window !== "undefined") {
+  Konva.pixelRatio = Math.max(window.devicePixelRatio || 1, 2);
+}
 
 function AutoLayoutIcon({ icon }: { icon: "flow" | "snowflake" | "grid" }) {
   if (icon === "grid") {
