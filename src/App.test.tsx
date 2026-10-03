@@ -691,7 +691,7 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
-  it("alterna para modo indice e navega ate a secao do card", async () => {
+  it("alterna para modo indice e abre o card selecionado sem rolar", async () => {
     const user = userEvent.setup();
     const scrollSpy = vi.spyOn(HTMLElement.prototype, "scrollIntoView");
     render(<App />);
@@ -709,9 +709,9 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /ir para segundo/i }));
 
     expect(
-      screen.getByRole("button", { name: /modo cards/i }),
+      screen.getByRole("heading", { name: "Segundo", level: 1 }),
     ).toBeInTheDocument();
-    expect(scrollSpy).toHaveBeenCalled();
+    expect(scrollSpy).not.toHaveBeenCalled();
   });
 
   it("alterna entre os modos normal, indice, cards e diagrama", async () => {

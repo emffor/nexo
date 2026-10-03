@@ -8,6 +8,10 @@ if (!HTMLElement.prototype.scrollIntoView) {
   HTMLElement.prototype.scrollIntoView = () => {};
 }
 
+if (typeof window !== 'undefined') {
+  window.scrollTo = () => {};
+}
+
 if (typeof globalThis.ResizeObserver === 'undefined') {
   class ResizeObserverMock {
     observe(): void {}

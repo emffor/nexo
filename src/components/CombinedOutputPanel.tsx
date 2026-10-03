@@ -232,7 +232,7 @@ export function CombinedOutputPanel({
   >(null);
   const shouldIgnoreNextClickRef = useRef(false);
   const isCardsMode = viewMode === "cards";
-  const isNormalMode = viewMode === "normal";
+  const isNormalMode = viewMode === "normal" || viewMode === "index";
   const selectedPreviewItem =
     isCardsMode && selectedPreviewCardId
       ? items.find((item) => item.id === selectedPreviewCardId)
@@ -257,6 +257,26 @@ export function CombinedOutputPanel({
       setSelectedPreviewCardId(null);
     }
   }, [isCardsMode, items, selectedPreviewCardId]);
+
+  const internalScrollRef = useRef<HTMLDivElement>(null);
+  const containerRef = scrollContainerRef ?? internalScrollRef;
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = 0;
+    }
+    try {
+      if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      }
+    } catch {
+      // Ignora ambientes sem suporte a scrollTo (ex: jsdom)
+    }
+    if (typeof document !== "undefined") {
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    }
+  }, [activeItemId, selectedPreviewCardId, containerRef]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -338,7 +358,7 @@ export function CombinedOutputPanel({
       </div>
 
       <div
-        ref={scrollContainerRef}
+        ref={containerRef}
         className={`app-scrollbar flex-1 overflow-y-auto pb-28 ${isCardsMode && !selectedPreviewItem ? "" : "nexo-surface rounded-2xl p-5 border border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-sm"}`}
       >
         {isLoading ? (

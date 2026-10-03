@@ -68,7 +68,7 @@ describe("CombinedOutputPanel no modo normal", () => {
 });
 
 describe("CombinedOutputPanel no modo indice", () => {
-  it("mantem todos os cards empilhados para navegacao", () => {
+  it("exibe somente o card ativo", () => {
     render(
       <CombinedOutputPanel
         items={ITEMS}
@@ -81,7 +81,44 @@ describe("CombinedOutputPanel no modo indice", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Primeiro card", level: 1 })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Primeiro card", level: 1 })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Segundo card", level: 1 })).toBeInTheDocument();
+  });
+
+  it("reseta o scroll para o topo ao trocar o card ativo", () => {
+    const scrollContainerRef = { current: document.createElement("div") };
+    scrollContainerRef.current.scrollTop = 400;
+
+    const { rerender } = render(
+      <CombinedOutputPanel
+        items={ITEMS}
+        isLoading={false}
+        theme="light"
+        viewMode="index"
+        activeItemId="item-1"
+        scrollContainerRef={scrollContainerRef}
+        onSelect={vi.fn()}
+        onReorder={vi.fn()}
+      />,
+    );
+
+    expect(scrollContainerRef.current.scrollTop).toBe(0);
+
+    scrollContainerRef.current.scrollTop = 300;
+
+    rerender(
+      <CombinedOutputPanel
+        items={ITEMS}
+        isLoading={false}
+        theme="light"
+        viewMode="index"
+        activeItemId="item-2"
+        scrollContainerRef={scrollContainerRef}
+        onSelect={vi.fn()}
+        onReorder={vi.fn()}
+      />,
+    );
+
+    expect(scrollContainerRef.current.scrollTop).toBe(0);
   });
 });

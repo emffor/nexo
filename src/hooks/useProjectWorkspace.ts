@@ -260,21 +260,31 @@ export function useProjectWorkspace(project: Project) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleCopyAll]);
 
+  const resetScrollToTop = () => {
+    try {
+      if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      }
+    } catch {
+      // Ignora ambientes sem suporte a scrollTo (ex: jsdom)
+    }
+    if (typeof document !== "undefined") {
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    }
+    if (rightScrollRef.current) {
+      rightScrollRef.current.scrollTop = 0;
+    }
+  };
+
   const handleSelectItem = (item: MarkdownItem) => {
     setActiveItemId(item.id);
+    resetScrollToTop();
   };
 
   const handleSelectItemFromList = (item: MarkdownItem) => {
     setActiveItemId(item.id);
-
-    if (viewMode !== "index") {
-      return;
-    }
-
-    document.getElementById(`preview-item-${item.id}`)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    resetScrollToTop();
   };
 
   const handleTogglePreviewStrikethrough = useCallback(async () => {
