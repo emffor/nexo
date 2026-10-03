@@ -314,7 +314,7 @@ export function CombinedOutputPanel({
 
       <div
         ref={scrollContainerRef}
-        className={`app-scrollbar flex-1 overflow-y-auto pb-28 ${isCardsMode && !selectedPreviewItem ? "" : "nexo-surface p-5 sm:p-7"}`}
+        className={`app-scrollbar flex-1 overflow-y-auto pb-28 ${isCardsMode && !selectedPreviewItem ? "" : "nexo-surface p-4"}`}
       >
         {isLoading ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
@@ -392,7 +392,7 @@ export function CombinedOutputPanel({
               items={items.map((item) => item.id)}
               strategy={rectSortingStrategy}
             >
-              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {items.map((item, index) => (
                   <PreviewGridCard
                     key={item.id}

@@ -149,7 +149,7 @@ export function SortableCardsPanel({
               className={`app-scrollbar flex lg:flex-1 ${
                 isOutlineMode
                   ? "flex-col gap-1.5 overflow-y-auto pr-1"
-                  : "nexo-surface flex-col gap-1 overflow-y-auto p-4 sm:p-5"
+                  : "nexo-surface flex-col gap-1 overflow-y-auto p-3"
               }`}
             >
               {items.map((item, index) => (

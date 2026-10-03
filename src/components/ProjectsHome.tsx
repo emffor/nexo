@@ -75,11 +75,11 @@ export function ProjectsHome({
     >
       {/* Cabeçalho principal */}
       <header
-        className={`nexo-topbar border-b px-5 py-5 sm:px-8 ${
+        className={`nexo-topbar border-b px-5 py-3 sm:px-8 ${
           isDark ? "border-zinc-800 bg-[#161b22]" : "border-[#e6eff5] bg-white"
         }`}
       >
-        <div className="mx-auto flex min-h-[60px] max-w-[1440px] flex-wrap items-center justify-between gap-4">
+        <div className="mx-auto flex min-h-[32px] max-w-[1440px] flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span
               className={`font-semibold text-sm tracking-tight ${
@@ -128,11 +128,11 @@ export function ProjectsHome({
       </header>
 
       {/* Conteúdo central */}
-      <section className="mx-auto max-w-[1440px] px-5 py-8 sm:px-8 lg:px-10">
-        <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      <section className="mx-auto max-w-[1440px] px-5 py-6 sm:px-8">
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1
-              className={`text-[28px] font-semibold tracking-tight ${
+              className={`text-xl font-semibold tracking-tight ${
                 isDark ? "text-zinc-100" : "text-[#343c6a]"
               }`}
             >
@@ -148,7 +148,7 @@ export function ProjectsHome({
           </div>
 
           {/* Criação de projeto compacta */}
-          <form onSubmit={handleCreate} className="nexo-surface flex flex-wrap items-center gap-3 p-5">
+          <form onSubmit={handleCreate} className="flex flex-wrap items-center gap-2">
             <label className="sr-only" htmlFor="new-project-name">
               Nome do projeto
             </label>
@@ -165,7 +165,7 @@ export function ProjectsHome({
             />
             <button
               type="submit"
-              className="toolbar-button toolbar-button--accent min-h-12 px-5"
+              className="toolbar-button toolbar-button--accent"
             >
               Novo Projeto
             </button>
@@ -191,7 +191,7 @@ export function ProjectsHome({
         ) : null}
 
         {!isLoading && projects.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {projects.map((project) => {
               const isEditing = editingProjectId === project.id;
               return (
@@ -200,7 +200,7 @@ export function ProjectsHome({
                   className={`nexo-surface nexo-project-card flex flex-col justify-between transition-colors ${
                     isDark
                       ? "border-zinc-800 bg-[#161b22] hover:border-zinc-700"
-                      : "border-transparent bg-white shadow-[0_4px_18px_-2px_rgba(231,228,232,0.8)] hover:shadow-[0_8px_24px_-4px_rgba(231,228,232,0.9)]"
+                      : "border-zinc-200 bg-white hover:border-zinc-300"
                   }`}
                 >
                   {isEditing ? (
@@ -266,23 +266,23 @@ export function ProjectsHome({
                       </button>
 
                       <div
-                        className={`mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-4 ${
+                        className={`mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-2 ${
                           isDark ? "border-zinc-800/80" : "border-[#e6eff5]"
                         }`}
                       >
                         <button
                           type="button"
                           onClick={() => onOpenProject(project.id)}
-                          className="text-xs font-medium text-blue-400 hover:text-blue-300"
+                          className="nexo-project-open rounded text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                         >
                           Abrir workspace →
                         </button>
 
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-0.5">
                           <button
                             type="button"
                             onClick={() => onExportProject(project.id)}
-                            className="toolbar-button h-6 px-2 text-[11px]"
+                            className="toolbar-button toolbar-button--quiet h-6 px-2 text-[11px]"
                             title="Exportar JSON deste projeto"
                           >
                             Exportar
@@ -293,14 +293,14 @@ export function ProjectsHome({
                               setEditingProjectId(project.id);
                               setEditingName(project.name);
                             }}
-                            className="toolbar-button h-6 px-2 text-[11px]"
+                            className="toolbar-button toolbar-button--quiet h-6 px-2 text-[11px]"
                           >
                             Renomear
                           </button>
                           <button
                             type="button"
                             onClick={() => onDeleteProject(project)}
-                            className="toolbar-button toolbar-button--danger h-6 px-2 text-[11px]"
+                            className="toolbar-button toolbar-button--quiet toolbar-button--danger h-6 px-2 text-[11px]"
                           >
                             Excluir
                           </button>
