@@ -27,7 +27,16 @@ interface AddMarkdownModalProps {
   onSave: (content: string, title?: string) => Promise<void>;
 }
 
-export function AddMarkdownModal({
+export function AddMarkdownModal({ open, ...props }: AddMarkdownModalProps) {
+  if (!open) return null;
+  return <MarkdownEditor
+    key={JSON.stringify([props.mode, props.initialTitle, props.initialValue])}
+    {...props}
+    open={open}
+  />;
+}
+
+function MarkdownEditor({
   open,
   isSaving = false,
   mode = "create",
@@ -40,8 +49,8 @@ export function AddMarkdownModal({
 }: AddMarkdownModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [value, setValue] = useState("");
-  const [title, setTitle] = useState("");
+  const [value, setValue] = useState(initialValue);
+  const [title, setTitle] = useState(initialTitle);
   const [error, setError] = useState("");
   const [showDirtyConfirm, setShowDirtyConfirm] = useState(false);
   const [showJiraConfirm, setShowJiraConfirm] = useState(false);
@@ -97,24 +106,6 @@ export function AddMarkdownModal({
     }
     onClose();
   }, [isDirty, onClose]);
-
-  useEffect(() => {
-    if (!open) {
-      setValue("");
-      setTitle("");
-      setError("");
-      setShowDirtyConfirm(false);
-      setShowJiraConfirm(false);
-      setIsLoadingJira(false);
-      setJiraMessage("");
-      return;
-    }
-
-    setValue(initialValue);
-    setTitle(initialTitle);
-    setError("");
-    setJiraMessage("");
-  }, [initialValue, initialTitle, open]);
 
   useEffect(() => {
     if (!open) {
@@ -208,8 +199,8 @@ export function AddMarkdownModal({
     const nextValue = hasSelectedMarkers
       ? value.slice(0, selectionStart) + cleanText + value.slice(selectionEnd)
       : value.slice(0, selectionStart - 2) +
-        cleanText +
-        value.slice(selectionEnd + 2);
+      cleanText +
+      value.slice(selectionEnd + 2);
     const nextSelectionStart = hasSelectedMarkers
       ? selectionStart
       : selectionStart - 2;
@@ -237,8 +228,12 @@ export function AddMarkdownModal({
       return;
     }
 
-    await onSave(value, title.trim() || undefined);
-    onClose();
+    try {
+      await onSave(value, title.trim() || undefined);
+      onClose();
+    } catch {
+      setError("Não foi possível salvar o card. Tente novamente.");
+    }
   };
 
   return (

@@ -70,3 +70,22 @@ describe('importação de task no modal', () => {
     expect(screen.getByLabelText('Conteúdo Markdown')).toHaveValue('');
   });
 });
+
+describe('ciclo de edição do modal', () => {
+  it('descarta o rascunho ao fechar e reabrir', () => {
+    const { rerender, onSave, onClose } = renderModal({ initialValue: '# Original' });
+    fireEvent.change(screen.getByLabelText('Conteúdo Markdown'), { target: { value: '# Rascunho' } });
+    rerender(<AddMarkdownModal open={false} initialValue="# Original" onSave={onSave} onClose={onClose} />);
+    rerender(<AddMarkdownModal open initialValue="# Original" onSave={onSave} onClose={onClose} />);
+    expect(screen.getByLabelText('Conteúdo Markdown')).toHaveValue('# Original');
+  });
+
+  it('preserva o rascunho quando o salvamento falha', async () => {
+    const onSave = vi.fn().mockRejectedValue(new Error('offline'));
+    const { onClose } = renderModal({ initialValue: '# Rascunho', onSave });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar card' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível salvar');
+    expect(screen.getByLabelText('Conteúdo Markdown')).toHaveValue('# Rascunho');
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});
