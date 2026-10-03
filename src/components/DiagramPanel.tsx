@@ -12,6 +12,8 @@ import { Arrow, Circle, Group, Layer, Rect, Stage, Text } from "react-konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import Konva from "konva";
 
+import { UI_FONT_FAMILY, UI_RADIUS, UI_THEME } from "../lib/uiTheme";
+
 import { getDisplayTitle } from "../lib/items";
 import {
   DIAGRAM_GRID_OFFSET,
@@ -243,6 +245,13 @@ export default function DiagramPanel({
   void _onChangeStatus;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
+
+  useEffect(() => {
+    if (document.fonts) {
+      void document.fonts.ready.then(() => stageRef.current?.batchDraw());
+    }
+  }, []);
+
   const nodesLayerRef = useRef<Konva.Layer | null>(null);
   const dragLayerRef = useRef<Konva.Layer | null>(null);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -546,8 +555,13 @@ export default function DiagramPanel({
       return;
     }
     const measure = () => {
-      const rect = element.getBoundingClientRect();
-      setSize({ width: rect.width, height: rect.height });
+      const width = element.clientWidth;
+      const height = element.clientHeight;
+      setSize((current) =>
+        current.width === width && current.height === height
+          ? current
+          : { width, height },
+      );
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -711,6 +725,9 @@ export default function DiagramPanel({
 
   const handleWheel = useCallback(
     (event: KonvaEventObject<WheelEvent>) => {
+      if ((!event.evt.ctrlKey && !event.evt.metaKey) || event.evt.deltaY === 0) {
+        return;
+      }
       event.evt.preventDefault();
       const stage = stageRef.current;
       if (!stage) {
@@ -860,10 +877,11 @@ export default function DiagramPanel({
   );
 
   const isDark = theme === "dark";
-  const stageBg = isDark ? "#111113" : "#f5f5f7";
-  const edgeColor = isDark ? "#94a3b8" : "#475569";
-  const edgeHoverColor = isDark ? "#f87171" : "#dc2626";
-  const portColor = isDark ? "#64b5ff" : "#0071e3";
+  const colors = UI_THEME[theme];
+  const stageBg = colors.canvas;
+  const edgeColor = colors.edge;
+  const edgeHoverColor = colors.danger;
+  const portColor = colors.accent;
 
   return (
     <div
@@ -874,9 +892,7 @@ export default function DiagramPanel({
             el;
         }
       }}
-      className={`nexo-surface nexo-canvas-surface relative h-full min-h-[480px] w-full overflow-hidden rounded-[1.25rem] border ${
-        isDark ? "border-white/10 bg-ink/60" : "border-slate-200 bg-white"
-      }`}
+      className="nexo-surface nexo-canvas-surface relative h-full min-h-[480px] w-full overflow-hidden rounded border border-[var(--ui-line)] bg-[var(--ui-surface)]"
       style={{ backgroundColor: stageBg }}
     >
       <Stage
@@ -1019,14 +1035,14 @@ export default function DiagramPanel({
                 <Rect
                   width={DIAGRAM_NODE_WIDTH}
                   height={DIAGRAM_NODE_HEIGHT}
-                  cornerRadius={12}
+                  cornerRadius={UI_RADIUS}
                   fill={palette.fill}
-                  stroke={isActive ? "#0071e3" : palette.border}
+                  stroke={isActive ? colors.accent : palette.border}
                   strokeWidth={isActive ? 2.4 : 1.4}
                   perfectDrawEnabled={false}
                   shadowForStrokeEnabled={false}
                   shadowEnabled={isActive}
-                  shadowColor={isDark ? "#000" : "#94a3b8"}
+                  shadowColor={colors.shadowColor}
                   shadowBlur={8}
                   shadowOpacity={isDark ? 0.45 : 0.25}
                   shadowOffsetY={2}
@@ -1039,7 +1055,7 @@ export default function DiagramPanel({
                   text={title}
                   fontSize={13}
                   fontStyle="600"
-                  fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+                  fontFamily={UI_FONT_FAMILY}
                   fill={palette.text}
                   lineHeight={1.25}
                   ellipsis
@@ -1056,7 +1072,7 @@ export default function DiagramPanel({
                     text={observation}
                     fontSize={11}
                     fontStyle="400"
-                    fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+                    fontFamily={UI_FONT_FAMILY}
                     fill={palette.text}
                     lineHeight={1.3}
                     ellipsis
@@ -1076,10 +1092,10 @@ export default function DiagramPanel({
                         x={port.x}
                         y={port.y}
                         radius={PORT_HIT_RADIUS}
-                        fill="rgba(94, 234, 212, 0.01)"
+                        fill={colors.accent}
                         stroke={portColor}
                         strokeWidth={isHoveredPort ? 1.4 : 0}
-                        opacity={isHoveredPort ? 0.35 : 1}
+                        opacity={isHoveredPort ? 0.35 : 0.01}
                         perfectDrawEnabled={false}
                         onMouseDown={(event) =>
                           handlePortMouseDown(item.id, side, event)
@@ -1114,7 +1130,8 @@ export default function DiagramPanel({
                           x={port.x}
                           y={port.y}
                           radius={PORT_HOVER_RADIUS}
-                          fill="rgba(94, 234, 212, 0.18)"
+                          fill={colors.accent}
+                          opacity={0.18}
                           stroke={portColor}
                           strokeWidth={1.6}
                           listening={false}
@@ -1126,7 +1143,7 @@ export default function DiagramPanel({
                         y={port.y}
                         radius={PORT_RADIUS}
                         fill={portColor}
-                        stroke={isDark ? "#0b0f17" : "#ffffff"}
+                        stroke={colors.surface}
                         strokeWidth={2}
                         listening={false}
                         perfectDrawEnabled={false}
@@ -1146,9 +1163,7 @@ export default function DiagramPanel({
 
       {items.length === 0 || visibleItems.length === 0 ? (
         <div
-          className={`pointer-events-none absolute inset-0 flex items-center justify-center text-sm ${
-            isDark ? "text-slate-400" : "text-slate-500"
-          }`}
+          className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-[var(--ui-muted)]"
         >
           {items.length === 0
             ? "Adicione cards para visualizar o diagrama."
@@ -1157,38 +1172,27 @@ export default function DiagramPanel({
       ) : null}
 
       <div
-        className={`pointer-events-none absolute right-3 top-3 rounded-md border px-2 py-1 text-[10px] uppercase tracking-[0.18em] ${
-          isDark
-            ? "border-white/10 bg-ink/70 text-slate-300"
-            : "border-slate-200 bg-white/90 text-slate-600"
-        }`}
+        className="pointer-events-none absolute right-3 top-3 rounded border px-2 py-1 text-[10px] uppercase tracking-[0.18em] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-muted)]"
       >
-        Arraste cards · bolinhas verdes para ligar · clique na seta para remover
+        Arraste cards · pontos de conexão para ligar · clique na seta para remover
       </div>
 
       <div
-        className={`absolute bottom-4 right-4 z-40 flex flex-col items-center overflow-hidden rounded-lg border shadow-lg ${
-          isDark
-            ? "border-white/10 bg-ink/85 text-slate-100 shadow-black/30"
-            : "border-slate-200 bg-white/95 text-slate-800 shadow-slate-300/40"
-        }`}
+        className="absolute bottom-4 right-4 z-40 flex flex-col items-center overflow-hidden rounded border shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)]"
       >
         <button
           type="button"
           onClick={() => handleZoom(1)}
           disabled={viewportScale >= MAX_SCALE}
-          className={`flex h-8 w-8 items-center justify-center text-base font-semibold transition ${
-            isDark ? "hover:bg-white/10" : "hover:bg-slate-100"
-          } disabled:cursor-not-allowed disabled:opacity-40`}
+          className="flex h-8 w-8 items-center justify-center text-base font-semibold transition hover:bg-[var(--ui-raised)] disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="Aumentar zoom do diagrama"
           title="Aumentar zoom"
         >
           +
         </button>
         <div
-          className={`border-y px-2 py-1 text-[10px] font-semibold tabular-nums ${
-            isDark ? "border-white/10" : "border-slate-200"
-          }`}
+          className="border-y px-2 py-1 text-[10px] font-semibold tabular-nums border-[var(--ui-line)]"
+          title="Zoom: Ctrl/⌘ + rolagem ou botões − e +"
         >
           {Math.round(viewportScale * 100)}%
         </div>
@@ -1196,9 +1200,7 @@ export default function DiagramPanel({
           type="button"
           onClick={() => handleZoom(-1)}
           disabled={viewportScale <= MIN_SCALE}
-          className={`flex h-8 w-8 items-center justify-center text-base font-semibold transition ${
-            isDark ? "hover:bg-white/10" : "hover:bg-slate-100"
-          } disabled:cursor-not-allowed disabled:opacity-40`}
+          className="flex h-8 w-8 items-center justify-center text-base font-semibold transition hover:bg-[var(--ui-raised)] disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="Diminuir zoom do diagrama"
           title="Diminuir zoom"
         >
@@ -1208,11 +1210,7 @@ export default function DiagramPanel({
 
       {hoveredItem && (
         <div
-          className={`absolute z-50 max-w-xs rounded-md border px-3 py-2 text-xs shadow-lg ${
-            isDark
-              ? "border-white/20 bg-slate-900 text-slate-100"
-              : "border-slate-300 bg-white text-slate-800"
-          }`}
+          className="absolute z-50 max-w-xs rounded border px-3 py-2 text-xs shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)]"
           style={{
             left: hoveredItem.x,
             top: hoveredItem.y + 10,

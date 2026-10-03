@@ -61,7 +61,7 @@ function ToolbarGroup({
     <div
       role="group"
       aria-label={label}
-      className={`nexo-toolbar-group flex items-center gap-0.5 rounded-2xl border p-1 ${className}`}
+      className={`nexo-toolbar-group flex items-center gap-0.5 rounded border p-1 ${className}`}
     >
       {children}
     </div>
@@ -246,7 +246,7 @@ export function AppShell({
                   title={title}
                   aria-label={VIEW_MODE_ACCESSIBLE_LABELS[mode]}
                   aria-pressed={isActive}
-                  className="font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  className="font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]"
                 >
                   <Image
                     src={`/venture/${VIEW_MODE_ICONS[mode]}.svg`}
@@ -432,9 +432,7 @@ export function AppShell({
         {rightPanel}
         {isDatabaseMode && databaseInfo ? (
           <p
-            className={`col-span-full text-[10px] uppercase tracking-[0.18em] ${
-              theme === "dark" ? "text-slate-400" : "text-slate-500"
-            }`}
+            className="col-span-full text-[10px] uppercase tracking-[0.18em] text-[var(--ui-muted)]"
           >
             {databaseInfo.tables} tabela{databaseInfo.tables === 1 ? "" : "s"} ·{" "}
             {databaseInfo.relations} relação
@@ -448,11 +446,7 @@ export function AppShell({
 
       {isSidebarToggleVisible || isStrikethroughVisible ? (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex flex-col items-center gap-2 rounded-xl border p-2 shadow-2xl backdrop-blur ${
-            theme === "dark"
-              ? "border-slate-700/80 bg-slate-950/80"
-              : "border-slate-200/90 bg-white/90"
-          }`}
+          className="fixed bottom-6 right-6 z-50 flex flex-col items-center gap-2 rounded border p-2 shadow-[var(--ui-shadow)] backdrop-blur border-[var(--ui-line)] bg-[var(--ui-surface)]"
         >
           {isSidebarToggleVisible ? (
             <button
@@ -469,11 +463,7 @@ export function AppShell({
               }
               aria-pressed={isSidebarHidden}
               onClick={onTogglePreviewMaximized}
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-md border transition ${
-                theme === "dark"
-                  ? "border-slate-700 bg-slate-900/80 text-slate-200 hover:border-teal-400/70 hover:bg-slate-800 hover:text-teal-100"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-800"
-              }`}
+              className="inline-flex h-10 w-10 items-center justify-center rounded border transition border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)] hover:border-[var(--ui-accent)] hover:bg-[var(--ui-accent-soft)] hover:text-[var(--ui-accent)]"
             >
               <svg
                 width="16"
@@ -504,11 +494,7 @@ export function AppShell({
               onPointerDown={(event) => event.preventDefault()}
               onMouseDown={(event) => event.preventDefault()}
               onClick={onToggleStrikethrough}
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-md border text-base font-bold transition ${
-                theme === "dark"
-                  ? "border-slate-700 bg-slate-900/80 text-slate-200 hover:border-teal-400/70 hover:bg-slate-800 hover:text-teal-100"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-800"
-              }`}
+              className="inline-flex h-10 w-10 items-center justify-center rounded border text-base font-bold transition border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)] hover:border-[var(--ui-accent)] hover:bg-[var(--ui-accent-soft)] hover:text-[var(--ui-accent)]"
             >
               <span className="line-through decoration-2" aria-hidden="true">
                 S

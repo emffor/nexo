@@ -78,10 +78,10 @@ export function SortableCardsPanel({
       {isOutlineMode ? null : (
         <div className="nexo-panel-heading">
           <div className="flex items-center gap-2">
-            <h2 className="m-0 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h2 className="m-0 text-xs font-semibold uppercase tracking-wider text-[var(--ui-muted)]">
               Cards
             </h2>
-            <span className="font-mono text-xs text-zinc-400 dark:text-zinc-600">
+            <span className="tabular-nums text-xs text-[var(--ui-muted)]">
               ({items.length})
             </span>
           </div>
@@ -90,13 +90,13 @@ export function SortableCardsPanel({
 
       {isLoading ? (
         <div
-          className={`nexo-empty flex flex-1 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed px-6 py-10 ${theme === "dark" ? "border-slate-700/80 bg-[#0c1219]" : "border-slate-300 bg-slate-50"}`}
+          className="nexo-empty flex flex-1 flex-col items-center justify-center gap-3 rounded border border-dashed px-6 py-10 border-[var(--ui-line)] bg-[var(--ui-surface)]"
         >
           <div
-            className={`h-5 w-5 animate-spin rounded-full border-2 ${theme === "dark" ? "border-slate-700 border-t-teal-400" : "border-slate-300 border-t-teal-500"}`}
+            className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--ui-line)] border-t-[var(--ui-accent)]"
           />
           <p
-            className={`m-0 text-sm ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}
+            className="m-0 text-sm text-[var(--ui-muted)]"
           >
             Carregando cards salvos...
           </p>
@@ -105,26 +105,26 @@ export function SortableCardsPanel({
 
       {!isLoading && items.length === 0 ? (
         <div
-          className={`nexo-empty flex flex-1 flex-col items-center justify-center gap-4 rounded-3xl border border-dashed px-6 py-12 text-center ${theme === "dark" ? "border-slate-700/80 bg-[#0c1219]" : "border-slate-300 bg-slate-50"}`}
+          className="nexo-empty flex flex-1 flex-col items-center justify-center gap-4 rounded border border-dashed px-6 py-12 text-center border-[var(--ui-line)] bg-[var(--ui-surface)]"
         >
           <span
-            className={`text-4xl ${theme === "dark" ? "text-slate-600" : "text-slate-400"}`}
+            className="text-4xl text-[var(--ui-muted)]"
             aria-hidden="true"
           >
             +
           </span>
           <div>
             <p
-              className={`m-0 text-sm font-semibold ${theme === "dark" ? "text-slate-300" : "text-slate-700"}`}
+              className="m-0 text-sm font-semibold text-[var(--ui-text)]"
             >
               Nenhum card ainda
             </p>
             <p
-              className={`m-0 mt-1 text-sm leading-6 ${theme === "dark" ? "text-slate-500" : "text-slate-500"}`}
+              className="m-0 mt-1 text-sm leading-6 text-[var(--ui-muted)]"
             >
               Clique em <strong>Novo markdown</strong> ou pressione{" "}
               <kbd
-                className={`rounded border px-1.5 py-0.5 font-mono text-xs ${theme === "dark" ? "border-slate-600 bg-slate-800 text-slate-300" : "border-slate-300 bg-white text-slate-700"}`}
+                className="rounded border px-1.5 py-0.5 tabular-nums text-xs border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)]"
               >
                 Ctrl+N
               </kbd>{" "}

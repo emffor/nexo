@@ -1,3 +1,4 @@
+import { UI_THEME } from "../lib/uiTheme";
 import type { DiagramStatus } from './markdown';
 
 export interface DiagramNodePosition {
@@ -46,23 +47,23 @@ export const DIAGRAM_STATUS_PALETTE: Record<
   { dark: DiagramStatusPalette; light: DiagramStatusPalette }
 > = {
   backlog: {
-    dark: { fill: '#3a4150', border: '#646b78', text: '#f1f5f9' },
-    light: { fill: '#e5e7eb', border: '#9ca3af', text: '#0f172a' },
+    dark: { fill: UI_THEME.dark.raised, border: UI_THEME.dark.muted, text: UI_THEME.dark.heading },
+    light: { fill: UI_THEME.light.raised, border: UI_THEME.light.muted, text: UI_THEME.light.heading },
   },
   impedido: {
-    dark: { fill: '#5b2a2f', border: '#b85a63', text: '#fee2e2' },
-    light: { fill: '#fecaca', border: '#ef4444', text: '#7f1d1d' },
+    dark: { fill: UI_THEME.dark.dangerSoft, border: UI_THEME.dark.danger, text: UI_THEME.dark.danger },
+    light: { fill: UI_THEME.light.dangerSoft, border: UI_THEME.light.danger, text: UI_THEME.light.danger },
   },
   'em-desenvolvimento': {
-    dark: { fill: '#1e3a5f', border: '#5fa8d3', text: '#dbeafe' },
-    light: { fill: '#bfdbfe', border: '#3b82f6', text: '#0c4a6e' },
+    dark: { fill: UI_THEME.dark.accentSoft, border: UI_THEME.dark.accent, text: UI_THEME.dark.accent },
+    light: { fill: UI_THEME.light.accentSoft, border: UI_THEME.light.accent, text: UI_THEME.light.accent },
   },
   revisando: {
-    dark: { fill: '#5c4a1f', border: '#d4a64a', text: '#fef3c7' },
-    light: { fill: '#fde68a', border: '#f59e0b', text: '#78350f' },
+    dark: { fill: UI_THEME.dark.warningSoft, border: UI_THEME.dark.warning, text: UI_THEME.dark.warning },
+    light: { fill: UI_THEME.light.warningSoft, border: UI_THEME.light.warning, text: UI_THEME.light.warning },
   },
   finalizado: {
-    dark: { fill: '#1f4d36', border: '#4ade80', text: '#dcfce7' },
-    light: { fill: '#bbf7d0', border: '#22c55e', text: '#14532d' },
+    dark: { fill: UI_THEME.dark.successSoft, border: UI_THEME.dark.success, text: UI_THEME.dark.success },
+    light: { fill: UI_THEME.light.successSoft, border: UI_THEME.light.success, text: UI_THEME.light.success },
   },
 };

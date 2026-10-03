@@ -30,7 +30,6 @@ export function StatusPicker({
   const [isOpen, setIsOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const isDark = theme === "dark";
   const selectedValue = status ?? "";
 
   useFocusTrap(dialogRef, isOpen);
@@ -67,7 +66,7 @@ export function StatusPicker({
       <button
         type="button"
         aria-label={`Alterar status de ${label}`}
-        className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-teal-300/80 ${buttonClassName}`}
+        className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent)] ${buttonClassName}`}
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.preventDefault();
@@ -81,7 +80,7 @@ export function StatusPicker({
       {isOpen ? (
         <div
           data-theme={theme}
-      className="nexo-ui fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm"
+      className="nexo-ui fixed inset-0 z-50 flex items-center justify-center bg-[var(--ui-overlay)] px-4 py-8 backdrop-blur-sm"
           role="presentation"
           onClick={() => setIsOpen(false)}
         >
@@ -90,11 +89,7 @@ export function StatusPicker({
             role="dialog"
             aria-modal="true"
             aria-label={`Alterar status de ${label}`}
-            className={`nexo-dialog w-full max-w-sm overflow-hidden rounded-xl border py-1 shadow-2xl ${
-              isDark
-                ? "border-slate-700 bg-[#141b24] text-slate-100"
-                : "border-slate-200 bg-white text-slate-900"
-            }`}
+            className="nexo-dialog w-full max-w-sm overflow-hidden rounded border py-1 shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
             onClick={(event) => event.stopPropagation()}
           >
             {options.map((option, index) => {
@@ -113,10 +108,8 @@ export function StatusPicker({
                   onClick={() => handleSelect(option.value)}
                   className={`nexo-status-option flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold transition ${
                     isSelected
-                      ? "bg-blue-600 text-white"
-                      : isDark
-                        ? "text-slate-200 hover:bg-slate-800"
-                        : "text-slate-800 hover:bg-slate-100"
+                      ? "bg-[var(--ui-primary)] text-[var(--ui-on-primary)]"
+                      : "text-[var(--ui-text)] hover:bg-[var(--ui-raised)]"
                   }`}
                 >
                   <span className="w-4 text-center text-base leading-none">

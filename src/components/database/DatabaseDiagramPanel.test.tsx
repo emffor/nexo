@@ -35,14 +35,19 @@ vi.mock('react-konva', () => {
     },
   });
 
-  const Stage = forwardRef<HTMLDivElement, { children?: ReactNode }>(
-    function Stage({ children }, ref) {
+  const Stage = forwardRef<HTMLDivElement, {
+    children?: ReactNode;
+    width?: number;
+    height?: number;
+    onWheel?: (event: { evt: WheelEvent }) => void;
+  }>(
+    function Stage({ children, width, height, onWheel }, ref) {
       if (typeof ref === 'function') {
         ref(stageRefValue as unknown as HTMLDivElement);
       } else if (ref) {
         ref.current = stageRefValue as unknown as HTMLDivElement;
       }
-      return <div data-testid="database-stage">{children}</div>;
+      return <div data-testid="database-stage" data-width={width} data-height={height} onWheel={(event) => onWheel?.({ evt: event.nativeEvent })}>{children}</div>;
     },
   );
 
@@ -209,6 +214,34 @@ function renderPanel(overrides?: {
 }
 
 describe('DatabaseDiagramPanel', () => {
+  it('não altera o zoom com rolagem comum ou horizontal; aceita Ctrl + rolagem vertical', () => {
+    const onStateChange = vi.fn();
+    renderPanel({ onStateChange });
+    const stage = screen.getByTestId('database-stage');
+
+    fireEvent.wheel(stage, { deltaY: -100 });
+    fireEvent.wheel(stage, { deltaX: 100, deltaY: 0, ctrlKey: true });
+    expect(onStateChange).not.toHaveBeenCalled();
+
+    fireEvent.wheel(stage, { deltaY: -100, ctrlKey: true });
+    expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({
+      viewport: expect.objectContaining({ scale: expect.any(Number) }),
+    }));
+  });
+
+  it('mede a área interna do container sem incluir sua borda', () => {
+    const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(798);
+    const height = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(598);
+    try {
+      renderPanel();
+      const stage = screen.getByTestId('database-stage');
+      expect(stage).toHaveAttribute('data-width', '798');
+      expect(stage).toHaveAttribute('data-height', '598');
+    } finally {
+      width.mockRestore();
+      height.mockRestore();
+    }
+  });
   it('abre popover e confirma renomeacao de tabela', async () => {
     const user = userEvent.setup();
     const onRenameTable = vi.fn(() => true);

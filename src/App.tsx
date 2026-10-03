@@ -25,7 +25,7 @@ import { buildCombinedContent, getDisplayTitle } from "./lib/items";
 const DiagramPanel = dynamic(() => import("./components/DiagramPanel"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full min-h-[480px] w-full items-center justify-center rounded-[1.25rem] border border-white/10 bg-ink/40 text-sm text-slate-400">
+    <div className="flex h-full min-h-[480px] w-full items-center justify-center rounded border border-[var(--ui-line)] bg-[var(--ui-surface)] text-sm text-[var(--ui-muted)]">
       Carregando diagrama...
     </div>
   ),
@@ -36,7 +36,7 @@ const DatabaseDiagramPanel = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full min-h-[480px] w-full items-center justify-center rounded-[1.25rem] border border-white/10 bg-ink/40 text-sm text-slate-400">
+      <div className="flex h-full min-h-[480px] w-full items-center justify-center rounded border border-[var(--ui-line)] bg-[var(--ui-surface)] text-sm text-[var(--ui-muted)]">
         Carregando diagrama de banco...
       </div>
     ),

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { UI_THEME_CSS } from "../lib/uiTheme";
 
 export const metadata: Metadata = {
   title: "Organizar Markdown",
@@ -19,6 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head><style>{UI_THEME_CSS}</style></head>
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         {children}

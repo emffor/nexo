@@ -21,6 +21,7 @@ import {
 import type { KonvaEventObject } from "konva/lib/Node";
 import Konva from "konva";
 
+import { UI_CODE_FONT_FAMILY, UI_FONT_FAMILY, UI_RADIUS, UI_THEME } from "../../lib/uiTheme";
 import type { AppTheme, DiagramEdgeStyle } from "../../lib/preferences";
 import {
   isValidDbmlColumnIdentifier,
@@ -724,6 +725,13 @@ export default function DatabaseDiagramPanel({
 }: DatabaseDiagramPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
+
+  useEffect(() => {
+    if (document.fonts) {
+      void document.fonts.ready.then(() => stageRef.current?.batchDraw());
+    }
+  }, []);
+
   const lastResetRef = useRef(resetSignal);
   const stateRef = useRef(state);
   const [size, setSize] = useState({ width: 800, height: 600 });
@@ -763,8 +771,13 @@ export default function DatabaseDiagramPanel({
       return;
     }
     const measure = () => {
-      const rect = element.getBoundingClientRect();
-      setSize({ width: rect.width, height: rect.height });
+      const width = element.clientWidth;
+      const height = element.clientHeight;
+      setSize((current) =>
+        current.width === width && current.height === height
+          ? current
+          : { width, height },
+      );
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -966,6 +979,9 @@ export default function DatabaseDiagramPanel({
 
   const handleWheel = useCallback(
     (event: KonvaEventObject<WheelEvent>) => {
+      if ((!event.evt.ctrlKey && !event.evt.metaKey) || event.evt.deltaY === 0) {
+        return;
+      }
       event.evt.preventDefault();
       const stage = stageRef.current;
       if (!stage) {
@@ -1257,19 +1273,20 @@ export default function DatabaseDiagramPanel({
   );
 
   const isDark = theme === "dark";
-  const stageBg = isDark ? "#111113" : "#f5f5f7";
-  const tableBg = isDark ? "#1c1c1e" : "#ffffff";
-  const tableBorder = isDark ? "#38383a" : "#dedee3";
-  const headerBg = isDark ? "#2c2c2e" : "#ededf0";
-  const headerText = isDark ? "#f5f5f7" : "#1d1d1f";
-  const rowText = isDark ? "#d2d2d7" : "#424245";
-  const typeText = isDark ? "#a1a1a6" : "#6e6e73";
-  const edgeColor = isDark ? "#64748b" : "#b7bdc6";
-  const activeEdgeColor = isDark ? "#60a5fa" : "#2f7ebd";
-  const badgeBg = isDark ? "#243247" : "#e8ecef";
-  const badgeText = isDark ? "#d7e1ef" : "#4a5562";
-  const rowHighlight = isDark ? "#17263c" : "#dceff7";
-  const selectedBorder = "#60a5fa";
+  const colors = UI_THEME[theme];
+  const stageBg = colors.canvas;
+  const tableBg = colors.surface;
+  const tableBorder = colors.line;
+  const headerBg = colors.raised;
+  const headerText = colors.heading;
+  const rowText = colors.text;
+  const typeText = colors.muted;
+  const edgeColor = colors.edge;
+  const activeEdgeColor = colors.accent;
+  const badgeBg = colors.tagBg;
+  const badgeText = colors.tag;
+  const rowHighlight = colors.accentSoft;
+  const selectedBorder = colors.accent;
 
   const tableLookup = useMemo(() => {
     const map = new Map<string, DatabaseTable>();
@@ -1374,9 +1391,7 @@ export default function DatabaseDiagramPanel({
   return (
     <div
       ref={containerRef}
-      className={`nexo-surface nexo-canvas-surface relative h-full min-h-[480px] w-full overflow-hidden rounded-[1.25rem] border ${
-        isDark ? "border-white/10 bg-ink/60" : "border-slate-200 bg-white"
-      }`}
+      className="nexo-surface nexo-canvas-surface relative h-full min-h-[480px] w-full overflow-hidden rounded border border-[var(--ui-line)] bg-[var(--ui-surface)]"
       style={{ backgroundColor: stageBg }}
     >
       <Stage
@@ -1620,8 +1635,8 @@ export default function DatabaseDiagramPanel({
                       x={point.x}
                       y={point.y}
                       radius={isEndpoint ? 5 : 2.3}
-                      fill={isEndpoint ? "#ffffff" : activeEdgeColor}
-                      stroke={isEndpoint ? "#6366f1" : "#2563eb"}
+                      fill={isEndpoint ? colors.surface : activeEdgeColor}
+                      stroke={colors.accent}
                       strokeWidth={isEndpoint ? 2 : 0}
                       draggable={isEndpoint}
                       onDragMove={(event) => {
@@ -1687,8 +1702,8 @@ export default function DatabaseDiagramPanel({
                       x={point.x}
                       y={point.y}
                       radius={5}
-                      fill="#ffffff"
-                      stroke="#6366f1"
+                      fill={colors.surface}
+                      stroke={colors.accent}
                       strokeWidth={2}
                       draggable
                       onDragStart={() => {
@@ -1753,8 +1768,8 @@ export default function DatabaseDiagramPanel({
                       x={handle.x}
                       y={handle.y}
                       radius={5}
-                      fill="#ffffff"
-                      stroke="#6366f1"
+                      fill={colors.surface}
+                      stroke={colors.accent}
                       strokeWidth={2}
                       draggable
                       onDragMove={(event) => {
@@ -1814,11 +1829,11 @@ export default function DatabaseDiagramPanel({
                     <Rect
                       width={18}
                       height={18}
-                      cornerRadius={4}
-                      fill="#ffffff"
-                      stroke="#818cf8"
+                      cornerRadius={UI_RADIUS}
+                      fill={colors.surface}
+                      stroke={colors.accent}
                       strokeWidth={1}
-                      shadowColor="#94a3b8"
+                      shadowColor={colors.shadowColor}
                       shadowBlur={4}
                       shadowOpacity={0.35}
                       perfectDrawEnabled={false}
@@ -1833,8 +1848,8 @@ export default function DatabaseDiagramPanel({
                       text="C"
                       fontSize={14}
                       fontStyle="700"
-                      fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
-                      fill="#6366f1"
+                      fontFamily={UI_FONT_FAMILY}
+                      fill={colors.accent}
                       perfectDrawEnabled={false}
                     />
                   </Group>
@@ -1864,7 +1879,7 @@ export default function DatabaseDiagramPanel({
                     text={rel.name}
                     fontSize={12}
                     fontStyle="500"
-                    fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+                    fontFamily={UI_FONT_FAMILY}
                     fill={activeEdgeColor}
                     listening={false}
                     perfectDrawEnabled={false}
@@ -1981,11 +1996,11 @@ export default function DatabaseDiagramPanel({
                 <Rect
                   width={DB_TABLE_WIDTH}
                   height={height}
-                  cornerRadius={6}
+                  cornerRadius={UI_RADIUS}
                   fill={tableBg}
                   stroke={isTableSelected ? selectedBorder : tableBorder}
                   strokeWidth={isTableSelected ? 1.5 : 1}
-                  shadowColor={isDark ? "#000" : "#94a3b8"}
+                  shadowColor={colors.shadowColor}
                   shadowBlur={isTableSelected ? 10 : 6}
                   shadowOpacity={isTableSelected ? 0.28 : isDark ? 0.4 : 0.15}
                   shadowOffsetY={2}
@@ -1994,7 +2009,7 @@ export default function DatabaseDiagramPanel({
                 <Rect
                   width={DB_TABLE_WIDTH}
                   height={DB_HEADER_HEIGHT}
-                  cornerRadius={[6, 6, 0, 0]}
+                  cornerRadius={[UI_RADIUS, UI_RADIUS, 0, 0]}
                   fill={headerBg}
                   perfectDrawEnabled={false}
                 />
@@ -2005,7 +2020,7 @@ export default function DatabaseDiagramPanel({
                   text={table.name}
                   fontSize={13}
                   fontStyle="600"
-                  fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+                  fontFamily={UI_FONT_FAMILY}
                   fill={headerText}
                   ellipsis
                   onClick={(event) => {
@@ -2035,8 +2050,8 @@ export default function DatabaseDiagramPanel({
                     text="REC"
                     fontSize={10}
                     fontStyle="700"
-                    fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
-                    fill="#dbeafe"
+                    fontFamily={UI_FONT_FAMILY}
+                    fill={colors.tag}
                     onClick={(event) => {
                       event.cancelBubble = true;
                       setRecordsTableId(table.id);
@@ -2102,7 +2117,7 @@ export default function DatabaseDiagramPanel({
                         text={column.name}
                         fontSize={12}
                         fontStyle={column.isPrimaryKey ? "600" : "400"}
-                        fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+                        fontFamily={UI_FONT_FAMILY}
                         fill={rowText}
                         onMouseEnter={(event) => {
                           const stage = event.target.getStage();
@@ -2125,7 +2140,7 @@ export default function DatabaseDiagramPanel({
                         align="right"
                         text={column.type}
                         fontSize={11}
-                        fontFamily="JetBrains Mono, ui-monospace, monospace"
+                        fontFamily={UI_CODE_FONT_FAMILY}
                         fill={typeText}
                         ellipsis
                         perfectDrawEnabled={false}
@@ -2144,7 +2159,7 @@ export default function DatabaseDiagramPanel({
                           <Rect
                             width={22}
                             height={14}
-                            cornerRadius={3}
+                            cornerRadius={UI_RADIUS}
                             fill={badgeBg}
                             perfectDrawEnabled={false}
                           />
@@ -2156,7 +2171,7 @@ export default function DatabaseDiagramPanel({
                             text={badge}
                             fontSize={9}
                             fontStyle="700"
-                            fontFamily="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+                            fontFamily={UI_FONT_FAMILY}
                             fill={badgeText}
                             perfectDrawEnabled={false}
                           />
@@ -2173,9 +2188,7 @@ export default function DatabaseDiagramPanel({
 
       {tables.length === 0 ? (
         <div
-          className={`pointer-events-none absolute inset-0 flex items-center justify-center text-sm ${
-            isDark ? "text-slate-400" : "text-slate-500"
-          }`}
+          className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-[var(--ui-muted)]"
         >
           Escreva DBML no editor à esquerda para visualizar as tabelas.
         </div>
@@ -2184,16 +2197,12 @@ export default function DatabaseDiagramPanel({
       {activeEditor && activeEditorTable ? (
         <form
           onSubmit={handleSubmitEditor}
-          className={`absolute z-50 rounded-lg border p-3 shadow-xl ${
-            isDark
-              ? "border-white/10 bg-slate-950 text-slate-100 shadow-black/40"
-              : "border-slate-200 bg-white text-slate-900 shadow-slate-300/60"
-          }`}
+          className="absolute z-50 rounded border p-3 shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
           style={{ left: editorLeft, top: editorTop, width: EDITOR_WIDTH }}
         >
           <label
             htmlFor="database-editor-name"
-            className="mb-2 block text-[11px] font-semibold text-slate-500"
+            className="mb-2 block text-[11px] font-semibold text-[var(--ui-muted)]"
           >
             {activeEditor.type === "table" ? "Table Name" : "Column Name"}
           </label>
@@ -2208,14 +2217,10 @@ export default function DatabaseDiagramPanel({
                 error: null,
               })
             }
-            className={`w-full rounded-md border px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-400 ${
-              isDark
-                ? "border-slate-700 bg-slate-900 text-slate-100"
-                : "border-slate-300 bg-white text-slate-900"
-            }`}
+            className="w-full rounded border px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[var(--ui-accent)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
           />
           {activeEditor.error ? (
-            <p className="mt-2 text-xs text-rose-500">{activeEditor.error}</p>
+            <p className="mt-2 text-xs text-[var(--ui-danger)]">{activeEditor.error}</p>
           ) : null}
           <div className="mt-3 flex items-center justify-between gap-2">
             {activeEditor.type === "table" &&
@@ -2224,11 +2229,7 @@ export default function DatabaseDiagramPanel({
               <button
                 type="button"
                 onClick={() => setRecordsTableId(activeEditorTable.id)}
-                className={`rounded-md px-2 py-1 text-xs font-medium ${
-                  isDark
-                    ? "bg-slate-800 text-slate-200 hover:bg-slate-700"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
+                className="rounded px-2 py-1 text-xs font-medium bg-[var(--ui-raised)] text-[var(--ui-text)] hover:bg-[var(--ui-raised)]"
               >
                 Ver records
               </button>
@@ -2239,17 +2240,13 @@ export default function DatabaseDiagramPanel({
               <button
                 type="button"
                 onClick={() => setActiveEditor(null)}
-                className={`rounded-md px-2 py-1 text-xs ${
-                  isDark
-                    ? "text-slate-300 hover:bg-white/10"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
+                className="rounded px-2 py-1 text-xs text-[var(--ui-muted)] hover:bg-[var(--ui-raised)]"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="rounded-md bg-blue-600 px-2 py-1 text-xs font-semibold text-white hover:bg-blue-500"
+                className="rounded bg-[var(--ui-primary)] px-2 py-1 text-xs font-semibold text-[var(--ui-on-primary)] hover:bg-[var(--ui-primary-hover)]"
               >
                 Salvar
               </button>
@@ -2259,21 +2256,15 @@ export default function DatabaseDiagramPanel({
       ) : null}
 
       {recordsTable?.records ? (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/35 p-6">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--ui-overlay)] p-6">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="database-records-title"
-            className={`max-h-full w-full max-w-4xl overflow-hidden rounded-xl border shadow-2xl ${
-              isDark
-                ? "border-white/10 bg-slate-950 text-slate-100"
-                : "border-slate-200 bg-white text-slate-900"
-            }`}
+            className="max-h-full w-full max-w-4xl overflow-hidden rounded border shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
           >
             <div
-              className={`flex items-center justify-between border-b px-4 py-3 ${
-                isDark ? "border-white/10" : "border-slate-200"
-              }`}
+              className="flex items-center justify-between border-b px-4 py-3 border-[var(--ui-line)]"
             >
               <h2 id="database-records-title" className="text-sm font-semibold">
                 Records de {recordsTable.name}
@@ -2281,9 +2272,7 @@ export default function DatabaseDiagramPanel({
               <button
                 type="button"
                 onClick={() => setRecordsTableId(null)}
-                className={`rounded-md px-2 py-1 text-sm ${
-                  isDark ? "hover:bg-white/10" : "hover:bg-slate-100"
-                }`}
+                className="rounded px-2 py-1 text-sm hover:bg-[var(--ui-raised)]"
               >
                 Fechar
               </button>
@@ -2295,11 +2284,7 @@ export default function DatabaseDiagramPanel({
                     {recordsTable.records.columns.map((column) => (
                       <th
                         key={column.name}
-                        className={`border px-3 py-2 font-semibold ${
-                          isDark
-                            ? "border-slate-800 bg-slate-900"
-                            : "border-slate-200 bg-slate-50"
-                        }`}
+                        className="border px-3 py-2 font-semibold border-[var(--ui-line)] bg-[var(--ui-surface)]"
                       >
                         {column.name}
                       </th>
@@ -2312,9 +2297,7 @@ export default function DatabaseDiagramPanel({
                       {recordsTable.records?.columns.map((column, colIndex) => (
                         <td
                           key={`${rowIndex}-${column.name}`}
-                          className={`border px-3 py-2 ${
-                            isDark ? "border-slate-800" : "border-slate-200"
-                          }`}
+                          className="border px-3 py-2 border-[var(--ui-line)]"
                         >
                           {row[colIndex] ?? "(null)"}
                         </td>
@@ -2332,16 +2315,10 @@ export default function DatabaseDiagramPanel({
         <div
           role="dialog"
           aria-label="Escolher algoritmo de auto-organização"
-          className={`absolute bottom-16 left-4 z-50 w-[min(28rem,calc(100%-2rem))] overflow-hidden rounded-xl border shadow-2xl ${
-            isDark
-              ? "border-white/10 bg-slate-950 text-slate-100 shadow-black/40"
-              : "border-slate-200 bg-white text-slate-900 shadow-slate-300/50"
-          }`}
+          className="absolute bottom-16 left-4 z-50 w-[min(28rem,calc(100%-2rem))] overflow-hidden rounded border shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
         >
           <div
-            className={`border-b px-4 py-3 text-sm font-semibold ${
-              isDark ? "border-white/10" : "border-slate-200"
-            }`}
+            className="border-b px-4 py-3 text-sm font-semibold border-[var(--ui-line)]"
           >
             Escolha o algoritmo de auto-organização
           </div>
@@ -2351,14 +2328,10 @@ export default function DatabaseDiagramPanel({
                 key={option.id}
                 type="button"
                 onClick={() => handleApplyAutoLayout(option.id)}
-                className={`flex w-full items-start gap-4 rounded-lg px-3 py-3 text-left transition ${
-                  isDark ? "hover:bg-white/10" : "hover:bg-slate-100"
-                }`}
+                className="flex w-full items-start gap-4 rounded px-3 py-3 text-left transition hover:bg-[var(--ui-raised)]"
               >
                 <span
-                  className={`mt-1 shrink-0 ${
-                    isDark ? "text-slate-300" : "text-slate-700"
-                  }`}
+                  className="mt-1 shrink-0 text-[var(--ui-text)]"
                 >
                   <AutoLayoutIcon icon={option.icon} />
                 </span>
@@ -2367,19 +2340,13 @@ export default function DatabaseDiagramPanel({
                     {option.label}
                   </span>
                   <span
-                    className={`mt-1 block text-xs leading-5 ${
-                      isDark ? "text-slate-400" : "text-slate-500"
-                    }`}
+                    className="mt-1 block text-xs leading-5 text-[var(--ui-muted)]"
                   >
                     {option.description}
                   </span>
                 </span>
                 <span
-                  className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-xs font-semibold shadow-sm ${
-                    isDark
-                      ? "border-slate-700 bg-slate-900 text-slate-300"
-                      : "border-slate-200 bg-slate-50 text-slate-600"
-                  }`}
+                  className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded border text-xs font-semibold shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-muted)]"
                   aria-hidden="true"
                 >
                   {option.shortcut}
@@ -2391,28 +2358,21 @@ export default function DatabaseDiagramPanel({
       ) : null}
 
       <div
-        className={`absolute bottom-4 left-4 z-40 flex items-center overflow-hidden rounded-lg border shadow-lg ${
-          isDark
-            ? "border-white/10 bg-ink/85 text-slate-100 shadow-black/30"
-            : "border-slate-200 bg-white/95 text-slate-800 shadow-slate-300/40"
-        }`}
+        className="absolute bottom-4 left-4 z-40 flex items-center overflow-hidden rounded border shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)]"
       >
         <button
           type="button"
           onClick={() => handleZoom(-1)}
           disabled={viewportScale <= MIN_SCALE}
-          className={`flex h-9 w-9 items-center justify-center text-base font-semibold transition ${
-            isDark ? "hover:bg-white/10" : "hover:bg-slate-100"
-          } disabled:cursor-not-allowed disabled:opacity-40`}
+          className="flex h-9 w-9 items-center justify-center text-base font-semibold transition hover:bg-[var(--ui-raised)] disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="Diminuir zoom"
           title="Diminuir zoom"
         >
           -
         </button>
         <div
-          className={`border-x px-3 py-2 text-[11px] font-semibold tabular-nums ${
-            isDark ? "border-white/10" : "border-slate-200"
-          }`}
+          className="border-x px-3 py-2 text-[11px] font-semibold tabular-nums border-[var(--ui-line)]"
+          title="Zoom: Ctrl/⌘ + rolagem ou botões − e +"
         >
           {Math.round(viewportScale * 100)}%
         </div>
@@ -2420,9 +2380,7 @@ export default function DatabaseDiagramPanel({
           type="button"
           onClick={() => handleZoom(1)}
           disabled={viewportScale >= MAX_SCALE}
-          className={`flex h-9 w-9 items-center justify-center text-base font-semibold transition ${
-            isDark ? "hover:bg-white/10" : "hover:bg-slate-100"
-          } disabled:cursor-not-allowed disabled:opacity-40`}
+          className="flex h-9 w-9 items-center justify-center text-base font-semibold transition hover:bg-[var(--ui-raised)] disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="Aumentar zoom"
           title="Aumentar zoom"
         >
@@ -2434,10 +2392,8 @@ export default function DatabaseDiagramPanel({
           aria-expanded={isAutoLayoutOpen}
           className={`border-l px-3 py-2 text-xs font-semibold transition ${
             isAutoLayoutOpen
-              ? "bg-blue-600 text-white"
-              : isDark
-                ? "border-white/10 hover:bg-white/10"
-                : "border-slate-200 hover:bg-slate-100"
+              ? "bg-[var(--ui-primary)] text-[var(--ui-on-primary)]"
+              : "border-[var(--ui-line)] hover:bg-[var(--ui-raised)]"
           }`}
         >
           Organizar
@@ -2445,11 +2401,7 @@ export default function DatabaseDiagramPanel({
         <button
           type="button"
           onClick={handleFitToContent}
-          className={`border-l px-3 py-2 text-xs font-semibold transition ${
-            isDark
-              ? "border-white/10 hover:bg-white/10"
-              : "border-slate-200 hover:bg-slate-100"
-          }`}
+          className="border-l px-3 py-2 text-xs font-semibold transition border-[var(--ui-line)] hover:bg-[var(--ui-raised)]"
         >
           Ajustar
         </button>
@@ -2465,10 +2417,8 @@ export default function DatabaseDiagramPanel({
           title={interactionMode === "pan" ? "Mover canvas" : "Selecionar"}
           className={`border-l px-3 py-2 text-xs font-semibold transition ${
             interactionMode === "pan"
-              ? "bg-blue-600 text-white"
-              : isDark
-                ? "border-white/10 hover:bg-white/10"
-                : "border-slate-200 hover:bg-slate-100"
+              ? "bg-[var(--ui-primary)] text-[var(--ui-on-primary)]"
+              : "border-[var(--ui-line)] hover:bg-[var(--ui-raised)]"
           }`}
         >
           <HandIcon />

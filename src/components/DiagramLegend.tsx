@@ -13,11 +13,7 @@ interface DiagramLegendProps {
 export function DiagramLegend({ theme }: DiagramLegendProps) {
   return (
     <div
-      className={`pointer-events-none absolute bottom-3 left-3 flex flex-col gap-1 rounded-md border px-3 py-2 text-[11px] backdrop-blur ${
-        theme === "dark"
-          ? "border-white/10 bg-ink/80 text-slate-200"
-          : "border-slate-200 bg-white/90 text-slate-700"
-      }`}
+      className="pointer-events-none absolute bottom-3 left-3 flex flex-col gap-1 rounded border px-3 py-2 text-[11px] backdrop-blur border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)]"
     >
       <span className="mb-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] opacity-70">
         Legenda

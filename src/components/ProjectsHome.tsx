@@ -58,7 +58,6 @@ export function ProjectsHome({
   const filteredProjects = projects.filter((project) =>
     project.name.toLocaleLowerCase("pt-BR").includes(normalizedSearch),
   );
-  const isDark = theme === "dark";
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -100,31 +99,23 @@ export function ProjectsHome({
       className="nexo-ui nexo-app-frame nexo-projects-home min-h-screen"
     >
       <header
-        className={`nexo-topbar border-b px-5 py-3 sm:px-8 ${
-          isDark ? "border-zinc-800 bg-[#161b22]" : "border-[#e6eff5] bg-white"
-        }`}
+        className="nexo-topbar border-b px-5 py-3 sm:px-8 border-[var(--ui-line)] bg-[var(--ui-surface)]"
       >
         <div className="mx-auto flex min-h-[47px] max-w-[1440px] flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Image src="/venture/logogram.svg" width={28} height={24.0732} alt="" className="nexo-brand-mark" priority />
             <span
-              className={`font-semibold text-sm tracking-tight ${
-                isDark ? "text-zinc-100" : "text-[#343c6a]"
-              }`}
+              className="font-semibold text-sm tracking-tight text-[var(--ui-heading)]"
             >
               Nexo
             </span>
             <span
-              className={`text-xs ${
-                isDark ? "text-zinc-500" : "text-zinc-400"
-              }`}
+              className="text-xs text-[var(--ui-muted)]"
             >
               /
             </span>
             <span
-              className={`text-xs font-medium ${
-                isDark ? "text-zinc-400" : "text-zinc-600"
-              }`}
+              className="text-xs font-medium text-[var(--ui-muted)]"
             >
               Projetos
             </span>
@@ -143,16 +134,12 @@ export function ProjectsHome({
         <div className="nexo-section-heading mb-8 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h1
-              className={`text-2xl font-medium tracking-tight ${
-                isDark ? "text-zinc-100" : "text-[#343c6a]"
-              }`}
+              className="text-2xl font-medium tracking-tight text-[var(--ui-heading)]"
             >
               Projetos
             </h1>
             <p
-              className={`mt-2 text-sm ${
-                isDark ? "text-zinc-400" : "text-zinc-600"
-              }`}
+              className="mt-2 text-sm text-[var(--ui-muted)]"
             >
               Documentação e diagramas, organizados em um só lugar.
             </p>
@@ -169,11 +156,7 @@ export function ProjectsHome({
               placeholder="Nome do novo projeto"
               required
               disabled={pendingAction !== null || isLoading}
-              className={`nexo-field w-full min-w-0 rounded border sm:w-64 outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
-                isDark
-                  ? "border-zinc-700 bg-zinc-900 text-zinc-100 placeholder:text-zinc-500"
-                  : "border-zinc-300 bg-white text-zinc-900 placeholder:text-zinc-400"
-              }`}
+              className="nexo-field w-full min-w-0 rounded border sm:w-64 outline-none transition focus:border-[var(--ui-accent)] focus:ring-1 focus:ring-[var(--ui-accent)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)] placeholder:text-[var(--ui-muted)]"
             />
             <button
               type="submit"
@@ -212,11 +195,7 @@ export function ProjectsHome({
 
         {!isLoading && projects.length === 0 ? (
           <div
-            className={`nexo-empty rounded border border-dashed px-6 py-12 text-center text-sm ${
-              isDark
-                ? "border-zinc-800 bg-zinc-900/50 text-zinc-500"
-                : "border-[#e6eff5] bg-white text-[#718ebf]"
-            }`}
+            className="nexo-empty rounded border border-dashed px-6 py-12 text-center text-sm border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-muted)]"
           >
             <h2 className="mb-2 font-semibold text-[var(--ui-heading)]">Seu próximo projeto começa aqui</h2>
             <p>Use o campo acima para criar um projeto ou importe um backup.</p>
@@ -237,11 +216,7 @@ export function ProjectsHome({
               return (
                 <article
                   key={project.id}
-                  className={`nexo-surface nexo-project-card flex flex-col justify-between transition-colors ${
-                    isDark
-                      ? "border-zinc-800 bg-[#161b22] hover:border-zinc-700"
-                      : "border-zinc-200 bg-white hover:border-zinc-300"
-                  }`}
+                  className="nexo-surface nexo-project-card flex flex-col justify-between transition-colors border-[var(--ui-line)] bg-[var(--ui-surface)] hover:border-[var(--ui-line)]"
                 >
                   {isEditing ? (
                     <form onSubmit={handleRename} className="flex flex-col gap-2">
@@ -258,11 +233,7 @@ export function ProjectsHome({
                         disabled={pendingAction !== null}
                         value={editingName}
                         onChange={(event) => setEditingName(event.target.value)}
-                        className={`nexo-field w-full rounded border outline-none focus:ring-1 focus:ring-zinc-400 ${
-                          isDark
-                            ? "border-zinc-700 bg-zinc-900 text-zinc-100"
-                            : "border-zinc-300 bg-white text-zinc-900"
-                        }`}
+                        className="nexo-field w-full rounded border outline-none focus:ring-1 focus:ring-[var(--ui-accent)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
                       />
                       <div className="flex gap-2">
                         <button
@@ -287,7 +258,7 @@ export function ProjectsHome({
                       <button
                         type="button"
                         onClick={() => onOpenProject(project.id)}
-                        className="block w-full rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className="block w-full rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]"
                       >
                         <div className="mb-4 flex items-center justify-between gap-3">
                           <span className="nexo-project-tag">Workspace</span>
@@ -295,27 +266,21 @@ export function ProjectsHome({
                         </div>
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <h2
-                            className={`m-0 line-clamp-1 text-sm font-medium ${
-                              isDark ? "text-zinc-100" : "text-[#343c6a]"
-                            }`}
+                            className="m-0 line-clamp-1 text-sm font-medium text-[var(--ui-heading)]"
                           >
                             {project.name}
                           </h2>
 
                         </div>
                         <p
-                          className={`mt-1.5 text-[11px] ${
-                            isDark ? "text-zinc-400" : "text-zinc-500"
-                          }`}
+                          className="mt-1.5 text-[11px] text-[var(--ui-muted)]"
                         >
                           Modificado em {formatDate(project.updatedAt)}
                         </p>
                       </button>
 
                       <div
-                        className={`nexo-project-footer mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-2 ${
-                          isDark ? "border-zinc-800/80" : "border-[#e6eff5]"
-                        }`}
+                        className="nexo-project-footer mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-2 border-[var(--ui-line)]"
                       >
                         <button
                           type="button"

@@ -38,7 +38,6 @@ export function AddMarkdownModal({
   onClose,
   onSave,
 }: AddMarkdownModalProps) {
-  const isDark = theme === "dark";
   const dialogRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState("");
@@ -245,27 +244,23 @@ export function AddMarkdownModal({
   return (
     <div
       data-theme={theme}
-      className="nexo-ui fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+      className="nexo-ui fixed inset-0 z-50 flex items-center justify-center bg-[var(--ui-overlay)] px-4 py-8"
       role="presentation"
       onClick={safeClose}
     >
       <div
         ref={dialogRef}
-        className={`nexo-dialog w-full max-w-3xl rounded border p-5 ${
-          isDark
-            ? "border-zinc-800 bg-[#161b22] text-zinc-200"
-            : "border-zinc-200 bg-white text-zinc-900"
-        } shadow-lg`}
+        className="nexo-dialog w-full max-w-3xl rounded border p-5 border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)] shadow-[var(--ui-shadow)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-markdown-title"
         onClick={(event) => event.stopPropagation()}
       >
         <form className="flex flex-col gap-3.5" onSubmit={handleSubmit}>
-          <div className="flex items-center justify-between border-b pb-2.5 border-zinc-200 dark:border-zinc-800">
+          <div className="flex items-center justify-between border-b pb-2.5 border-[var(--ui-line)]">
             <h2
               id="add-markdown-title"
-              className="m-0 text-sm font-semibold text-zinc-900 dark:text-zinc-100"
+              className="m-0 text-sm font-semibold text-[var(--ui-heading)]"
             >
               {mode === "edit" ? "Editar Bloco Markdown" : "Novo Bloco Markdown"}
             </h2>
@@ -280,7 +275,7 @@ export function AddMarkdownModal({
             </button>
           </div>
 
-          <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+          <label className="flex flex-col gap-1 text-xs font-medium text-[var(--ui-text)]">
             Título do card (opcional)
             <input
               type="text"
@@ -293,15 +288,11 @@ export function AddMarkdownModal({
                 setTitle(event.target.value);
               }}
               placeholder="Ex: P2M-1185 ou Criacao de Pedido"
-              className={`nexo-field w-full rounded border px-2.5 text-xs outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
-                isDark
-                  ? "border-zinc-700 bg-zinc-900 text-zinc-100 placeholder:text-zinc-500"
-                  : "border-zinc-300 bg-white text-zinc-900 placeholder:text-zinc-400"
-              }`}
+              className="nexo-field w-full rounded border px-2.5 text-xs outline-none transition focus:border-[var(--ui-accent)] focus:ring-1 focus:ring-[var(--ui-accent)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)] placeholder:text-[var(--ui-muted)]"
             />
           </label>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--ui-muted)]">
             <button
               type="button"
               className="toolbar-button h-7 px-3 text-xs"
@@ -324,7 +315,7 @@ export function AddMarkdownModal({
             </span>
           </div>
 
-          <div className="flex flex-col gap-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+          <div className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ui-text)]">
             <div className="flex items-center justify-between">
               <label htmlFor="markdown-content">Conteúdo Markdown</label>
               <div
@@ -367,22 +358,18 @@ export function AddMarkdownModal({
               }}
               rows={12}
               placeholder={"# Titulo\n\nCole aqui o conteudo em markdown."}
-              className={`nexo-field rounded border p-3 font-mono text-xs leading-5 outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
-                isDark
-                  ? "border-zinc-700 bg-zinc-900 text-zinc-200 placeholder:text-zinc-600"
-                  : "border-zinc-300 bg-white text-zinc-900 placeholder:text-zinc-400"
-              }`}
+              className="nexo-field rounded border p-3 font-mono text-xs leading-5 outline-none transition focus:border-[var(--ui-accent)] focus:ring-1 focus:ring-[var(--ui-accent)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)] placeholder:text-[var(--ui-muted)]"
             />
           </div>
 
           {error ? (
-            <p role="alert" className="m-0 text-xs text-red-500 font-medium">
+            <p role="alert" className="m-0 text-xs text-[var(--ui-danger)] font-medium">
               {error}
             </p>
           ) : null}
 
-          <div className="nexo-dialog-divider flex flex-wrap items-center justify-between gap-3 border-t pt-3 border-zinc-200 dark:border-zinc-800">
-            <span className="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">
+          <div className="nexo-dialog-divider flex flex-wrap items-center justify-between gap-3 border-t pt-3 border-[var(--ui-line)]">
+            <span className="text-[11px] text-[var(--ui-muted)]">
               {isMac ? "⌘" : "Ctrl"}+Enter para salvar
             </span>
             <div className="flex items-center gap-2">

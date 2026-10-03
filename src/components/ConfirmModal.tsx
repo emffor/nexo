@@ -27,7 +27,6 @@ export function ConfirmModal({
   onCancel,
 }: ConfirmModalProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
-  const isDark = theme === "dark";
 
   useEffect(() => {
     if (!open) {
@@ -58,16 +57,12 @@ export function ConfirmModal({
   return (
     <div
       data-theme={theme}
-      className="nexo-ui fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+      className="nexo-ui fixed inset-0 z-50 flex items-center justify-center bg-[var(--ui-overlay)] px-4 py-8"
       role="presentation"
       onClick={onCancel}
     >
       <div
-        className={`nexo-dialog w-full max-w-sm rounded border p-5 shadow-lg ${
-          isDark
-            ? "border-zinc-800 bg-[#161b22] text-zinc-200"
-            : "border-zinc-200 bg-white text-zinc-900"
-        }`}
+        className="nexo-dialog w-full max-w-sm rounded border p-5 shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-modal-title"
@@ -76,17 +71,17 @@ export function ConfirmModal({
       >
         <h2
           id="confirm-modal-title"
-          className="m-0 text-sm font-semibold text-zinc-900 dark:text-zinc-100"
+          className="m-0 text-sm font-semibold text-[var(--ui-heading)]"
         >
           {title}
         </h2>
         <p
           id="confirm-modal-desc"
-          className="mt-2 text-xs leading-5 text-zinc-600 dark:text-zinc-400"
+          className="mt-2 text-xs leading-5 text-[var(--ui-muted)]"
         >
           {description}
         </p>
-        <div className="nexo-dialog-divider mt-5 flex items-center justify-end gap-2 border-t pt-3 border-zinc-200 dark:border-zinc-800">
+        <div className="nexo-dialog-divider mt-5 flex items-center justify-end gap-2 border-t pt-3 border-[var(--ui-line)]">
           <button
             ref={cancelRef}
             type="button"

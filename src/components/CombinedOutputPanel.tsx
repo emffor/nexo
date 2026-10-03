@@ -73,7 +73,7 @@ function PreviewGridCard({
       ? {
           zIndex: 50,
           opacity: 0.92,
-          boxShadow: "0 14px 34px rgba(0,0,0,0.28)",
+          boxShadow: "var(--ui-shadow-strong)",
         }
       : {}),
   };
@@ -90,47 +90,31 @@ function PreviewGridCard({
       onClick={(event) => onClick(event, item)}
       onKeyDown={(event) => onKeyDown(event, item)}
       data-active={isActive}
-      className={`nexo-preview-grid-card group flex min-h-[236px] scroll-mt-6 cursor-grab flex-col overflow-hidden rounded-xl border text-left transition active:cursor-grabbing ${
+      className={`nexo-preview-grid-card group flex min-h-[236px] scroll-mt-6 cursor-grab flex-col overflow-hidden rounded border text-left transition active:cursor-grabbing ${
         isActive ? "preview-item-active" : ""
       } ${
         isDragging
-          ? theme === "dark"
-            ? "border-teal-400/60 bg-[#0f1b20]"
-            : "border-teal-300 bg-teal-50"
-          : theme === "dark"
-            ? isActive
-              ? "border-teal-400/55 bg-[#0f1b20] shadow-[0_0_0_1px_rgba(45,212,191,0.14)]"
-              : "border-slate-800/80 bg-[#0c1219] hover:border-slate-700"
-            : isActive
-              ? "border-teal-300 bg-teal-50/70 shadow-sm"
-              : "border-slate-200 bg-white shadow-sm hover:border-slate-300"
+          ? "border-[var(--ui-accent)] bg-[var(--ui-accent-soft)]"
+          : isActive
+              ? "border-[var(--ui-accent)] bg-[var(--ui-accent-soft)] shadow-[var(--ui-shadow)]"
+              : "border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow)] hover:border-[var(--ui-line)]"
       }`}
       {...sortableAttributes}
       {...listeners}
     >
       <div
-        className={`nexo-preview-card-header border-b px-3 py-2.5 ${
-          theme === "dark"
-            ? "border-slate-800/80 bg-slate-950/20"
-            : "border-slate-200 bg-slate-50"
-        }`}
+        className="nexo-preview-card-header border-b px-3 py-2.5 border-[var(--ui-line)] bg-[var(--ui-surface)]"
       >
         <div className="flex items-center justify-between gap-3">
           <span
-            className={`nexo-preview-number rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] ${
-              theme === "dark"
-                ? "bg-slate-800 text-slate-400"
-                : "bg-white text-slate-500"
-            }`}
+            className="nexo-preview-number rounded-full px-2 py-0.5 tabular-nums text-[10px] font-semibold uppercase tracking-[0.16em] bg-[var(--ui-surface)] text-[var(--ui-muted)]"
           >
             {String(position + 1).padStart(2, "0")}
           </span>
           <StatusDot status={item.status} theme={theme} className="h-2 w-2" />
         </div>
         <h3
-          className={`m-0 mt-2 line-clamp-1 text-[13px] font-semibold leading-5 ${
-            theme === "dark" ? "text-slate-100" : "text-slate-950"
-          }`}
+          className="m-0 mt-2 line-clamp-1 text-[13px] font-semibold leading-5 text-[var(--ui-heading)]"
         >
           {displayTitle}
         </h3>
@@ -146,20 +130,12 @@ function PreviewGridCard({
           </ReactMarkdown>
         </div>
         <div
-          className={`nexo-preview-fade pointer-events-none absolute inset-x-0 bottom-0 h-16 ${
-            theme === "dark"
-              ? "bg-gradient-to-t from-[#0c1219] to-transparent"
-              : "bg-gradient-to-t from-white to-transparent"
-          }`}
+          className="nexo-preview-fade pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[var(--ui-surface)] to-transparent"
         />
       </div>
 
       <div
-        className={`nexo-preview-card-footer mt-auto border-t px-3 py-2 ${
-          theme === "dark"
-            ? "border-slate-800/80 text-slate-500"
-            : "border-slate-200 text-slate-500"
-        }`}
+        className="nexo-preview-card-footer mt-auto border-t px-3 py-2 border-[var(--ui-line)] text-[var(--ui-muted)]"
       >
         <p className="m-0 min-w-0 truncate text-[10px]">
           Atualizado em{" "}
@@ -201,7 +177,7 @@ function PreviewMarkdownSection({
     >
       <div className="mb-4 flex items-center gap-3">
         <span
-          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${theme === "dark" ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-500"}`}
+          className="rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] bg-[var(--ui-raised)] text-[var(--ui-muted)]"
         >
           {String(position + 1).padStart(2, "0")}
         </span>
@@ -216,7 +192,7 @@ function PreviewMarkdownSection({
           <StatusDot status={item.status} theme={theme} />
         )}
         <p
-          className={`m-0 text-xs font-medium uppercase tracking-[0.22em] ${theme === "dark" ? "text-slate-500" : "text-slate-400"}`}
+          className="m-0 text-xs font-medium uppercase tracking-[0.22em] text-[var(--ui-muted)]"
         >
           {getDisplayTitle(item, 72)}
         </p>
@@ -336,21 +312,13 @@ export function CombinedOutputPanel({
 
   return (
     <section
-      className={`flex min-h-[420px] flex-col lg:min-h-0 ${
-        theme === "dark"
-          ? "text-slate-100"
-          : "text-[#343c6a]"
-      }`}
+      className="flex min-h-[420px] flex-col lg:min-h-0 text-[var(--ui-heading)]"
     >
       <div
-        className={`nexo-panel-heading flex items-center justify-between ${
-          theme === "dark" ? "border-zinc-800" : "border-[#e6eff5]"
-        }`}
+        className="nexo-panel-heading flex items-center justify-between border-[var(--ui-line)]"
       >
         <h2
-          className={`m-0 text-xs font-semibold uppercase tracking-wider ${
-            theme === "dark" ? "text-zinc-400" : "text-[#343c6a]"
-          }`}
+          className="m-0 text-xs font-semibold uppercase tracking-wider text-[var(--ui-heading)]"
         >
           {isCardsMode && !selectedPreviewItem
             ? "Visualização em Cards"
@@ -376,21 +344,17 @@ export function CombinedOutputPanel({
         {isLoading ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
             <div
-              className={`h-5 w-5 animate-spin rounded-full border-2 ${theme === "dark" ? "border-slate-700 border-t-teal-400" : "border-slate-300 border-t-teal-500"}`}
+              className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--ui-line)] border-t-[var(--ui-accent)]"
             />
             <p
-              className={`m-0 text-sm ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}
+              className="m-0 text-sm text-[var(--ui-muted)]"
             >
               Carregando conteudo...
             </p>
           </div>
         ) : selectedPreviewItem ? (
           <article
-            className={`markdown-preview w-full border-0 px-0 py-2 sm:px-2 sm:py-3 ${
-              theme === "dark"
-                ? "border-slate-800/65 bg-[#0c1219]"
-                : "border-slate-200 bg-white shadow-sm"
-            }`}
+            className="markdown-preview w-full border-0 px-0 py-2 sm:px-2 sm:py-3 border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow)]"
           >
             <section
               id={`preview-item-${selectedPreviewItem.id}`}
@@ -399,11 +363,7 @@ export function CombinedOutputPanel({
             >
               <div className="mb-4 flex items-center gap-3">
                 <span
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${
-                    theme === "dark"
-                      ? "bg-slate-800 text-slate-400"
-                      : "bg-slate-100 text-slate-500"
-                  }`}
+                  className="rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] bg-[var(--ui-raised)] text-[var(--ui-muted)]"
                 >
                   {String(
                     items.findIndex(
@@ -424,9 +384,7 @@ export function CombinedOutputPanel({
                   <StatusDot status={selectedPreviewItem.status} theme={theme} />
                 )}
                 <p
-                  className={`m-0 text-xs font-medium uppercase tracking-[0.22em] ${
-                    theme === "dark" ? "text-slate-500" : "text-slate-400"
-                  }`}
+                  className="m-0 text-xs font-medium uppercase tracking-[0.22em] text-[var(--ui-muted)]"
                 >
                   {getDisplayTitle(selectedPreviewItem, 72)}
                 </p>
@@ -466,11 +424,7 @@ export function CombinedOutputPanel({
           </DndContext>
         ) : isNormalMode && activeNormalItem ? (
           <article
-            className={`markdown-preview w-full border-0 px-0 py-2 sm:px-2 sm:py-3 ${
-              theme === "dark"
-                ? "border-slate-800/65 bg-[#0c1219]"
-                : "border-slate-200 bg-white shadow-sm"
-            }`}
+            className="markdown-preview w-full border-0 px-0 py-2 sm:px-2 sm:py-3 border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow)]"
           >
             <PreviewMarkdownSection
               item={activeNormalItem}
@@ -481,11 +435,7 @@ export function CombinedOutputPanel({
           </article>
         ) : items.length > 0 ? (
           <article
-            className={`markdown-preview w-full border-0 px-0 py-2 sm:px-2 sm:py-3 ${
-              theme === "dark"
-                ? "border-slate-800/65 bg-[#0c1219]"
-                : "border-slate-200 bg-white shadow-sm"
-            }`}
+            className="markdown-preview w-full border-0 px-0 py-2 sm:px-2 sm:py-3 border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow)]"
           >
             {items.map((item, index) => (
               <PreviewMarkdownSection
@@ -501,26 +451,22 @@ export function CombinedOutputPanel({
           </article>
         ) : (
           <div
-            className={`nexo-empty flex h-full min-h-[320px] w-full flex-col items-center justify-center gap-4 rounded-[1.35rem] border border-dashed px-6 py-12 text-center ${
-              theme === "dark"
-                ? "border-slate-700/80 bg-[#0c1219]"
-                : "border-slate-300 bg-white"
-            }`}
+            className="nexo-empty flex h-full min-h-[320px] w-full flex-col items-center justify-center gap-4 rounded border border-dashed px-6 py-12 text-center border-[var(--ui-line)] bg-[var(--ui-surface)]"
           >
             <span
-              className={`text-5xl ${theme === "dark" ? "opacity-30" : "opacity-20"}`}
+              className="text-5xl opacity-20"
               aria-hidden="true"
             >
               ❖
             </span>
             <div>
               <p
-                className={`m-0 text-sm font-semibold ${theme === "dark" ? "text-slate-300" : "text-slate-700"}`}
+                className="m-0 text-sm font-semibold text-[var(--ui-text)]"
               >
                 Preview vazio
               </p>
               <p
-                className={`m-0 mt-1 text-sm leading-6 ${theme === "dark" ? "text-slate-500" : "text-slate-400"}`}
+                className="m-0 mt-1 text-sm leading-6 text-[var(--ui-muted)]"
               >
                 Adicione cards de markdown para visualizar o resultado final
                 aqui.

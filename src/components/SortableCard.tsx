@@ -50,29 +50,21 @@ export function SortableCard({
       ? {
           zIndex: 50,
           opacity: 0.9,
-          boxShadow: "0 12px 28px rgba(0,0,0,0.25)",
+          boxShadow: "var(--ui-shadow-strong)",
         }
       : {}),
   };
   const displayTitle = getDisplayTitle(item, 56);
 
   const outlineContainerClass =
-    theme === "dark"
-      ? isActive
-        ? "border-blue-500 bg-blue-950/20"
-        : "border-zinc-800 bg-[#161b22]"
-      : isActive
-        ? "border-blue-500 bg-blue-50"
-        : "border-zinc-200 bg-white";
+    isActive
+        ? "border-[var(--ui-accent)] bg-[var(--ui-accent-soft)]"
+        : "border-[var(--ui-line)] bg-[var(--ui-surface)]";
 
   const outlineButtonClass =
-    theme === "dark"
-      ? isActive
-        ? "border-blue-400 bg-blue-900/30 text-blue-200"
-        : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
-      : isActive
-        ? "border-blue-400 bg-blue-100 text-blue-900"
-        : "border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300 hover:text-zinc-900";
+    isActive
+        ? "border-[var(--ui-accent)] bg-[var(--ui-accent-soft)] text-[var(--ui-accent)]"
+        : "border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-muted)] hover:border-[var(--ui-line)] hover:text-[var(--ui-heading)]";
 
   return (
     <article
@@ -85,27 +77,17 @@ export function SortableCard({
           ? `nexo-outline-card rounded p-0.5 ${outlineContainerClass}`
           : `nexo-item-card rounded border px-3 py-2 ${
               isDragging
-                ? theme === "dark"
-                  ? "border-zinc-500 bg-zinc-800"
-                  : "border-zinc-400 bg-zinc-100"
+                ? "border-[var(--ui-line)] bg-[var(--ui-raised)]"
                 : isActive
-                  ? theme === "dark"
-                    ? "border-blue-500/80 bg-blue-950/20"
-                    : "border-blue-400 bg-blue-50/50"
-                  : theme === "dark"
-                    ? "border-zinc-800 bg-[#161b22] hover:border-zinc-700"
-                    : "border-zinc-200 bg-white hover:border-zinc-300"
+                  ? "border-[var(--ui-accent)] bg-[var(--ui-accent-soft)]"
+                  : "border-[var(--ui-line)] bg-[var(--ui-surface)] hover:border-[var(--ui-line)]"
             }`
       }`}
     >
       <div className={`flex items-center ${isOutlineMode ? "gap-1" : "gap-2"}`}>
         {isOutlineMode ? null : (
           <span
-            className={`nexo-item-number font-mono text-xs font-medium px-1.5 py-0.5 rounded ${
-              theme === "dark"
-                ? "bg-zinc-800 text-zinc-400"
-                : "bg-zinc-100 text-zinc-600"
-            }`}
+            className="nexo-item-number tabular-nums text-xs font-medium px-1.5 py-0.5 rounded bg-[var(--ui-raised)] text-[var(--ui-muted)]"
           >
             {String(position + 1).padStart(2, "0")}
           </span>
@@ -122,11 +104,7 @@ export function SortableCard({
               {...listeners}
             >
               <span
-                className={`absolute left-1 top-1 font-mono text-[9px] ${
-                  theme === "dark"
-                    ? "text-zinc-500"
-                    : "text-zinc-400"
-                }`}
+                className="absolute left-1 top-1 tabular-nums text-[9px] text-[var(--ui-muted)]"
                 aria-hidden="true"
               >
                 {String(position + 1).padStart(2, "0")}
@@ -170,9 +148,7 @@ export function SortableCard({
               type="button"
               onClick={() => onSelect(item)}
               title={displayTitle}
-              className={`nexo-item-title min-w-0 flex-1 cursor-grab truncate text-left text-sm font-medium active:cursor-grabbing ${
-                theme === "dark" ? "text-zinc-200" : "text-zinc-900"
-              }`}
+              className="nexo-item-title min-w-0 flex-1 cursor-grab truncate text-left text-sm font-medium active:cursor-grabbing text-[var(--ui-heading)]"
               {...attributes}
               {...listeners}
             >
@@ -183,11 +159,7 @@ export function SortableCard({
                 type="button"
                 onClick={() => onEdit(item)}
                 aria-label={`Editar ${getDisplayTitle(item, 56)}`}
-                className={`nexo-card-action inline-flex h-6 w-6 items-center justify-center rounded border text-xs transition ${
-                  theme === "dark"
-                    ? "border-zinc-700 bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
-                    : "border-zinc-200 bg-zinc-50 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
-                }`}
+                className="nexo-card-action inline-flex h-6 w-6 items-center justify-center rounded border text-xs transition border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-muted)] hover:bg-[var(--ui-raised)] hover:text-[var(--ui-text)]"
                 title="Editar card"
               >
                 <Image src="/venture/edit.svg" width={16} height={16} alt="" className="nexo-nav-icon" />
@@ -196,11 +168,7 @@ export function SortableCard({
                 type="button"
                 onClick={() => onDelete(item)}
                 aria-label={`Remover ${getDisplayTitle(item, 56)}`}
-                className={`nexo-card-action nexo-card-action--danger inline-flex h-6 w-6 items-center justify-center rounded border text-xs transition ${
-                  theme === "dark"
-                    ? "border-zinc-700 bg-zinc-800 text-red-400 hover:border-red-900 hover:bg-red-950/40 hover:text-red-300"
-                    : "border-zinc-200 bg-zinc-50 text-red-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                }`}
+                className="nexo-card-action nexo-card-action--danger inline-flex h-6 w-6 items-center justify-center rounded border text-xs transition border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-danger)] hover:border-[var(--ui-danger)] hover:bg-[var(--ui-danger-soft)] hover:text-[var(--ui-danger)]"
                 title="Excluir card"
               >
                 <svg

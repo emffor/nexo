@@ -12,23 +12,17 @@ interface DbmlEditorProps {
 
 export function DbmlEditor({ value, theme, onChange, errors }: DbmlEditorProps) {
   const id = useId();
-  const isDark = theme === "dark";
 
   return (
     <div
-      className={`nexo-surface flex h-full min-h-0 flex-col overflow-hidden rounded-[1.25rem] border ${
-        isDark ? "border-white/10 bg-ink/70" : "border-slate-200 bg-white"
-      }`}
+      data-theme={theme}
+      className="nexo-surface flex h-full min-h-0 flex-col overflow-hidden rounded border border-[var(--ui-line)] bg-[var(--ui-surface)]"
     >
       <div
-        className={`nexo-dbml-heading flex items-center justify-between border-b px-5 py-5 text-base font-semibold ${
-          isDark
-            ? "border-white/10 text-slate-300"
-            : "border-slate-200 text-slate-500"
-        }`}
+        className="nexo-dbml-heading flex items-center justify-between border-b px-5 py-5 text-base font-semibold border-[var(--ui-line)] text-[var(--ui-muted)]"
       >
         <span>DBML</span>
-        <span className={isDark ? "text-slate-400" : "text-slate-500"}>
+        <span className="text-[var(--ui-muted)]">
           {value.length} chars
         </span>
       </div>
@@ -40,20 +34,12 @@ export function DbmlEditor({ value, theme, onChange, errors }: DbmlEditorProps) 
         value={value}
         spellCheck={false}
         onChange={(event) => onChange(event.target.value)}
-        className={`nexo-dbml-input flex-1 min-h-0 w-full resize-none border-0 px-5 py-4 font-mono text-[13px] leading-relaxed outline-none ${
-          isDark
-            ? "bg-transparent text-slate-100 placeholder:text-slate-500"
-            : "bg-transparent text-slate-800 placeholder:text-slate-400"
-        }`}
+        className="nexo-dbml-input flex-1 min-h-0 w-full resize-none border-0 px-5 py-4 font-mono text-[13px] leading-relaxed outline-none bg-transparent text-[var(--ui-text)] placeholder:text-[var(--ui-muted)]"
         placeholder="Table users { id integer [primary key] ... }"
       />
       {errors && errors.length > 0 ? (
         <div
-          className={`max-h-32 overflow-auto border-t px-4 py-2 text-[11px] ${
-            isDark
-              ? "border-white/10 bg-rose-500/[0.06] text-rose-200"
-              : "border-slate-200 bg-rose-50 text-rose-700"
-          }`}
+          className="max-h-32 overflow-auto border-t px-4 py-2 text-[11px] border-[var(--ui-line)] bg-[var(--ui-danger-soft)] text-[var(--ui-danger)]"
         >
           <p className="mb-1 font-semibold uppercase tracking-[0.16em]">
             {errors.length} aviso{errors.length === 1 ? "" : "s"}

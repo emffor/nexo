@@ -5,17 +5,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: '#111827',
-        sand: '#f5efe3',
-        accent: '#0f766e',
-        border: '#d6d3d1',
+        ink: 'var(--ui-text)',
+        accent: 'var(--ui-accent)',
+        border: 'var(--ui-line)',
       },
       boxShadow: {
-        card: '0 18px 40px rgba(17, 24, 39, 0.08)',
+        card: 'var(--ui-shadow)',
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Helvetica', 'Arial', 'sans-serif'],
-        mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        sans: ['var(--ui-font-family)'],
+        mono: ['var(--ui-code-font-family)'],
       },
     },
   },
