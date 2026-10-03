@@ -530,3 +530,30 @@ it('aplica e restaura cores pelo controle acessível e consulta enum no campo', 
   fireEvent.click(screen.getByRole('button', { name: 'status' }));
   expect(screen.getByRole('dialog', { name: 'status' })).toHaveTextContent('ativo');
 });
+
+it('renderiza tooltips para os botões da barra de ferramentas do diagrama', () => {
+  const parsed = parseDbml('Table users { id int }');
+  render(
+    <DatabaseDiagramPanel
+      {...parsed}
+      content="Table users { id int }"
+      state={{ positions: { users: { x: 60, y: 100 } } }}
+      onStateChange={vi.fn()}
+      theme="light"
+    />,
+  );
+  const tooltips = screen.getAllByRole('tooltip');
+  expect(tooltips.length).toBeGreaterThanOrEqual(10);
+  expect(screen.getByText('Desfazer')).toBeInTheDocument();
+  expect(screen.getByText('Refazer')).toBeInTheDocument();
+  expect(screen.getByText('Diminuir zoom')).toBeInTheDocument();
+  expect(screen.getByText('Aumentar zoom')).toBeInTheDocument();
+  expect(screen.getByText('Zoom 100% / Centralizar')).toBeInTheDocument();
+  expect(screen.getByText('Ocultar grade')).toBeInTheDocument();
+  expect(screen.getByText('Auto-organizar layout')).toBeInTheDocument();
+  expect(screen.getByText('Exportar DBML')).toBeInTheDocument();
+  expect(screen.getByText('Exportar imagem PNG')).toBeInTheDocument();
+  expect(screen.getByText('Ajuda e atalhos')).toBeInTheDocument();
+  expect(screen.getByText('Estrutura do banco')).toBeInTheDocument();
+  expect(screen.getByText('Modo arrastar canvas')).toBeInTheDocument();
+});

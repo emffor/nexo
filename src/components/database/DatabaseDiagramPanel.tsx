@@ -150,6 +150,53 @@ function HandIcon() {
   );
 }
 
+function ToolbarItemWithTooltip({
+  tooltip,
+  shortcut,
+  align = "center",
+  children,
+}: {
+  tooltip: string;
+  shortcut?: string;
+  align?: "center" | "right" | "left";
+  children: React.ReactNode;
+}) {
+  const alignClasses =
+    align === "right"
+      ? "right-0 translate-x-0"
+      : align === "left"
+      ? "left-0 translate-x-0"
+      : "left-1/2 -translate-x-1/2";
+
+  const arrowAlignClasses =
+    align === "right"
+      ? "right-3 translate-x-0"
+      : align === "left"
+      ? "left-3 translate-x-0"
+      : "left-1/2 -translate-x-1/2";
+
+  return (
+    <div className="relative group/tooltip flex items-center justify-center">
+      {children}
+      <div
+        role="tooltip"
+        className={`pointer-events-none absolute top-full mt-2.5 ${alignClasses} z-50 flex items-center gap-1.5 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-[11px] font-medium text-zinc-100 shadow-md shadow-black/20 opacity-0 translate-y-0.5 transition-all duration-150 ease-out group-hover/tooltip:opacity-100 group-hover/tooltip:translate-y-0 dark:bg-zinc-800 dark:text-zinc-100 dark:border dark:border-zinc-700/60`}
+      >
+        <div
+          aria-hidden="true"
+          className={`absolute -top-1 ${arrowAlignClasses} h-1.5 w-1.5 rotate-45 bg-zinc-900 dark:bg-zinc-800 dark:border-l dark:border-t dark:border-zinc-700/60`}
+        />
+        <span>{tooltip}</span>
+        {shortcut ? (
+          <kbd className="rounded bg-zinc-800 dark:bg-zinc-700/80 px-1 py-0.5 text-[9px] font-semibold text-zinc-300">
+            {shortcut}
+          </kbd>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export default function DatabaseDiagramPanel({
   groups = [],
   notes = [],
@@ -296,226 +343,244 @@ export default function DatabaseDiagramPanel({
           </p>
         </div>
 
-        <div className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-[var(--ui-line)] bg-[var(--ui-surface)] p-1 shadow-xs text-xs text-[var(--ui-text)]">
+        <div className="relative z-20 flex items-center gap-1 sm:gap-1.5 rounded-xl border border-[var(--ui-line)] bg-[var(--ui-surface)] p-1 shadow-xs text-xs text-[var(--ui-text)]">
           {/* Desfazer */}
-          <button
-            type="button"
-            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] disabled:opacity-30 transition-colors"
-            aria-label="Desfazer"
-            title="Desfazer (Ctrl/⌘ Z)"
-            disabled={!canUndo}
-            onClick={onUndo}
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 7v6h6" />
-              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
-            </svg>
-          </button>
+          <ToolbarItemWithTooltip tooltip="Desfazer" shortcut="⌘Z">
+            <button
+              type="button"
+              className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] disabled:opacity-30 transition-colors"
+              aria-label="Desfazer"
+              disabled={!canUndo}
+              onClick={onUndo}
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 7v6h6" />
+                <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+              </svg>
+            </button>
+          </ToolbarItemWithTooltip>
 
           {/* Refazer */}
-          <button
-            type="button"
-            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] disabled:opacity-30 transition-colors"
-            aria-label="Refazer"
-            title="Refazer (Ctrl/⌘ Shift Z)"
-            disabled={!canRedo}
-            onClick={onRedo}
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 7v6h-6" />
-              <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
-            </svg>
-          </button>
+          <ToolbarItemWithTooltip tooltip="Refazer" shortcut="⌘⇧Z">
+            <button
+              type="button"
+              className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] disabled:opacity-30 transition-colors"
+              aria-label="Refazer"
+              disabled={!canRedo}
+              onClick={onRedo}
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 7v6h-6" />
+                <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
+              </svg>
+            </button>
+          </ToolbarItemWithTooltip>
 
           <div className="mx-0.5 h-4 w-px bg-[var(--ui-line)]" />
 
           {/* Diminuir zoom */}
-          <button
-            type="button"
-            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] disabled:opacity-30 transition-colors"
-            onClick={() => handleZoom(-1)}
-            disabled={viewportScale <= MIN_SCALE}
-            aria-label="Diminuir zoom"
-            title="Diminuir zoom"
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              <line x1="8" y1="11" x2="14" y2="11" />
-            </svg>
-          </button>
+          <ToolbarItemWithTooltip tooltip="Diminuir zoom">
+            <button
+              type="button"
+              className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] disabled:opacity-30 transition-colors"
+              onClick={() => handleZoom(-1)}
+              disabled={viewportScale <= MIN_SCALE}
+              aria-label="Diminuir zoom"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                <line x1="8" y1="11" x2="14" y2="11" />
+              </svg>
+            </button>
+          </ToolbarItemWithTooltip>
 
           {/* Percentual de zoom */}
-          <span className="min-w-[38px] text-center text-xs font-semibold tabular-nums text-[var(--ui-heading)]">
-            {Math.round(viewportScale * 100)}%
-          </span>
+          <ToolbarItemWithTooltip tooltip="Zoom atual">
+            <span className="min-w-[38px] text-center text-xs font-semibold tabular-nums text-[var(--ui-heading)] cursor-default">
+              {Math.round(viewportScale * 100)}%
+            </span>
+          </ToolbarItemWithTooltip>
 
           {/* Aumentar zoom */}
-          <button
-            type="button"
-            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] disabled:opacity-30 transition-colors"
-            onClick={() => handleZoom(1)}
-            disabled={viewportScale >= MAX_SCALE}
-            aria-label="Aumentar zoom"
-            title="Aumentar zoom"
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              <line x1="11" y1="8" x2="11" y2="14" />
-              <line x1="8" y1="11" x2="14" y2="11" />
-            </svg>
-          </button>
+          <ToolbarItemWithTooltip tooltip="Aumentar zoom">
+            <button
+              type="button"
+              className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] disabled:opacity-30 transition-colors"
+              onClick={() => handleZoom(1)}
+              disabled={viewportScale >= MAX_SCALE}
+              aria-label="Aumentar zoom"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                <line x1="11" y1="8" x2="11" y2="14" />
+                <line x1="8" y1="11" x2="14" y2="11" />
+              </svg>
+            </button>
+          </ToolbarItemWithTooltip>
 
           {/* Reset zoom / 100% */}
-          <button
-            type="button"
-            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] transition-colors"
-            onClick={() => onStateChange({ ...state, viewport: { x: 0, y: 0, scale: 1 } })}
-            aria-label="Zoom 100%"
-            title="Zoom 100% / Centralizar"
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-            </svg>
-          </button>
+          <ToolbarItemWithTooltip tooltip="Zoom 100% / Centralizar">
+            <button
+              type="button"
+              className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] transition-colors"
+              onClick={() => onStateChange({ ...state, viewport: { x: 0, y: 0, scale: 1 } })}
+              aria-label="Zoom 100%"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+            </button>
+          </ToolbarItemWithTooltip>
 
           <div className="mx-0.5 h-4 w-px bg-[var(--ui-line)]" />
 
           {/* Grade */}
-          <button
-            type="button"
-            className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
-              showGrid
-                ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
-                : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
-            }`}
-            aria-pressed={showGrid}
-            aria-label="Grade"
-            title="Alternar grade"
-            onClick={() => setShowGrid(!showGrid)}
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7" rx="1.5" />
-              <rect x="14" y="3" width="7" height="7" rx="1.5" />
-              <rect x="14" y="14" width="7" height="7" rx="1.5" />
-              <rect x="3" y="14" width="7" height="7" rx="1.5" />
-            </svg>
-          </button>
+          <ToolbarItemWithTooltip tooltip={showGrid ? "Ocultar grade" : "Exibir grade"}>
+            <button
+              type="button"
+              className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
+                showGrid
+                  ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
+                  : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
+              }`}
+              aria-pressed={showGrid}
+              aria-label="Grade"
+              onClick={() => setShowGrid(!showGrid)}
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                <rect x="3" y="14" width="7" height="7" rx="1.5" />
+              </svg>
+            </button>
+          </ToolbarItemWithTooltip>
 
           {/* Organizar */}
-          <button
-            type="button"
-            className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
-              isAutoLayoutOpen
-                ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
-                : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
-            }`}
-            aria-expanded={isAutoLayoutOpen}
-            aria-label="Organizar"
-            title="Organizar layout"
-            onClick={() => setIsAutoLayoutOpen((prev) => !prev)}
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="18" cy="18" r="3" />
-              <circle cx="6" cy="6" r="3" />
-              <path d="M6 9v12" />
-              <path d="M18 15a9 9 0 0 0-9-9" />
-            </svg>
-          </button>
+          <ToolbarItemWithTooltip tooltip="Auto-organizar layout">
+            <button
+              type="button"
+              className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
+                isAutoLayoutOpen
+                  ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
+                  : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
+              }`}
+              aria-expanded={isAutoLayoutOpen}
+              aria-label="Organizar"
+              onClick={() => setIsAutoLayoutOpen((prev) => !prev)}
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="18" r="3" />
+                <circle cx="6" cy="6" r="3" />
+                <path d="M6 9v12" />
+                <path d="M18 15a9 9 0 0 0-9-9" />
+              </svg>
+            </button>
+          </ToolbarItemWithTooltip>
 
           {/* DBML ↓ */}
-          <button
-            type="button"
-            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] text-[var(--ui-muted)] hover:text-[var(--ui-heading)] transition-colors"
-            aria-label="DBML ↓"
-            title="Exportar DBML"
-            onClick={() => downloadTextFile('diagrama.dbml', content)}
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M16 18l6-6-6-6" />
-              <path d="M8 6l-6 6 6 6" />
-              <path d="M12 11v6m0 0l-2-2m2 2l2-2" />
-            </svg>
-          </button>
+          <ToolbarItemWithTooltip tooltip="Exportar DBML">
+            <button
+              type="button"
+              className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] text-[var(--ui-muted)] hover:text-[var(--ui-heading)] transition-colors"
+              aria-label="DBML ↓"
+              onClick={() => downloadTextFile('diagrama.dbml', content)}
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 18l6-6-6-6" />
+                <path d="M8 6l-6 6 6 6" />
+                <path d="M12 11v6m0 0l-2-2m2 2l2-2" />
+              </svg>
+            </button>
+          </ToolbarItemWithTooltip>
 
           {/* PNG ↓ */}
-          <button
-            type="button"
-            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] text-[var(--ui-muted)] hover:text-[var(--ui-heading)] transition-colors"
-            aria-label="PNG ↓"
-            title="Exportar área visível em PNG"
-            onClick={handleExportPng}
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-          </button>
+          <ToolbarItemWithTooltip tooltip="Exportar imagem PNG">
+            <button
+              type="button"
+              className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] text-[var(--ui-muted)] hover:text-[var(--ui-heading)] transition-colors"
+              aria-label="PNG ↓"
+              onClick={handleExportPng}
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </button>
+          </ToolbarItemWithTooltip>
 
           {/* Ajuda */}
-          <button
-            type="button"
-            className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
-              showHelp
-                ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
-                : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
-            }`}
-            aria-expanded={showHelp}
-            aria-label="Ajuda"
-            title="Ajuda"
-            onClick={() => setShowHelp(!showHelp)}
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-          </button>
+          <ToolbarItemWithTooltip tooltip="Ajuda e atalhos">
+            <button
+              type="button"
+              className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
+                showHelp
+                  ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
+                  : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
+              }`}
+              aria-expanded={showHelp}
+              aria-label="Ajuda"
+              onClick={() => setShowHelp(!showHelp)}
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </button>
+          </ToolbarItemWithTooltip>
 
           {/* Estrutura */}
-          <button
-            type="button"
-            className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
-              showDetails
-                ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
-                : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
-            }`}
-            aria-pressed={showDetails}
-            aria-label="Estrutura"
-            title="Estrutura do banco"
-            onClick={() => setShowDetails(!showDetails)}
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="8" y1="6" x2="21" y2="6" />
-              <line x1="8" y1="12" x2="21" y2="12" />
-              <line x1="8" y1="18" x2="21" y2="18" />
-              <line x1="3" y1="6" x2="3.01" y2="6" />
-              <line x1="3" y1="12" x2="3.01" y2="12" />
-              <line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
-          </button>
+          <ToolbarItemWithTooltip tooltip="Estrutura do banco">
+            <button
+              type="button"
+              className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
+                showDetails
+                  ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
+                  : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
+              }`}
+              aria-pressed={showDetails}
+              aria-label="Estrutura"
+              onClick={() => setShowDetails(!showDetails)}
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+            </button>
+          </ToolbarItemWithTooltip>
 
           <div className="mx-0.5 h-4 w-px bg-[var(--ui-line)]" />
 
           {/* Mover / Selecionar (Hand) */}
-          <button
-            type="button"
-            className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
-              interactionMode === "pan"
-                ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
-                : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
-            }`}
-            aria-pressed={interactionMode === "pan"}
-            aria-label={interactionMode === "pan" ? "Mover canvas" : "Selecionar"}
-            title={interactionMode === "pan" ? "Mover canvas" : "Selecionar"}
-            onClick={() => setInteractionMode((current) => (current === "pan" ? "select" : "pan"))}
+          <ToolbarItemWithTooltip
+            tooltip={interactionMode === "pan" ? "Modo arrastar canvas (ativo)" : "Modo arrastar canvas"}
+            align="right"
           >
-            <HandIcon />
-          </button>
+            <button
+              type="button"
+              className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
+                interactionMode === "pan"
+                  ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
+                  : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
+              }`}
+              aria-pressed={interactionMode === "pan"}
+              aria-label={interactionMode === "pan" ? "Mover canvas" : "Selecionar"}
+              onClick={() => setInteractionMode((current) => (current === "pan" ? "select" : "pan"))}
+            >
+              <HandIcon />
+            </button>
+          </ToolbarItemWithTooltip>
         </div>
+
       </div>
 
       {/* Conteúdo: Editor (à esquerda) + Canvas (à direita) */}
