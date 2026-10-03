@@ -3,7 +3,7 @@ import "./globals.css";
 import { UI_THEME_CSS } from "../lib/uiTheme";
 
 export const metadata: Metadata = {
-  title: "Organizar Markdown",
+  title: "Nexo",
   description:
     "Cole blocos em markdown, reordene os cards e gere a versão final.",
   icons: {

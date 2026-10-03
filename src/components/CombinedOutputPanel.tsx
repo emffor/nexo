@@ -2,16 +2,19 @@
 
 import {
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
+  closestCorners,
+  pointerWithin,
+  useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  rectSortingStrategy,
+  verticalListSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable";
@@ -24,14 +27,62 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type RefObject,
+  type ReactNode,
 } from "react";
 import type { DiagramStatus, MarkdownItem } from "../types/markdown";
 import type { AppTheme, ViewMode } from "../lib/preferences";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+import { DIAGRAM_STATUS_OPTIONS } from "../types/diagram";
 import { StatusDot } from "./StatusDot";
 import { StatusPicker } from "./StatusPicker";
+
+const KANBAN_COLUMNS: { status: DiagramStatus | undefined; label: string; color: string }[] = [
+  { status: undefined, label: "Sem status", color: "#64748b" },
+  ...DIAGRAM_STATUS_OPTIONS.map((option) => ({
+    status: option.value,
+    label: option.label,
+    color: {
+      backlog: "#398acb",
+      impedido: "#ce6675",
+      "em-desenvolvimento": "#439b9c",
+      revisando: "#8b78c5",
+      finalizado: "#59a776",
+    }[option.value],
+  })),
+];
+
+function KanbanColumn({
+  column, count, children,
+}: {
+  column: (typeof KANBAN_COLUMNS)[number];
+  count: number;
+  children: ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `kanban-column-${column.status ?? "none"}`,
+    data: { status: column.status, isColumn: true },
+  });
+
+  return (
+    <section
+      ref={setNodeRef}
+      aria-label={`${column.label}: ${count} cards`}
+      className={`flex min-h-[420px] min-w-0 flex-col overflow-hidden rounded-xl border ${isOver ? "border-[var(--ui-accent)] ring-2 ring-[var(--ui-accent-soft)]" : "border-[var(--ui-line)]"}`}
+      style={{ background: `color-mix(in srgb, ${column.color} 12%, var(--ui-surface))` }}
+    >
+      <header className="flex min-h-11 items-center justify-between gap-2 px-3 py-2.5 text-white" style={{ backgroundColor: column.color }}>
+        <h3 className="m-0 text-xs font-semibold">{column.label}</h3>
+        <span className="rounded-md bg-black/15 px-1.5 py-0.5 text-[10px] tabular-nums">{count}</span>
+      </header>
+      <div className="app-scrollbar flex flex-1 flex-col gap-2 overflow-y-auto p-2">
+        {children}
+        {count === 0 ? <p className="m-0 rounded-lg border border-dashed border-[var(--ui-line)] px-3 py-6 text-center text-xs text-[var(--ui-muted)]">Arraste um card para cá</p> : null}
+      </div>
+    </section>
+  );
+}
 
 interface PreviewGridCardProps {
   item: MarkdownItem;
@@ -59,6 +110,7 @@ function PreviewGridCard({
     isDragging,
   } = useSortable({
     id: item.id,
+    data: { status: item.status },
   });
   const displayTitle = getDisplayTitle(item, 72);
   const {
@@ -72,7 +124,7 @@ function PreviewGridCard({
     ...(isDragging
       ? {
           zIndex: 50,
-          opacity: 0.92,
+          opacity: 0.35,
           boxShadow: "var(--ui-shadow-strong)",
         }
       : {}),
@@ -90,7 +142,7 @@ function PreviewGridCard({
       onClick={(event) => onClick(event, item)}
       onKeyDown={(event) => onKeyDown(event, item)}
       data-active={isActive}
-      className={`nexo-preview-grid-card group flex min-h-[240px] scroll-mt-6 cursor-grab flex-col overflow-hidden rounded-2xl border text-left transition-all duration-200 active:cursor-grabbing ${
+      className={`nexo-kanban-card group flex shrink-0 min-h-[160px] scroll-mt-6 cursor-pointer flex-col overflow-hidden rounded-lg border text-left transition-all duration-200 active:cursor-grabbing ${
         isActive ? "preview-item-active" : ""
       } ${
         isDragging
@@ -99,11 +151,9 @@ function PreviewGridCard({
               ? "border-[var(--ui-accent)] bg-[var(--ui-accent-soft)] shadow-[var(--ui-shadow)]"
               : "border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-sm hover:border-[var(--ui-line)]"
       }`}
-      {...sortableAttributes}
-      {...listeners}
     >
       <div
-        className="nexo-preview-card-header border-b px-4 py-3 border-[var(--ui-line)] bg-[var(--ui-surface)]"
+        className="border-b px-3 py-2.5 border-[var(--ui-line)] bg-[var(--ui-surface)]"
       >
         <div className="flex items-center justify-between gap-3">
           <span
@@ -111,7 +161,17 @@ function PreviewGridCard({
           >
             {String(position + 1).padStart(2, "0")}
           </span>
-          <StatusDot status={item.status} theme={theme} className="h-2 w-2" />
+          <div className="flex items-center gap-2">
+            <StatusDot status={item.status} theme={theme} className="h-2 w-2" />
+            <button
+              type="button"
+              aria-label={`Mover card ${displayTitle}`}
+              className="cursor-grab touch-none rounded px-1 text-[var(--ui-muted)] hover:bg-[var(--ui-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--ui-accent)]"
+              onClick={(event) => event.stopPropagation()}
+              {...sortableAttributes}
+              {...listeners}
+            >⠿</button>
+          </div>
         </div>
         <h3
           className="m-0 mt-2 line-clamp-1 text-[13px] font-semibold leading-5 text-[var(--ui-heading)]"
@@ -120,8 +180,8 @@ function PreviewGridCard({
         </h3>
       </div>
 
-      <div className="nexo-preview-card-body relative flex-1 px-4 py-3.5">
-        <div className="markdown-preview markdown-preview--card max-h-[154px] overflow-hidden">
+      <div className="relative flex-1 px-3 py-2.5">
+        <div className="markdown-preview markdown-preview--card max-h-[88px] overflow-hidden">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeRaw]}
@@ -130,12 +190,12 @@ function PreviewGridCard({
           </ReactMarkdown>
         </div>
         <div
-          className="nexo-preview-fade pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[var(--ui-surface)] to-transparent"
+          className="nexo-preview-fade pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[var(--ui-surface)] to-transparent"
         />
       </div>
 
       <div
-        className="nexo-preview-card-footer mt-auto border-t px-4 py-2.5 border-[var(--ui-line)] text-[var(--ui-muted)]"
+        className="mt-auto border-t px-3 py-2 border-[var(--ui-line)] text-[var(--ui-muted)]"
       >
         <p className="m-0 min-w-0 truncate text-[10px]">
           Atualizado em{" "}
@@ -230,7 +290,8 @@ export function CombinedOutputPanel({
   const [selectedPreviewCardId, setSelectedPreviewCardId] = useState<
     string | null
   >(null);
-  const shouldIgnoreNextClickRef = useRef(false);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const draggedItem = items.find((item) => item.id === draggedItemId);
   const isCardsMode = viewMode === "cards";
   const isNormalMode = viewMode === "normal" || viewMode === "index";
   const selectedPreviewItem =
@@ -295,33 +356,41 @@ export function CombinedOutputPanel({
   };
 
   const handlePreviewCardClick = (
-    event: MouseEvent<HTMLElement>,
+    _event: MouseEvent<HTMLElement>,
     item: MarkdownItem,
   ) => {
-    if (shouldIgnoreNextClickRef.current) {
-      event.preventDefault();
-      shouldIgnoreNextClickRef.current = false;
-      return;
-    }
-
     handleOpenPreviewCard(item);
   };
 
   const handlePreviewCardDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
-    shouldIgnoreNextClickRef.current = true;
+    setDraggedItemId(null);
 
     if (!over || active.id === over.id) {
       return;
     }
 
-    await onReorder(String(active.id), String(over.id));
+    const source = items.find((item) => item.id === String(active.id));
+    const target = items.find((item) => item.id === String(over.id));
+    const column = KANBAN_COLUMNS.find(
+      (candidate) => `kanban-column-${candidate.status ?? "none"}` === over.id,
+    );
+    if (!source || (!target && !column)) return;
+
+    const targetStatus = column ? column.status : target?.status;
+    if (source.status !== targetStatus) {
+      onChangeStatus?.(source.id, targetStatus);
+      return;
+    }
+    if (target) await onReorder(source.id, target.id);
   };
 
   const handleCardKeyDown = (
     event: KeyboardEvent<HTMLElement>,
     item: MarkdownItem,
   ) => {
+    if (event.target !== event.currentTarget) return;
+
     if (event.key !== "Enter" && event.key !== " ") {
       return;
     }
@@ -332,7 +401,7 @@ export function CombinedOutputPanel({
 
   return (
     <section
-      className="flex min-h-[420px] flex-col lg:min-h-0 text-[var(--ui-heading)]"
+      className="flex min-h-[420px] min-w-0 flex-col lg:min-h-0 text-[var(--ui-heading)]"
     >
       <div
         className="nexo-panel-heading flex items-center justify-between border-[var(--ui-line)]"
@@ -341,7 +410,7 @@ export function CombinedOutputPanel({
           className="m-0 text-xs font-semibold uppercase tracking-wider text-[var(--ui-heading)]"
         >
           {isCardsMode && !selectedPreviewItem
-            ? "Visualização em Cards"
+            ? "Quadro de cards"
             : "Preview Markdown"}
         </h2>
           <div className="flex flex-wrap items-center gap-2">
@@ -417,30 +486,50 @@ export function CombinedOutputPanel({
               </ReactMarkdown>
             </section>
           </article>
-        ) : items.length > 0 && isCardsMode ? (
+        ) : isCardsMode ? (
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={(args) => {
+              const hits = pointerWithin(args);
+              if (hits.length > 0) {
+                const cardHits = hits.filter((hit) => !String(hit.id).startsWith("kanban-column-"));
+                return cardHits.length > 0 ? cardHits : hits;
+              }
+              return args.pointerCoordinates ? [] : closestCorners(args);
+            }}
+            onDragStart={({ active }) => setDraggedItemId(String(active.id))}
+            onDragCancel={() => setDraggedItemId(null)}
             onDragEnd={handlePreviewCardDragEnd}
           >
-            <SortableContext
-              items={items.map((item) => item.id)}
-              strategy={rectSortingStrategy}
-            >
-              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                {items.map((item, index) => (
-                  <PreviewGridCard
-                    key={item.id}
-                    item={item}
-                    position={index}
-                    theme={theme}
-                    isActive={item.id === activeItemId}
-                    onClick={handlePreviewCardClick}
-                    onKeyDown={handleCardKeyDown}
-                  />
-                ))}
-              </div>
-            </SortableContext>
+            <div className="grid h-[calc(100dvh-240px)] min-h-[420px] grid-flow-col auto-cols-[minmax(250px,1fr)] gap-3 pb-3">
+              {KANBAN_COLUMNS.map((column) => {
+                const columnItems = items.filter((item) => item.status === column.status);
+                return (
+                  <KanbanColumn key={column.status ?? "none"} column={column} count={columnItems.length}>
+                    <SortableContext items={columnItems.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+                      {columnItems.map((item) => (
+                        <PreviewGridCard
+                          key={item.id}
+                          item={item}
+                          position={items.findIndex((candidate) => candidate.id === item.id)}
+                          theme={theme}
+                          isActive={item.id === activeItemId}
+                          onClick={handlePreviewCardClick}
+                          onKeyDown={handleCardKeyDown}
+                        />
+                      ))}
+                    </SortableContext>
+                  </KanbanColumn>
+                );
+              })}
+            </div>
+            <DragOverlay>
+              {draggedItem ? (
+                <div className="rounded-lg border border-[var(--ui-accent)] bg-[var(--ui-surface)] p-3 text-sm font-semibold text-[var(--ui-heading)] shadow-lg">
+                  {getDisplayTitle(draggedItem, 72)}
+                </div>
+              ) : null}
+            </DragOverlay>
           </DndContext>
         ) : isNormalMode && activeNormalItem ? (
           <article
