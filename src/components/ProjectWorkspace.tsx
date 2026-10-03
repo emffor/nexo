@@ -55,6 +55,7 @@ export function ProjectWorkspace({
 }: ProjectWorkspaceProps) {
   const {
     workspaceProject,
+    diagramStateRef,
     isModalOpen,
     setIsModalOpen,
     isSaving,
@@ -312,7 +313,7 @@ export function ProjectWorkspace({
               resetLayoutSignal={diagramResetSignal}
               clearEdgesSignal={diagramClearEdgesSignal}
               reloadStateSignal={diagramReloadStateSignal}
-              initialState={workspaceProject.diagramState ?? EMPTY_DIAGRAM_STATE}
+              initialState={diagramStateRef.current ?? workspaceProject.diagramState ?? EMPTY_DIAGRAM_STATE}
               onDiagramStateChange={handleDiagramStateChange}
             />
           ) : (

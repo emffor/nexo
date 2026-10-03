@@ -197,9 +197,8 @@ export function useCardDiagramCanvas({
     setPositions(stored.positions);
     setEdges(stored.edges);
     applyStageTransform(stored.viewport ?? INITIAL_STAGE_TRANSFORM);
-    onDiagramStateChange?.(stored);
     setIsHydrated(true);
-  }, [applyStageTransform, initialState, onDiagramStateChange]);
+  }, [applyStageTransform, initialState]);
 
   // hidratar estado salvo
   useEffect(() => {
@@ -290,6 +289,9 @@ export function useCardDiagramCanvas({
 
   // limpar edges/posicoes orfãs quando items mudam
   useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
     const validIds = new Set(items.map((item) => item.id));
     setEdges((current) => {
       const next = current.filter(
@@ -301,7 +303,7 @@ export function useCardDiagramCanvas({
       edgesRef.current = next;
       return next;
     });
-  }, [items]);
+  }, [items, isHydrated]);
 
   // persistir
   useEffect(() => {
@@ -321,6 +323,11 @@ export function useCardDiagramCanvas({
     return () => {
       if (persistTimerRef.current) {
         clearTimeout(persistTimerRef.current);
+        emitDiagramState({
+          positions: positionsRef.current,
+          edges: edgesRef.current,
+          viewport: stageTransformRef.current,
+        });
       }
     };
   }, [positions, edges, emitDiagramState, isHydrated]);
@@ -329,9 +336,14 @@ export function useCardDiagramCanvas({
     return () => {
       if (viewportPersistTimerRef.current) {
         clearTimeout(viewportPersistTimerRef.current);
+        emitDiagramState({
+          positions: positionsRef.current,
+          edges: edgesRef.current,
+          viewport: stageTransformRef.current,
+        });
       }
     };
-  }, []);
+  }, [emitDiagramState]);
 
   // resetLayout quando o sinal mudar
   useEffect(() => {

@@ -164,6 +164,10 @@ export function useProjectWorkspace(project: Project) {
 
   const handleDiagramStateChange = useCallback((state: DiagramState) => {
     diagramStateRef.current = state;
+    setWorkspaceProject((current) => ({
+      ...current,
+      diagramState: state,
+    }));
     void updateProjectDiagramState(project.id, state);
   }, [project.id]);
 
@@ -367,6 +371,7 @@ export function useProjectWorkspace(project: Project) {
 
   return {
     workspaceProject,
+    diagramStateRef,
     isModalOpen,
     setIsModalOpen,
     isSaving,
