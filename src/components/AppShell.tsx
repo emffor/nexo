@@ -61,7 +61,7 @@ function ToolbarGroup({
     <div
       role="group"
       aria-label={label}
-      className={`nexo-toolbar-group flex items-center gap-1 rounded-xl border p-1 ${className}`}
+      className={`nexo-toolbar-group flex items-center gap-0.5 rounded-full border p-0.5 ${className}`}
     >
       {children}
     </div>
@@ -177,28 +177,28 @@ export function AppShell({
               <button
                 type="button"
                 onClick={onBackToProjects}
-                className="toolbar-button toolbar-button--quiet shrink-0 gap-2"
+                className="toolbar-button toolbar-button--back shrink-0 gap-2 h-8 px-3 text-xs rounded-full"
                 title="Voltar para a lista de projetos"
               >
-                <Image src="/venture/logogram.svg" width={24} height={24} alt="" className="nexo-brand-mark" />
+                <Image src="/venture/logogram.svg" width={20} height={20} alt="" className="nexo-brand-mark" />
                 Projetos
               </button>
             ) : null}
-            <div className="flex min-w-0 flex-col items-start gap-1">
-              <span className="text-xs font-medium text-[var(--ui-muted)]">
+            <div className="flex min-w-0 flex-col items-start gap-0.5">
+              <span className="text-[11px] font-medium tracking-wide uppercase text-[var(--ui-muted)]">
                 Workspace
               </span>
-              <h1 className="m-0 truncate text-xl font-medium tracking-tight">
+              <h1 className="m-0 truncate text-lg font-semibold tracking-tight text-[var(--ui-heading)]">
                 {projectName ?? "Jira Markdown"}
               </h1>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
-            <span className="toolbar-badge">
+            <span className="toolbar-badge h-8 px-3 text-xs rounded-full">
               {formatStorageSize(storedDataSizeBytes)}
             </span>
-            <span className="toolbar-badge">
+            <span className="toolbar-badge h-8 px-3 text-xs rounded-full">
               {itemsCount} {itemsCount === 1 ? "card" : "cards"}
             </span>
 
@@ -206,7 +206,7 @@ export function AppShell({
               type="button"
               onClick={onCopyAll}
               disabled={itemsCount === 0}
-              className="toolbar-button h-8 px-3 text-xs"
+              className="toolbar-button h-8 px-3.5 text-xs rounded-full"
               title={`Copiar todo o markdown combinado (${isMac ? "⌘" : "Ctrl"}+Shift+C)`}
             >
               Copiar tudo
@@ -215,7 +215,7 @@ export function AppShell({
             <button
               type="button"
               onClick={onOpenModal}
-              className="toolbar-button toolbar-button--accent h-8 px-3.5 text-xs shadow-sm"
+              className="toolbar-button toolbar-button--accent h-8 px-4 text-xs rounded-full shadow-sm"
               title={isMac ? "⌘N" : "Ctrl+N"}
             >
               + Novo card
@@ -224,12 +224,14 @@ export function AppShell({
             <button
               type="button"
               onClick={() => setIsToolbarExpanded((current) => !current)}
-              className="toolbar-button toolbar-button--quiet h-8 gap-2 text-xs"
+              className={`toolbar-button h-8 px-3.5 gap-2 text-xs rounded-full ${
+                isToolbarExpanded ? "toolbar-button--active" : ""
+              }`}
               aria-label="Ferramentas do workspace"
               aria-controls="workspace-tools"
               aria-expanded={isToolbarExpanded}
             >
-              Ferramentas <span aria-hidden="true">{isToolbarExpanded ? "−" : "+"}</span>
+              Ferramentas <span aria-hidden="true" className="text-xs">{isToolbarExpanded ? "−" : "+"}</span>
             </button>
           </div>
         </div>
@@ -265,7 +267,9 @@ export function AppShell({
         <div
           id="workspace-tools"
           hidden={!isToolbarExpanded}
-          className="nexo-toolbar flex-wrap items-center gap-2 py-2"
+          className={`nexo-toolbar flex-wrap items-center gap-2.5 py-3 ${
+            isToolbarExpanded ? "flex" : "hidden"
+          }`}
         >
           <ToolbarGroup label="Layout">
             <button
@@ -273,7 +277,7 @@ export function AppShell({
               onClick={onToggleScrollSync}
               aria-pressed={isScrollSyncEnabled}
               disabled={isFullWidthMode || isDiagramMode || isDatabaseMode}
-              className={`toolbar-button border-transparent bg-transparent ${
+              className={`toolbar-button ${
                 isScrollSyncEnabled ? "toolbar-button--primary" : ""
               } disabled:cursor-not-allowed disabled:opacity-45`}
               title="Sincronizar rolagem entre editor e preview"
@@ -289,7 +293,7 @@ export function AppShell({
                       diagramEdgeStyle === "curve" ? "square" : "curve",
                     )
                   }
-                  className="toolbar-button border-transparent bg-transparent"
+                  className="toolbar-button"
                   title="Alternar estilo das linhas do diagrama"
                 >
                   {diagramEdgeStyle === "curve"
@@ -300,7 +304,7 @@ export function AppShell({
                   type="button"
                   onClick={onToggleDiagramSidebar}
                   aria-pressed={isDiagramSidebarVisible}
-                  className={`toolbar-button border-transparent bg-transparent ${
+                  className={`toolbar-button ${
                     isDiagramSidebarVisible ? "toolbar-button--primary" : ""
                   }`}
                   title="Alternar cards laterais do diagrama"
@@ -311,7 +315,7 @@ export function AppShell({
                   <button
                     type="button"
                     onClick={onResetDiagramLayout}
-                    className="toolbar-button border-transparent bg-transparent"
+                    className="toolbar-button"
                     title="Reorganizar layout do diagrama"
                   >
                     Resetar layout
@@ -328,7 +332,7 @@ export function AppShell({
                       databaseEdgeStyle === "curve" ? "square" : "curve",
                     )
                   }
-                  className="toolbar-button border-transparent bg-transparent"
+                  className="toolbar-button"
                   title="Alternar estilo das linhas do banco"
                 >
                   {databaseEdgeStyle === "curve"
@@ -339,7 +343,7 @@ export function AppShell({
                   <button
                     type="button"
                     onClick={onResetDatabaseLayout}
-                    className="toolbar-button border-transparent bg-transparent"
+                    className="toolbar-button"
                     title="Restaurar exemplo inicial do banco"
                   >
                     Resetar banco
@@ -353,7 +357,7 @@ export function AppShell({
             <button
               type="button"
               onClick={onToggleTheme}
-              className="toolbar-button border-transparent bg-transparent"
+              className="toolbar-button"
               title="Alternar tema"
             >
               {theme === "dark" ? "Modo claro" : "Modo escuro"}
@@ -361,7 +365,7 @@ export function AppShell({
             <button
               type="button"
               onClick={onDecreaseFont}
-              className="toolbar-button toolbar-button--icon border-transparent bg-transparent"
+              className="toolbar-button toolbar-button--icon"
               title="Diminuir fonte"
               aria-label="A-"
             >
@@ -370,7 +374,7 @@ export function AppShell({
             <button
               type="button"
               onClick={onIncreaseFont}
-              className="toolbar-button toolbar-button--icon border-transparent bg-transparent"
+              className="toolbar-button toolbar-button--icon"
               title="Aumentar fonte"
               aria-label="A+"
             >
@@ -382,7 +386,7 @@ export function AppShell({
             <button
               type="button"
               onClick={onImport}
-              className="toolbar-button border-transparent bg-transparent"
+              className="toolbar-button"
               title="Importar arquivo .txt"
             >
               Importar
@@ -390,7 +394,7 @@ export function AppShell({
             <button
               type="button"
               onClick={onExport}
-              className="toolbar-button border-transparent bg-transparent"
+              className="toolbar-button"
               title="Exportar arquivo .txt"
             >
               Exportar
@@ -401,7 +405,7 @@ export function AppShell({
             type="button"
             onClick={onClearAll}
             disabled={itemsCount === 0}
-            className="toolbar-button toolbar-button--danger md:ml-auto"
+            className="toolbar-button toolbar-button--danger h-8 px-4 text-xs rounded-full md:ml-auto"
             title="Remover todos os cards"
           >
             Limpar tudo
