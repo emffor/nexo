@@ -176,18 +176,18 @@ export function AppShell({
               <button
                 type="button"
                 onClick={onBackToProjects}
-                className="toolbar-button shrink-0 gap-2"
+                className="toolbar-button toolbar-button--quiet shrink-0 gap-2"
                 title="Voltar para a lista de projetos"
               >
-                <Image src="/venture/projects.svg" width={20} height={20} alt="" className="nexo-nav-icon" />
+                <Image src="/venture/logogram.svg" width={24} height={24} alt="" className="nexo-brand-mark" />
                 Projetos
               </button>
             ) : null}
             <div className="flex min-w-0 flex-col items-start gap-1">
               <span className="text-xs font-medium text-[var(--ui-muted)]">
-                Workspace /
+                Workspace
               </span>
-              <h1 className="m-0 truncate text-2xl font-medium tracking-tight">
+              <h1 className="m-0 truncate text-xl font-medium tracking-tight">
                 {projectName ?? "Jira Markdown"}
               </h1>
             </div>
@@ -204,6 +204,7 @@ export function AppShell({
             <button
               type="button"
               onClick={onCopyAll}
+              disabled={itemsCount === 0}
               className="toolbar-button h-7 px-2.5 text-xs"
               title={`Copiar todo o markdown combinado (${isMac ? "⌘" : "Ctrl"}+Shift+C)`}
             >
@@ -222,17 +223,18 @@ export function AppShell({
             <button
               type="button"
               onClick={() => setIsToolbarExpanded((current) => !current)}
-              className="toolbar-button h-7 px-2 md:hidden"
-              aria-label={isToolbarExpanded ? "Fechar opcoes" : "Mais opcoes"}
+              className="toolbar-button toolbar-button--quiet gap-2"
+              aria-label="Ferramentas do workspace"
+              aria-controls="workspace-tools"
               aria-expanded={isToolbarExpanded}
             >
-              {isToolbarExpanded ? "Fechar" : "Opções"}
+              Ferramentas <span aria-hidden="true">{isToolbarExpanded ? "−" : "+"}</span>
             </button>
           </div>
         </div>
 
         <nav aria-label="Visualizações do workspace" className="nexo-view-navigation">
-          <ToolbarGroup label="Modo de visualiza\u00e7\u00e3o" className="nexo-view-tabs">
+          <ToolbarGroup label="Modo de visualização" className="nexo-view-tabs">
             {VIEW_MODE_OPTIONS.map(({ mode, label, title }) => {
               const isActive = viewMode === mode;
               return (
@@ -260,14 +262,15 @@ export function AppShell({
         </nav>
 
         <div
-          className={`nexo-toolbar flex-wrap items-center gap-2 py-2 ${
-            isToolbarExpanded ? "flex" : "hidden md:flex"
-          }`}
+          id="workspace-tools"
+          hidden={!isToolbarExpanded}
+          className="nexo-toolbar flex-wrap items-center gap-2 py-2"
         >
           <ToolbarGroup label="Layout">
             <button
               type="button"
               onClick={onToggleScrollSync}
+              aria-pressed={isScrollSyncEnabled}
               disabled={isFullWidthMode || isDiagramMode || isDatabaseMode}
               className={`toolbar-button border-transparent bg-transparent ${
                 isScrollSyncEnabled ? "toolbar-button--primary" : ""
@@ -345,7 +348,7 @@ export function AppShell({
             )}
           </ToolbarGroup>
 
-          <ToolbarGroup label="Apar\u00eancia">
+          <ToolbarGroup label="Aparência">
             <button
               type="button"
               onClick={onToggleTheme}
@@ -396,6 +399,7 @@ export function AppShell({
           <button
             type="button"
             onClick={onClearAll}
+            disabled={itemsCount === 0}
             className="toolbar-button toolbar-button--danger md:ml-auto"
             title="Remover todos os cards"
           >

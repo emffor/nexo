@@ -51,22 +51,46 @@ export function ProjectsHome({
   const [newProjectName, setNewProjectName] = useState("");
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [search, setSearch] = useState("");
+  const [pendingAction, setPendingAction] = useState<"create" | "rename" | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const normalizedSearch = search.trim().toLocaleLowerCase("pt-BR");
+  const filteredProjects = projects.filter((project) =>
+    project.name.toLocaleLowerCase("pt-BR").includes(normalizedSearch),
+  );
   const isDark = theme === "dark";
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await onCreateProject(newProjectName);
-    setNewProjectName("");
+    if (pendingAction || !newProjectName.trim()) return;
+    setPendingAction("create");
+    setFormError(null);
+    try {
+      await onCreateProject(newProjectName.trim());
+      setNewProjectName("");
+    } catch {
+      setFormError("Não foi possível criar o projeto. Tente novamente.");
+    } finally {
+      setPendingAction(null);
+    }
   };
 
   const handleRename = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!editingProjectId) {
+    if (!editingProjectId || pendingAction || !editingName.trim()) {
       return;
     }
-    await onRenameProject(editingProjectId, editingName);
-    setEditingProjectId(null);
-    setEditingName("");
+    setPendingAction("rename");
+    setFormError(null);
+    try {
+      await onRenameProject(editingProjectId, editingName.trim());
+      setEditingProjectId(null);
+      setEditingName("");
+    } catch {
+      setFormError("Não foi possível renomear o projeto. Tente novamente.");
+    } finally {
+      setPendingAction(null);
+    }
   };
 
   return (
@@ -101,7 +125,7 @@ export function ProjectsHome({
                 isDark ? "text-zinc-400" : "text-zinc-600"
               }`}
             >
-              Workspaces
+              Projetos
             </span>
           </div>
 
@@ -129,7 +153,7 @@ export function ProjectsHome({
                 isDark ? "text-zinc-400" : "text-zinc-600"
               }`}
             >
-              Gerencie seus workspaces de documentação e diagramas.
+              Documentação e diagramas, organizados em um só lugar.
             </p>
           </div>
 
@@ -141,7 +165,9 @@ export function ProjectsHome({
               id="new-project-name"
               value={newProjectName}
               onChange={(event) => setNewProjectName(event.target.value)}
-              placeholder="Criar novo workspace..."
+              placeholder="Nome do novo projeto"
+              required
+              disabled={pendingAction !== null || isLoading}
               className={`nexo-field w-full min-w-0 rounded border sm:w-64 outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
                 isDark
                   ? "border-zinc-700 bg-zinc-900 text-zinc-100 placeholder:text-zinc-500"
@@ -150,16 +176,35 @@ export function ProjectsHome({
             />
             <button
               type="submit"
+              disabled={pendingAction !== null || isLoading || !newProjectName.trim()}
               className="toolbar-button toolbar-button--accent"
             >
               <span aria-hidden="true" className="mr-2 text-lg leading-none">+</span>
-              Novo Projeto
+              {pendingAction === "create" ? "Criando..." : "Novo Projeto"}
             </button>
           </form>
         </div>
 
+        {formError ? <p role="alert" className="mb-4 text-sm text-[var(--ui-danger)]">{formError}</p> : null}
+
+        {projects.length > 0 ? (
+          <div className="nexo-projects-filter mb-6 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-[var(--ui-heading)]">Seus projetos</h2>
+              <p role="status" className="text-sm text-[var(--ui-muted)]">
+                {filteredProjects.length} de {projects.length} projetos
+              </p>
+            </div>
+            <label className="relative w-full sm:w-72">
+              <span className="sr-only">Buscar projetos</span>
+              <input type="search" value={search} onChange={(event) => setSearch(event.target.value)}
+                placeholder="Buscar por nome..." className="nexo-field w-full" />
+            </label>
+          </div>
+        ) : null}
+
         {isLoading ? (
-          <div className="flex min-h-[200px] items-center justify-center text-xs text-zinc-500">
+          <div role="status" className="nexo-loading flex min-h-[200px] items-center justify-center gap-3 text-sm text-[var(--ui-muted)]">
             Carregando projetos...
           </div>
         ) : null}
@@ -172,13 +217,21 @@ export function ProjectsHome({
                 : "border-[#e6eff5] bg-white text-[#718ebf]"
             }`}
           >
-            Nenhum projeto cadastrado no banco.
+            <h2 className="mb-2 font-semibold text-[var(--ui-heading)]">Seu próximo projeto começa aqui</h2>
+            <p>Use o campo acima para criar um projeto ou importe um backup.</p>
           </div>
         ) : null}
 
-        {!isLoading && projects.length > 0 ? (
+        {!isLoading && projects.length > 0 && filteredProjects.length === 0 ? (
+          <div className="nexo-empty px-6 py-12 text-center">
+            <p>Nenhum projeto encontrado para “{search}”.</p>
+            <button type="button" onClick={() => setSearch("")} className="toolbar-button mt-4">Limpar busca</button>
+          </div>
+        ) : null}
+
+        {!isLoading && filteredProjects.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {projects.map((project) => {
+            {filteredProjects.map((project) => {
               const isEditing = editingProjectId === project.id;
               return (
                 <article
@@ -199,6 +252,9 @@ export function ProjectsHome({
                       </label>
                       <input
                         id={`project-name-${project.id}`}
+                        autoFocus
+                        required
+                        disabled={pendingAction !== null}
                         value={editingName}
                         onChange={(event) => setEditingName(event.target.value)}
                         className={`nexo-field w-full rounded border outline-none focus:ring-1 focus:ring-zinc-400 ${
@@ -210,13 +266,15 @@ export function ProjectsHome({
                       <div className="flex gap-2">
                         <button
                           type="submit"
+                          disabled={pendingAction !== null || !editingName.trim()}
                           className="toolbar-button toolbar-button--accent h-7"
                         >
-                          Salvar
+                          {pendingAction === "rename" ? "Salvando..." : "Salvar"}
                         </button>
                         <button
                           type="button"
-                          onClick={() => setEditingProjectId(null)}
+                          disabled={pendingAction !== null}
+                          onClick={() => { setEditingProjectId(null); setFormError(null); }}
                           className="toolbar-button h-7"
                         >
                           Cancelar
@@ -278,6 +336,7 @@ export function ProjectsHome({
                           <button
                             type="button"
                             onClick={() => {
+                              setFormError(null);
                               setEditingProjectId(project.id);
                               setEditingName(project.name);
                             }}

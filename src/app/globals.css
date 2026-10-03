@@ -94,16 +94,17 @@
   [data-theme="dark"] .nexo-brand-mark,
   [data-theme="dark"] .nexo-nav-icon { filter: invert(1); }
 
-  .nexo-view-navigation { overflow-x: auto; padding: 4px 0 14px; }
-  .nexo-view-navigation .nexo-view-tabs { width: max-content; gap: 4px; border: 0; border-radius: 999px; padding: 5px; background: var(--ui-raised); }
+  .nexo-view-navigation { overflow-x: auto; padding: 0; }
+  .nexo-view-navigation .nexo-view-tabs { width: max-content; gap: 8px; border: 0; border-radius: 0; padding: 0; background: transparent; }
   .nexo-view-tabs > button {
     display: inline-flex;
     min-height: 36px;
     align-items: center;
     gap: 8px;
     border: 0;
-    border-radius: 999px;
-    padding: 9px 18px;
+    position: relative;
+    border-radius: 8px 8px 0 0;
+    padding: 12px 16px;
     background: transparent;
     color: var(--ui-muted);
     white-space: nowrap;
@@ -112,35 +113,37 @@
     line-height: 1.5;
   }
   .nexo-view-tabs > button:hover { color: var(--ui-heading); }
-  .nexo-view-tabs > button[aria-pressed="true"] { background: var(--ui-selected); color: var(--ui-on-selected); }
-  [data-theme="light"] .nexo-view-tabs > button[aria-pressed="true"] .nexo-nav-icon { filter: invert(1); }
-  [data-theme="dark"] .nexo-view-tabs > button[aria-pressed="true"] .nexo-nav-icon { filter: none; }
+  .nexo-view-tabs > button[aria-pressed="true"] { background: var(--ui-accent-soft); color: var(--ui-accent); }
+  .nexo-view-tabs > button[aria-pressed="true"]::after { content: ""; position: absolute; bottom: 0; left: 12px; right: 12px; height: 2px; border-radius: 2px; background: var(--ui-accent); }
+  [data-theme="light"] .nexo-view-tabs > button[aria-pressed="true"] .nexo-nav-icon { filter: none; }
+  [data-theme="dark"] .nexo-view-tabs > button[aria-pressed="true"] .nexo-nav-icon { filter: invert(1); }
 
   .nexo-app-frame > .nexo-topbar { flex-shrink: 0; padding-right: 32px; padding-left: 32px; }
   .nexo-header-main { min-width: 0; }
   .nexo-header-main > div:first-child { flex: 1; }
   .nexo-topbar h1 { font-weight: 600; letter-spacing: -0.035em; }
-  .nexo-toolbar { gap: 8px 12px; padding-top: 12px; padding-bottom: 12px; }
+  .nexo-toolbar { gap: 8px 12px; padding-top: 8px; padding-bottom: 8px; }
+  .nexo-toolbar:not([hidden]) { display: flex; animation: nexo-enter 180ms ease-out; }
   .nexo-toolbar .toolbar-button { min-height: 34px; font-size: 12px; padding: 7px 12px; }
   .nexo-toolbar .nexo-toolbar-group + .nexo-toolbar-group { border-left: 1px solid var(--ui-line); border-radius: 0; padding-left: 12px; }
   .nexo-workspace { padding-top: 28px; padding-bottom: 28px; }
   .nexo-workspace > * { min-width: 0; }
   .nexo-section-heading { padding-bottom: 16px; }
-  .nexo-ui .nexo-projects-content { max-width: 1440px; padding-top: 64px; padding-bottom: 80px; }
-  .nexo-section-heading h1 { color: var(--ui-heading); font-size: clamp(40px, 5vw, 64px); font-weight: 600; line-height: 1.08; letter-spacing: -0.045em; }
-  .nexo-section-heading p { max-width: 440px; color: var(--ui-muted); font-size: 17px; line-height: 1.5; }
+  .nexo-ui .nexo-projects-content { max-width: 1440px; padding-top: 48px; padding-bottom: 64px; }
+  .nexo-section-heading h1 { color: var(--ui-heading); font-size: clamp(32px, 4vw, 44px); font-weight: 600; line-height: 1.08; letter-spacing: -0.045em; }
+  .nexo-section-heading p { max-width: 520px; color: var(--ui-muted); font-size: 15px; line-height: 1.5; }
   .nexo-project-tag { display: inline-flex; border-radius: 12px; background: var(--ui-tag-bg); padding: 4px 6px; color: var(--ui-tag); font-size: 12px; font-weight: 500; }
   .nexo-project-count { color: var(--ui-muted); font-size: 12px; }
   .nexo-ui .nexo-project-footer { margin-right: 0; margin-left: 0; border-color: var(--ui-line); padding: 18px 0 0; }
   .nexo-project-footer .toolbar-button { min-height: 32px; padding: 6px 8px; font-size: 12px; }
-  .nexo-ui .nexo-project-card:hover { box-shadow: 0 12px 36px rgba(0, 0, 0, 0.09); }
+  .nexo-ui .nexo-project-card:hover { border-color: var(--ui-accent); transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.07); }
   .nexo-ui .nexo-preview-number { border-radius: 12px; background: var(--ui-tag-bg); padding: 4px 6px; color: var(--ui-tag); font-family: inherit; font-size: 12px; font-weight: 500; letter-spacing: 0; }
   .nexo-ui .nexo-preview-grid-card:hover { border-color: var(--ui-muted); box-shadow: var(--ui-shadow); }
   .nexo-ui .nexo-dbml-heading { border-color: var(--ui-line); padding: 16px 20px; color: var(--ui-heading); font-size: 14px; font-weight: 500; }
   .nexo-ui .nexo-dbml-input { color: var(--ui-text); }
 
   @media (min-width: 1024px) {
-    [data-layout-mode="compact"] .nexo-workspace { padding: 12px; }
+    [data-layout-mode="compact"] .nexo-workspace { padding: 20px 24px; gap: 16px; }
   }
 
   @media (max-width: 1023px) {
@@ -154,7 +157,7 @@
 
   .panel-surface, .nexo-ui .nexo-surface {
     border: 1px solid var(--ui-line);
-    border-radius: 24px;
+    border-radius: 16px;
     background: var(--ui-surface);
     box-shadow: var(--ui-shadow);
   }
@@ -200,9 +203,9 @@
     @apply inline-flex items-center justify-center transition;
     min-height: 40px;
     border: 1px solid transparent;
-    border-radius: 999px;
+    border-radius: 10px;
     background: var(--ui-raised);
-    padding: 9px 18px;
+    padding: 9px 14px;
     font-size: 14px;
     font-weight: 500;
     line-height: 1.4;
@@ -289,7 +292,7 @@
   .nexo-ui .nexo-preview-grid-card {
     min-height: 260px;
     border: 1px solid var(--ui-line);
-    border-radius: 24px;
+    border-radius: 16px;
     background: var(--ui-surface);
     box-shadow: var(--ui-shadow);
   }
@@ -342,15 +345,15 @@
   .nexo-ui .nexo-dialog label, .nexo-ui .nexo-dialog p { color: var(--ui-text); font-size: 14px; line-height: 1.6; }
   .nexo-ui .nexo-dialog .toolbar-button { min-height: 36px; }
   .nexo-ui .nexo-dialog-divider { border-color: var(--ui-line); padding-top: 20px; }
-  .nexo-ui .nexo-project-card { min-height: 280px; padding: 28px; border-color: transparent; transition: box-shadow 0.25s ease; }
-  .nexo-ui .nexo-project-card h2 { color: var(--ui-heading); font-size: 24px; font-weight: 600; line-height: 1.25; letter-spacing: -0.035em; }
+  .nexo-ui .nexo-project-card { min-height: 220px; padding: 24px; border-color: var(--ui-line); transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; animation: nexo-enter 240ms ease-out; }
+  .nexo-ui .nexo-project-card h2 { color: var(--ui-heading); font-size: 21px; font-weight: 600; line-height: 1.25; letter-spacing: -0.035em; }
   .nexo-ui .nexo-project-card p { color: var(--ui-muted); font-size: 14px; line-height: 1.5; }
 
   @media (max-width: 639px) {
     .nexo-ui .nexo-panel-heading h2 { font-size: 16px; }
     .nexo-ui .nexo-dialog { padding: 20px; border-radius: 22px; }
     .nexo-ui .nexo-projects-content { padding-top: 36px; padding-bottom: 40px; }
-    .nexo-ui .nexo-project-card { padding: 24px; min-height: 260px; }
+    .nexo-ui .nexo-project-card { padding: 20px; min-height: 210px; }
     .nexo-section-heading p { font-size: 16px; }
     .nexo-section-heading form { width: 100%; }
     .nexo-section-heading form .toolbar-button { width: 100%; }
@@ -841,7 +844,26 @@
   .nexo-toast-action { color: var(--ui-accent); border-radius: 999px; }
   .nexo-toast-action:hover { background: var(--ui-accent-soft); }
 
+  .nexo-dialog, .nexo-toast { animation: nexo-enter 180ms ease-out; }
+  .nexo-projects-content { animation: nexo-enter 240ms ease-out; }
+  .nexo-loading::before {
+    content: "";
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--ui-line);
+    border-top-color: var(--ui-accent);
+    border-radius: 50%;
+    animation: nexo-spin 800ms linear infinite;
+  }
+  .nexo-ui button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
+  @keyframes nexo-enter {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes nexo-spin { to { transform: rotate(360deg); } }
+
   @media (prefers-reduced-motion: reduce) {
+    .nexo-ui .nexo-project-card:hover { transform: none; }
     .nexo-ui, .nexo-ui *, .nexo-ui *::before, .nexo-ui *::after {
       scroll-behavior: auto;
       transition-duration: 0.01ms;
