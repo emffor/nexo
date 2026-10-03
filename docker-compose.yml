@@ -35,8 +35,6 @@ services:
       retries: 3
 
   postgres:
-    # profiles: ["database"]
-
     image: postgres:16-alpine
     container_name: nexo-postgres
     restart: always
@@ -57,6 +55,8 @@ services:
 
 volumes:
   pgdata:
+    external: true
+    name: nexo-db_pgdata
 
 networks:
   nexo-network:
