@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { forwardRef, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { parseDbml } from '../../lib/dbml';
+import { isDatabasePathBlocked } from '../../lib/databaseRouting';
 import type { DatabaseDiagramVisualState } from '../../types/database';
 
 vi.mock('react-konva', () => {
@@ -54,11 +55,15 @@ vi.mock('react-konva', () => {
   function Passthrough({
     children,
     onClick,
+    onMouseEnter,
+    onMouseLeave,
   }: {
     children?: ReactNode;
     onClick?: (event: ReturnType<typeof buildEvent>) => void;
+    onMouseEnter?: (event: ReturnType<typeof buildEvent>) => void;
+    onMouseLeave?: (event: ReturnType<typeof buildEvent>) => void;
   }) {
-    return <div onClick={() => onClick?.(buildEvent())}>{children}</div>;
+    return <div onClick={() => onClick?.(buildEvent())} onMouseEnter={() => onMouseEnter?.(buildEvent())} onMouseLeave={() => onMouseLeave?.(buildEvent())}>{children}</div>;
   }
 
   function Text({
@@ -214,6 +219,40 @@ function renderPanel(overrides?: {
 }
 
 describe('DatabaseDiagramPanel', () => {
+  it('desenha as relações por fora de uma terceira tabela que bloqueia o trajeto', () => {
+    const parsed = parseDbml(content + '\nTable blocker {\n id integer [pk]\n name varchar\n}\n');
+    const state = { positions: { users: { x: 40, y: 40 }, posts: { x: 800, y: 40 }, blocker: { x: 400, y: 40 } } };
+    render(<DatabaseDiagramPanel tables={parsed.tables} relations={parsed.relations}
+      theme="dark" state={state} onStateChange={vi.fn()} edgeStyle="square" />);
+
+    const paths = screen.getAllByTestId('path');
+    expect(paths.length).toBeGreaterThan(0);
+    for (const path of paths) {
+      const values = path.dataset.path!.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+      const points = Array.from({ length: values.length / 2 }, (_, index) => ({ x: values[index * 2], y: values[index * 2 + 1] }));
+      expect(isDatabasePathBlocked(points, Object.values(state.positions).map((p) => ({ ...p, width: 240, height: 92 })))).toBe(false);
+    }
+  });
+
+  it('mantém o zoom salvo ao entrar, mover e sair com o mouse sobre uma tabela', () => {
+    const onStateChange = vi.fn();
+    renderPanel({
+      onStateChange,
+      state: {
+        positions: { users: { x: 40, y: 40 }, posts: { x: 360, y: 40 } },
+        viewport: { x: 20, y: 30, scale: 1.23 },
+      },
+    });
+    const table = screen.getByText('users').parentElement!;
+
+    fireEvent.mouseEnter(table);
+    fireEvent.mouseMove(table);
+    fireEvent.mouseLeave(table);
+
+    expect(screen.getByText('123%')).toBeInTheDocument();
+    expect(onStateChange).not.toHaveBeenCalled();
+  });
+
   it('não altera o zoom com rolagem comum ou horizontal; aceita Ctrl + rolagem vertical', () => {
     const onStateChange = vi.fn();
     renderPanel({ onStateChange });

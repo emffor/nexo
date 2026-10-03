@@ -22,6 +22,7 @@ import type { KonvaEventObject } from "konva/lib/Node";
 import Konva from "konva";
 
 import { UI_CODE_FONT_FAMILY, UI_FONT_FAMILY, UI_RADIUS, UI_THEME } from "../../lib/uiTheme";
+import { buildRoutedDatabasePath, isDatabaseCurveBlocked, isDatabasePathBlocked, resolveDatabaseTablePosition, routeDatabaseConnection, type DatabaseRoutingObstacle } from "../../lib/databaseRouting";
 import type { AppTheme, DiagramEdgeStyle } from "../../lib/preferences";
 import {
   isValidDbmlColumnIdentifier,
@@ -764,6 +765,38 @@ export default function DatabaseDiagramPanel({
     stateRef.current = state;
   }, [state]);
 
+  const visualPositions = useMemo(() => {
+    const result: Record<string, DatabaseTablePosition> = {};
+    const obstacles: DatabaseRoutingObstacle[] = [];
+    for (const table of tables) {
+      const position = liveTablePosition?.id === table.id ? liveTablePosition : state.positions[table.id];
+      if (!position) continue;
+      const height = computeDatabaseTableHeight(table.columns.length);
+      const resolved = resolveDatabaseTablePosition(position, DB_TABLE_WIDTH, height, obstacles);
+      result[table.id] = resolved;
+      obstacles.push({ ...resolved, width: DB_TABLE_WIDTH, height });
+    }
+    return result;
+  }, [liveTablePosition, state.positions, tables]);
+
+  const routingObstacles = useMemo(() => tables.flatMap((table) => {
+    const position = visualPositions[table.id];
+    return position ? [{
+      id: table.id,
+      ...position,
+      width: DB_TABLE_WIDTH,
+      height: computeDatabaseTableHeight(table.columns.length),
+    }] : [];
+  }), [tables, visualPositions]);
+
+  const constrainTablePosition = useCallback((id: string, position: DatabaseTablePosition) => {
+    const table = tables.find((entry) => entry.id === id);
+    if (!table) return position;
+    return resolveDatabaseTablePosition(position, DB_TABLE_WIDTH,
+      computeDatabaseTableHeight(table.columns.length),
+      routingObstacles.filter((entry) => entry.id !== id));
+  }, [tables, routingObstacles]);
+
   // medir container
   useEffect(() => {
     const element = containerRef.current;
@@ -870,8 +903,9 @@ export default function DatabaseDiagramPanel({
   const handleTableDragEnd = useCallback(
     (id: string, event: KonvaEventObject<DragEvent>) => {
       const node = event.target;
-      const x = Math.round(node.x());
-      const y = Math.round(node.y());
+      const { x, y } = constrainTablePosition(id, {
+        x: Math.round(node.x()), y: Math.round(node.y()),
+      });
       node.position({ x, y });
       setLiveTablePosition({ id, x, y });
       const current = stateRef.current;
@@ -887,19 +921,19 @@ export default function DatabaseDiagramPanel({
         positions: { ...reanchoredState.positions, [id]: { x, y } },
       });
     },
-    [onStateChange, relations, tables],
+    [onStateChange, relations, tables, constrainTablePosition],
   );
 
   const handleTableDragMove = useCallback(
     (id: string, event: KonvaEventObject<DragEvent>) => {
       const node = event.target;
-      setLiveTablePosition({
-        id,
-        x: Math.round(node.x()),
-        y: Math.round(node.y()),
+      const position = constrainTablePosition(id, {
+        x: Math.round(node.x()), y: Math.round(node.y()),
       });
+      node.position(position);
+      setLiveTablePosition({ id, ...position });
     },
-    [],
+    [constrainTablePosition],
   );
 
   const saveRelationPath = useCallback(
@@ -1294,20 +1328,6 @@ export default function DatabaseDiagramPanel({
     return map;
   }, [tables]);
 
-  const visualPositions = useMemo(() => {
-    if (!liveTablePosition) {
-      return state.positions;
-    }
-
-    return {
-      ...state.positions,
-      [liveTablePosition.id]: {
-        x: liveTablePosition.x,
-        y: liveTablePosition.y,
-      },
-    };
-  }, [liveTablePosition, state.positions]);
-
   const visualRelationPaths = useMemo(() => {
     if (!liveRelationPath) {
       return state.relationPaths;
@@ -1481,17 +1501,29 @@ export default function DatabaseDiagramPanel({
               isCurveEdge && customPath?.points.length === 4
                 ? pointArrayToPairs(points)
                 : defaultCurvePoints;
-            const relationPath = isCurveEdge
+            const blocked = isCurveEdge
+              ? isDatabaseCurveBlocked(curvePoints, routingObstacles)
+              : isDatabasePathBlocked(pointArrayToPairs(points), routingObstacles);
+            const routedPoints = blocked ? routeDatabaseConnection(
+              fromAnchor, effectiveFromSide, toAnchor, effectiveToSide, routingObstacles,
+            ) : null;
+            // Não desenhar uma conexão através de tabelas sobrepostas sem corredor livre.
+            if (blocked && !routedPoints) return null;
+            const relationPath = routedPoints
+              ? buildRoutedDatabasePath(routedPoints, isCurveEdge)
+              : isCurveEdge
               ? buildCurvePathDataFromPoints(curvePoints)
               : roundedPath;
             const stroke = isActive ? activeEdgeColor : edgeColor;
-            const relationMidpoint = isCurveEdge
+            const relationMidpoint = routedPoints
+              ? buildRelationMidpoint(pointPairsToArray(routedPoints))
+              : isCurveEdge
               ? buildCurveMidpoint(curvePoints)
               : buildRelationMidpoint(points);
             const editablePoints = isEditing
               ? isCurveEdge
                 ? [curvePoints[0], curvePoints[curvePoints.length - 1]]
-                : pointArrayToPairs(points)
+                : routedPoints ?? pointArrayToPairs(points)
               : [];
             const segmentHandles =
               isEditing && !isCurveEdge
