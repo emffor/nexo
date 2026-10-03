@@ -1229,7 +1229,7 @@ export default function DiagramPanel({
       </div>
 
       <div
-        className="absolute bottom-4 right-4 z-40 flex flex-col items-center overflow-hidden rounded-2xl border shadow-[var(--ui-shadow-strong)] backdrop-blur-xl border-[var(--ui-line)] bg-[var(--ui-glass)] text-[var(--ui-text)]"
+        className="absolute bottom-24 right-6 z-40 flex flex-col items-center overflow-hidden rounded-2xl border shadow-[var(--ui-shadow-strong)] backdrop-blur-xl border-[var(--ui-line)] bg-[var(--ui-glass)] text-[var(--ui-text)]"
       >
         <button
           type="button"
