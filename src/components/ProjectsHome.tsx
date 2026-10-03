@@ -99,7 +99,7 @@ export function ProjectsHome({
       className="nexo-ui nexo-app-frame nexo-projects-home min-h-screen"
     >
       <header
-        className="nexo-topbar border-b px-5 py-3 sm:px-8 border-[var(--ui-line)] bg-[var(--ui-surface)]"
+        className="nexo-topbar border-b px-5 py-3 sm:px-8 border-[var(--ui-line)]"
       >
         <div className="mx-auto flex min-h-[47px] max-w-[1440px] flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -124,8 +124,8 @@ export function ProjectsHome({
           <div className="flex flex-wrap items-center gap-2">
             <span className="toolbar-badge">{formatStorageSize(storedDataSizeBytes)}</span>
             <span className="toolbar-badge">{projects.length} {projects.length === 1 ? "projeto" : "projetos"}</span>
-            <button type="button" onClick={onImportAll} className="toolbar-button">Importar</button>
-            <button type="button" onClick={onExportAll} disabled={projects.length === 0} className="toolbar-button">Exportar</button>
+            <button type="button" onClick={onImportAll} className="toolbar-button h-8 px-3.5 text-xs">Importar</button>
+            <button type="button" onClick={onExportAll} disabled={projects.length === 0} className="toolbar-button h-8 px-3.5 text-xs">Exportar</button>
           </div>
         </div>
       </header>
@@ -134,7 +134,7 @@ export function ProjectsHome({
         <div className="nexo-section-heading mb-8 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h1
-              className="text-2xl font-medium tracking-tight text-[var(--ui-heading)]"
+              className="text-2xl font-semibold tracking-tight text-[var(--ui-heading)]"
             >
               Projetos
             </h1>
@@ -156,14 +156,14 @@ export function ProjectsHome({
               placeholder="Nome do novo projeto"
               required
               disabled={pendingAction !== null || isLoading}
-              className="nexo-field w-full min-w-0 rounded border sm:w-64 outline-none transition focus:border-[var(--ui-accent)] focus:ring-1 focus:ring-[var(--ui-accent)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)] placeholder:text-[var(--ui-muted)]"
+              className="nexo-field w-full min-w-0 rounded-xl border sm:w-72 outline-none transition focus:border-[var(--ui-accent)] focus:ring-2 focus:ring-[var(--ui-accent-soft)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)] placeholder:text-[var(--ui-muted)]"
             />
             <button
               type="submit"
               disabled={pendingAction !== null || isLoading || !newProjectName.trim()}
-              className="toolbar-button toolbar-button--accent"
+              className="toolbar-button toolbar-button--accent h-9 px-4 rounded-xl shadow-sm"
             >
-              <span aria-hidden="true" className="mr-2 text-lg leading-none">+</span>
+              <span aria-hidden="true" className="mr-1.5 text-lg leading-none">+</span>
               {pendingAction === "create" ? "Criando..." : "Novo Projeto"}
             </button>
           </form>
@@ -182,7 +182,7 @@ export function ProjectsHome({
             <label className="relative w-full sm:w-72">
               <span className="sr-only">Buscar projetos</span>
               <input type="search" value={search} onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar por nome..." className="nexo-field w-full" />
+                placeholder="Buscar por nome..." className="nexo-field w-full rounded-xl" />
             </label>
           </div>
         ) : null}
@@ -195,7 +195,7 @@ export function ProjectsHome({
 
         {!isLoading && projects.length === 0 ? (
           <div
-            className="nexo-empty rounded border border-dashed px-6 py-12 text-center text-sm border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-muted)]"
+            className="nexo-empty rounded-2xl border border-dashed px-6 py-12 text-center text-sm border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-muted)]"
           >
             <h2 className="mb-2 font-semibold text-[var(--ui-heading)]">Seu próximo projeto começa aqui</h2>
             <p>Use o campo acima para criar um projeto ou importe um backup.</p>
@@ -203,9 +203,9 @@ export function ProjectsHome({
         ) : null}
 
         {!isLoading && projects.length > 0 && filteredProjects.length === 0 ? (
-          <div className="nexo-empty px-6 py-12 text-center">
+          <div className="nexo-empty rounded-2xl px-6 py-12 text-center">
             <p>Nenhum projeto encontrado para “{search}”.</p>
-            <button type="button" onClick={() => setSearch("")} className="toolbar-button mt-4">Limpar busca</button>
+            <button type="button" onClick={() => setSearch("")} className="toolbar-button h-8 px-3 rounded-xl mt-4">Limpar busca</button>
           </div>
         ) : null}
 
@@ -216,7 +216,7 @@ export function ProjectsHome({
               return (
                 <article
                   key={project.id}
-                  className="nexo-surface nexo-project-card flex flex-col justify-between transition-colors border-[var(--ui-line)] bg-[var(--ui-surface)] hover:border-[var(--ui-line)]"
+                  className="nexo-surface nexo-project-card flex flex-col justify-between transition-all duration-200 rounded-2xl border-[var(--ui-line)] bg-[var(--ui-surface)] hover:border-[var(--ui-line)] shadow-sm"
                 >
                   {isEditing ? (
                     <form onSubmit={handleRename} className="flex flex-col gap-2">
@@ -233,13 +233,13 @@ export function ProjectsHome({
                         disabled={pendingAction !== null}
                         value={editingName}
                         onChange={(event) => setEditingName(event.target.value)}
-                        className="nexo-field w-full rounded border outline-none focus:ring-1 focus:ring-[var(--ui-accent)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
+                        className="nexo-field w-full rounded-xl border outline-none focus:ring-2 focus:ring-[var(--ui-accent-soft)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
                       />
                       <div className="flex gap-2">
                         <button
                           type="submit"
                           disabled={pendingAction !== null || !editingName.trim()}
-                          className="toolbar-button toolbar-button--accent h-7"
+                          className="toolbar-button toolbar-button--accent h-8 px-3 rounded-xl"
                         >
                           {pendingAction === "rename" ? "Salvando..." : "Salvar"}
                         </button>
@@ -247,7 +247,7 @@ export function ProjectsHome({
                           type="button"
                           disabled={pendingAction !== null}
                           onClick={() => { setEditingProjectId(null); setFormError(null); }}
-                          className="toolbar-button h-7"
+                          className="toolbar-button h-8 px-3 rounded-xl"
                         >
                           Cancelar
                         </button>
@@ -258,7 +258,7 @@ export function ProjectsHome({
                       <button
                         type="button"
                         onClick={() => onOpenProject(project.id)}
-                        className="block w-full rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]"
+                        className="block w-full rounded-xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]"
                       >
                         <div className="mb-4 flex items-center justify-between gap-3">
                           <span className="nexo-project-tag">Workspace</span>
@@ -266,7 +266,7 @@ export function ProjectsHome({
                         </div>
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <h2
-                            className="m-0 line-clamp-1 text-sm font-medium text-[var(--ui-heading)]"
+                            className="m-0 line-clamp-1 text-sm font-semibold text-[var(--ui-heading)]"
                           >
                             {project.name}
                           </h2>
@@ -280,21 +280,21 @@ export function ProjectsHome({
                       </button>
 
                       <div
-                        className="nexo-project-footer mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-2 border-[var(--ui-line)]"
+                        className="nexo-project-footer mt-5 flex flex-wrap items-center justify-between gap-2 border-t pt-3 border-[var(--ui-line)]"
                       >
                         <button
                           type="button"
                           onClick={() => onOpenProject(project.id)}
-                          className="nexo-project-open rounded text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                          className="nexo-project-open rounded-lg text-xs font-semibold py-1 px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                         >
                           Abrir workspace →
                         </button>
 
-                        <div className="flex flex-wrap items-center gap-0.5">
+                        <div className="flex flex-wrap items-center gap-1">
                           <button
                             type="button"
                             onClick={() => onExportProject(project.id)}
-                            className="toolbar-button toolbar-button--quiet h-6 px-2 text-[11px]"
+                            className="toolbar-button toolbar-button--quiet h-7 px-2.5 text-xs rounded-lg"
                             title="Exportar JSON deste projeto"
                           >
                             Exportar
@@ -306,14 +306,14 @@ export function ProjectsHome({
                               setEditingProjectId(project.id);
                               setEditingName(project.name);
                             }}
-                            className="toolbar-button toolbar-button--quiet h-6 px-2 text-[11px]"
+                            className="toolbar-button toolbar-button--quiet h-7 px-2.5 text-xs rounded-lg"
                           >
                             Renomear
                           </button>
                           <button
                             type="button"
                             onClick={() => onDeleteProject(project)}
-                            className="toolbar-button toolbar-button--quiet toolbar-button--danger h-6 px-2 text-[11px]"
+                            className="toolbar-button toolbar-button--quiet toolbar-button--danger h-7 px-2.5 text-xs rounded-lg"
                           >
                             Excluir
                           </button>

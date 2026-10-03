@@ -16,13 +16,13 @@ export function DbmlEditor({ value, theme, onChange, errors }: DbmlEditorProps) 
   return (
     <div
       data-theme={theme}
-      className="nexo-surface flex h-full min-h-0 flex-col overflow-hidden rounded border border-[var(--ui-line)] bg-[var(--ui-surface)]"
+      className="nexo-surface flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-sm"
     >
       <div
-        className="nexo-dbml-heading flex items-center justify-between border-b px-5 py-5 text-base font-semibold border-[var(--ui-line)] text-[var(--ui-muted)]"
+        className="nexo-dbml-heading flex items-center justify-between border-b px-5 py-4 text-sm font-semibold border-[var(--ui-line)] text-[var(--ui-heading)]"
       >
         <span>DBML</span>
-        <span className="text-[var(--ui-muted)]">
+        <span className="text-xs font-normal tabular-nums text-[var(--ui-muted)]">
           {value.length} chars
         </span>
       </div>

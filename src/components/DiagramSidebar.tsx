@@ -35,7 +35,7 @@ export function DiagramSidebar({
 }: DiagramSidebarProps) {
   return (
     <aside
-      className="flex h-full min-h-0 flex-col gap-2 overflow-hidden rounded border p-3 border-[var(--ui-line)] bg-[var(--ui-surface)]"
+      className="flex h-full min-h-0 flex-col gap-2.5 overflow-hidden rounded-2xl border p-3.5 border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-sm"
     >
       <div>
         <p className="mb-0.5 text-[10px] font-medium uppercase tracking-[0.28em] text-[var(--ui-accent)]">
@@ -48,11 +48,11 @@ export function DiagramSidebar({
         </h2>
       </div>
 
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1.5">
         <button
           type="button"
           onClick={onResetLayout}
-          className="toolbar-button toolbar-button--icon"
+          className="toolbar-button toolbar-button--icon h-8 px-2.5 text-xs rounded-xl"
           title="Reorganizar nós em grade"
         >
           Resetar layout
@@ -60,7 +60,7 @@ export function DiagramSidebar({
         <button
           type="button"
           onClick={onClearEdges}
-          className="toolbar-button toolbar-button--icon"
+          className="toolbar-button toolbar-button--icon h-8 px-2.5 text-xs rounded-xl"
           title="Remover todas as ligações"
         >
           Limpar setas
@@ -68,7 +68,7 @@ export function DiagramSidebar({
       </div>
 
       <div className="app-scrollbar -mx-1 flex-1 overflow-y-auto pr-1">
-        <ul className="m-0 flex list-none flex-col gap-1 p-0">
+        <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
           {items.map((item, index) => {
             const status = item.status ?? "backlog";
             const palette = DIAGRAM_STATUS_PALETTE[status][theme];
@@ -78,11 +78,11 @@ export function DiagramSidebar({
             return (
               <li key={item.id}>
                 <div
-                  className={`flex flex-col gap-1.5 rounded border px-2 py-1.5 text-[12px] transition ${
+                  className={`flex flex-col gap-2 rounded-xl border px-3 py-2 text-[12px] transition-all duration-150 ${
                     isHidden
                       ? "border-[var(--ui-line)] bg-[var(--ui-raised)] opacity-60"
                       : isActive
-                      ? "border-[var(--ui-accent)] bg-[var(--ui-accent-soft)]"
+                      ? "border-[var(--ui-accent)] bg-[var(--ui-accent-soft)] shadow-xs"
                       : "border-[var(--ui-line)] bg-[var(--ui-surface)] hover:border-[var(--ui-line)]"
                   }`}
                 >
@@ -92,7 +92,7 @@ export function DiagramSidebar({
                       checked={!isHidden}
                       onChange={() => onToggleItemVisibility(item.id)}
                       aria-label={`${isHidden ? "Exibir" : "Ocultar"} card ${displayTitle} no diagrama`}
-                      className="h-3.5 w-3.5 accent-[var(--ui-accent)]"
+                      className="h-3.5 w-3.5 rounded-md accent-[var(--ui-accent)] cursor-pointer"
                     />
                     <button
                       type="button"
@@ -100,7 +100,7 @@ export function DiagramSidebar({
                       className="flex flex-1 items-center gap-2 text-left text-[var(--ui-text)]"
                     >
                       <span
-                        className="inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded px-1 text-[10px] font-semibold bg-[var(--ui-raised)] text-[var(--ui-muted)]"
+                        className="inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded-md px-1 text-[10px] font-semibold bg-[var(--ui-raised)] text-[var(--ui-muted)]"
                       >
                         {String(index + 1).padStart(2, "0")}
                       </span>
@@ -124,7 +124,7 @@ export function DiagramSidebar({
                           value === "" ? undefined : (value as DiagramStatus),
                         );
                       }}
-                      className="flex-1 rounded border px-1 py-0.5 text-[11px] outline-none border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)]"
+                      className="flex-1 rounded-lg border px-2 py-1 text-[11px] outline-none border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)] focus:border-[var(--ui-accent)]"
                     >
                       <option value="">Sem status</option>
                       {DIAGRAM_STATUS_OPTIONS.map((option) => (
@@ -141,7 +141,7 @@ export function DiagramSidebar({
                         onChangeObservation(item.id, event.target.value);
                       }}
                       placeholder="Adicione uma observação..."
-                      className="w-full resize-none rounded border px-2 py-1 text-[11px] outline-none border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)] placeholder:text-[var(--ui-muted)]"
+                      className="w-full resize-none rounded-lg border px-2.5 py-1.5 text-[11px] outline-none border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)] placeholder:text-[var(--ui-muted)] focus:border-[var(--ui-accent)]"
                       rows={2}
                     />
                   )}

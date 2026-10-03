@@ -13,7 +13,7 @@ interface DiagramLegendProps {
 export function DiagramLegend({ theme }: DiagramLegendProps) {
   return (
     <div
-      className="pointer-events-none absolute bottom-3 left-3 flex flex-col gap-1 rounded border px-3 py-2 text-[11px] backdrop-blur border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)]"
+      className="pointer-events-none absolute bottom-3 left-3 flex flex-col gap-1.5 rounded-xl border border-[var(--ui-glass-border)] bg-[var(--ui-glass-bg)] px-3.5 py-2.5 text-[11px] backdrop-blur-xl shadow-[var(--ui-shadow)] text-[var(--ui-text)]"
     >
       <span className="mb-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] opacity-70">
         Legenda
@@ -23,7 +23,7 @@ export function DiagramLegend({ theme }: DiagramLegendProps) {
         return (
           <div key={option.value} className="flex items-center gap-2">
             <span
-              className="inline-block h-3 w-5 rounded border"
+              className="inline-block h-3 w-5 rounded-md border"
               style={{
                 backgroundColor: palette.fill,
                 borderColor: palette.border,

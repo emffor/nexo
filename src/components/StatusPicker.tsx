@@ -80,7 +80,7 @@ export function StatusPicker({
       {isOpen ? (
         <div
           data-theme={theme}
-      className="nexo-ui fixed inset-0 z-50 flex items-center justify-center bg-[var(--ui-overlay)] px-4 py-8 backdrop-blur-sm"
+          className="nexo-ui fixed inset-0 z-50 flex items-center justify-center bg-[var(--ui-overlay)] px-4 py-8 backdrop-blur-md"
           role="presentation"
           onClick={() => setIsOpen(false)}
         >
@@ -89,7 +89,7 @@ export function StatusPicker({
             role="dialog"
             aria-modal="true"
             aria-label={`Alterar status de ${label}`}
-            className="nexo-dialog w-full max-w-sm overflow-hidden rounded border py-1 shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
+            className="nexo-dialog w-full max-w-xs overflow-hidden rounded-2xl border p-1.5 shadow-[var(--ui-shadow-strong)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
             onClick={(event) => event.stopPropagation()}
           >
             {options.map((option, index) => {
@@ -106,13 +106,13 @@ export function StatusPicker({
                   type="button"
                   aria-pressed={isSelected}
                   onClick={() => handleSelect(option.value)}
-                  className={`nexo-status-option flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold transition ${
+                  className={`nexo-status-option flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-xs font-medium rounded-xl transition-all duration-150 ${
                     isSelected
-                      ? "bg-[var(--ui-primary)] text-[var(--ui-on-primary)]"
+                      ? "bg-[var(--ui-primary)] text-[var(--ui-on-primary)] shadow-sm"
                       : "text-[var(--ui-text)] hover:bg-[var(--ui-raised)]"
                   }`}
                 >
-                  <span className="w-4 text-center text-base leading-none">
+                  <span className="w-4 text-center text-sm leading-none">
                     {isSelected ? "✓" : ""}
                   </span>
                   {palette ? (

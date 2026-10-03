@@ -61,7 +61,7 @@ function ToolbarGroup({
     <div
       role="group"
       aria-label={label}
-      className={`nexo-toolbar-group flex items-center gap-0.5 rounded border p-1 ${className}`}
+      className={`nexo-toolbar-group flex items-center gap-1 rounded-xl border p-1 ${className}`}
     >
       {children}
     </div>
@@ -206,7 +206,7 @@ export function AppShell({
               type="button"
               onClick={onCopyAll}
               disabled={itemsCount === 0}
-              className="toolbar-button h-7 px-2.5 text-xs"
+              className="toolbar-button h-8 px-3 text-xs"
               title={`Copiar todo o markdown combinado (${isMac ? "⌘" : "Ctrl"}+Shift+C)`}
             >
               Copiar tudo
@@ -215,7 +215,7 @@ export function AppShell({
             <button
               type="button"
               onClick={onOpenModal}
-              className="toolbar-button toolbar-button--accent h-7 px-3 text-xs"
+              className="toolbar-button toolbar-button--accent h-8 px-3.5 text-xs shadow-sm"
               title={isMac ? "⌘N" : "Ctrl+N"}
             >
               + Novo card
@@ -224,7 +224,7 @@ export function AppShell({
             <button
               type="button"
               onClick={() => setIsToolbarExpanded((current) => !current)}
-              className="toolbar-button toolbar-button--quiet gap-2"
+              className="toolbar-button toolbar-button--quiet h-8 gap-2 text-xs"
               aria-label="Ferramentas do workspace"
               aria-controls="workspace-tools"
               aria-expanded={isToolbarExpanded}
@@ -446,7 +446,7 @@ export function AppShell({
 
       {isSidebarToggleVisible || isStrikethroughVisible ? (
         <div
-          className="fixed bottom-6 right-6 z-50 flex flex-col items-center gap-2 rounded border p-2 shadow-[var(--ui-shadow)] backdrop-blur border-[var(--ui-line)] bg-[var(--ui-surface)]"
+          className="fixed bottom-6 right-6 z-50 flex flex-col items-center gap-2 rounded-2xl border p-1.5 shadow-[var(--ui-shadow-strong)] backdrop-blur-xl border-[var(--ui-line)] bg-[var(--ui-glass)]"
         >
           {isSidebarToggleVisible ? (
             <button
@@ -463,7 +463,7 @@ export function AppShell({
               }
               aria-pressed={isSidebarHidden}
               onClick={onTogglePreviewMaximized}
-              className="inline-flex h-10 w-10 items-center justify-center rounded border transition border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)] hover:border-[var(--ui-accent)] hover:bg-[var(--ui-accent-soft)] hover:text-[var(--ui-accent)]"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border transition-all duration-150 border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)] hover:border-[var(--ui-accent)] hover:bg-[var(--ui-accent-soft)] hover:text-[var(--ui-accent)] active:scale-95 shadow-sm"
             >
               <svg
                 width="16"
@@ -494,7 +494,7 @@ export function AppShell({
               onPointerDown={(event) => event.preventDefault()}
               onMouseDown={(event) => event.preventDefault()}
               onClick={onToggleStrikethrough}
-              className="inline-flex h-10 w-10 items-center justify-center rounded border text-base font-bold transition border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)] hover:border-[var(--ui-accent)] hover:bg-[var(--ui-accent-soft)] hover:text-[var(--ui-accent)]"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border text-base font-bold transition-all duration-150 border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)] hover:border-[var(--ui-accent)] hover:bg-[var(--ui-accent-soft)] hover:text-[var(--ui-accent)] active:scale-95 shadow-sm"
             >
               <span className="line-through decoration-2" aria-hidden="true">
                 S

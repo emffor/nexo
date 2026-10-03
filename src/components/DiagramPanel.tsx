@@ -911,7 +911,7 @@ export default function DiagramPanel({
             el;
         }
       }}
-      className="nexo-surface nexo-canvas-surface relative h-full min-h-[480px] w-full overflow-hidden rounded border border-[var(--ui-line)] bg-[var(--ui-surface)]"
+      className="nexo-surface nexo-canvas-surface relative h-full min-h-[480px] w-full overflow-hidden rounded-2xl border border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-sm"
       style={{ backgroundColor: stageBg }}
     >
       <Stage
@@ -1223,26 +1223,26 @@ export default function DiagramPanel({
       ) : null}
 
       <div
-        className="pointer-events-none absolute right-3 top-3 rounded border px-2 py-1 text-[10px] uppercase tracking-[0.18em] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-muted)]"
+        className="pointer-events-none absolute right-3 top-3 rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.16em] border-[var(--ui-line)] bg-[var(--ui-glass)] backdrop-blur-md text-[var(--ui-muted)] shadow-xs"
       >
         Arraste cards · pontos de conexão para ligar · clique na seta para remover
       </div>
 
       <div
-        className="absolute bottom-4 right-4 z-40 flex flex-col items-center overflow-hidden rounded border shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)]"
+        className="absolute bottom-4 right-4 z-40 flex flex-col items-center overflow-hidden rounded-2xl border shadow-[var(--ui-shadow-strong)] backdrop-blur-xl border-[var(--ui-line)] bg-[var(--ui-glass)] text-[var(--ui-text)]"
       >
         <button
           type="button"
           onClick={() => handleZoom(1)}
           disabled={viewportScale >= MAX_SCALE}
-          className="flex h-8 w-8 items-center justify-center text-base font-semibold transition hover:bg-[var(--ui-raised)] disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-8 w-8 items-center justify-center text-sm font-semibold transition hover:bg-[var(--ui-raised)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="Aumentar zoom do diagrama"
           title="Aumentar zoom"
         >
           +
         </button>
         <div
-          className="border-y px-2 py-1 text-[10px] font-semibold tabular-nums border-[var(--ui-line)]"
+          className="border-y px-2.5 py-1 text-[10px] font-semibold tabular-nums border-[var(--ui-line)]"
           title="Zoom: Ctrl/⌘ + rolagem ou botões − e +"
         >
           {Math.round(viewportScale * 100)}%
@@ -1251,7 +1251,7 @@ export default function DiagramPanel({
           type="button"
           onClick={() => handleZoom(-1)}
           disabled={viewportScale <= MIN_SCALE}
-          className="flex h-8 w-8 items-center justify-center text-base font-semibold transition hover:bg-[var(--ui-raised)] disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-8 w-8 items-center justify-center text-sm font-semibold transition hover:bg-[var(--ui-raised)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="Diminuir zoom do diagrama"
           title="Diminuir zoom"
         >
@@ -1261,7 +1261,7 @@ export default function DiagramPanel({
 
       {hoveredItem && (
         <div
-          className="absolute z-50 max-w-xs rounded border px-3 py-2 text-xs shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)]"
+          className="absolute z-50 max-w-xs rounded-xl border px-3 py-2 text-xs shadow-[var(--ui-shadow-strong)] backdrop-blur-xl border-[var(--ui-line)] bg-[var(--ui-glass)] text-[var(--ui-text)]"
           style={{
             left: hoveredItem.x,
             top: hoveredItem.y + 10,

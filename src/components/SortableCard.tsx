@@ -74,8 +74,8 @@ export function SortableCard({
       data-dragging={isDragging}
       className={`relative transition-all duration-150 ${
         isOutlineMode
-          ? `nexo-outline-card rounded p-0.5 ${outlineContainerClass}`
-          : `nexo-item-card rounded border px-3 py-2 ${
+          ? `nexo-outline-card rounded-xl p-0.5 ${outlineContainerClass}`
+          : `nexo-item-card rounded-xl border px-3 py-2 ${
               isDragging
                 ? "border-[var(--ui-line)] bg-[var(--ui-raised)]"
                 : isActive
@@ -87,7 +87,7 @@ export function SortableCard({
       <div className={`flex items-center ${isOutlineMode ? "gap-1" : "gap-2"}`}>
         {isOutlineMode ? null : (
           <span
-            className="nexo-item-number tabular-nums text-xs font-medium px-1.5 py-0.5 rounded bg-[var(--ui-raised)] text-[var(--ui-muted)]"
+            className="nexo-item-number tabular-nums text-xs font-semibold px-1.5 py-0.5 rounded-md bg-[var(--ui-raised)] text-[var(--ui-muted)]"
           >
             {String(position + 1).padStart(2, "0")}
           </span>
@@ -99,7 +99,7 @@ export function SortableCard({
               onClick={() => onSelect(item)}
               title={getDisplayTitle(item, 56)}
               aria-label={`Ir para ${getDisplayTitle(item, 56)}`}
-              className={`nexo-outline-button relative flex h-8 w-full cursor-grab items-center justify-center rounded border px-2 text-xs font-medium transition active:cursor-grabbing ${outlineButtonClass}`}
+              className={`nexo-outline-button relative flex h-8 w-full cursor-grab items-center justify-center rounded-lg border px-2 text-xs font-medium transition active:cursor-grabbing ${outlineButtonClass}`}
               {...attributes}
               {...listeners}
             >
@@ -159,7 +159,7 @@ export function SortableCard({
                 type="button"
                 onClick={() => onEdit(item)}
                 aria-label={`Editar ${getDisplayTitle(item, 56)}`}
-                className="nexo-card-action inline-flex h-6 w-6 items-center justify-center rounded border text-xs transition border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-muted)] hover:bg-[var(--ui-raised)] hover:text-[var(--ui-text)]"
+                className="nexo-card-action inline-flex h-7 w-7 items-center justify-center rounded-lg border text-xs transition border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-muted)] hover:bg-[var(--ui-raised)] hover:text-[var(--ui-text)]"
                 title="Editar card"
               >
                 <Image src="/venture/edit.svg" width={16} height={16} alt="" className="nexo-nav-icon" />
@@ -168,7 +168,7 @@ export function SortableCard({
                 type="button"
                 onClick={() => onDelete(item)}
                 aria-label={`Remover ${getDisplayTitle(item, 56)}`}
-                className="nexo-card-action nexo-card-action--danger inline-flex h-6 w-6 items-center justify-center rounded border text-xs transition border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-danger)] hover:border-[var(--ui-danger)] hover:bg-[var(--ui-danger-soft)] hover:text-[var(--ui-danger)]"
+                className="nexo-card-action nexo-card-action--danger inline-flex h-7 w-7 items-center justify-center rounded-lg border text-xs transition border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-danger)] hover:border-[var(--ui-danger)] hover:bg-[var(--ui-danger-soft)] hover:text-[var(--ui-danger)]"
                 title="Excluir card"
               >
                 <svg

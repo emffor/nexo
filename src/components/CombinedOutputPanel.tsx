@@ -90,24 +90,24 @@ function PreviewGridCard({
       onClick={(event) => onClick(event, item)}
       onKeyDown={(event) => onKeyDown(event, item)}
       data-active={isActive}
-      className={`nexo-preview-grid-card group flex min-h-[236px] scroll-mt-6 cursor-grab flex-col overflow-hidden rounded border text-left transition active:cursor-grabbing ${
+      className={`nexo-preview-grid-card group flex min-h-[240px] scroll-mt-6 cursor-grab flex-col overflow-hidden rounded-2xl border text-left transition-all duration-200 active:cursor-grabbing ${
         isActive ? "preview-item-active" : ""
       } ${
         isDragging
           ? "border-[var(--ui-accent)] bg-[var(--ui-accent-soft)]"
           : isActive
               ? "border-[var(--ui-accent)] bg-[var(--ui-accent-soft)] shadow-[var(--ui-shadow)]"
-              : "border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow)] hover:border-[var(--ui-line)]"
+              : "border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-sm hover:border-[var(--ui-line)]"
       }`}
       {...sortableAttributes}
       {...listeners}
     >
       <div
-        className="nexo-preview-card-header border-b px-3 py-2.5 border-[var(--ui-line)] bg-[var(--ui-surface)]"
+        className="nexo-preview-card-header border-b px-4 py-3 border-[var(--ui-line)] bg-[var(--ui-surface)]"
       >
         <div className="flex items-center justify-between gap-3">
           <span
-            className="nexo-preview-number rounded-full px-2 py-0.5 tabular-nums text-[10px] font-semibold uppercase tracking-[0.16em] bg-[var(--ui-surface)] text-[var(--ui-muted)]"
+            className="nexo-preview-number rounded-full px-2 py-0.5 tabular-nums text-[10px] font-semibold uppercase tracking-[0.16em] bg-[var(--ui-tag-bg)] text-[var(--ui-tag)]"
           >
             {String(position + 1).padStart(2, "0")}
           </span>
@@ -120,7 +120,7 @@ function PreviewGridCard({
         </h3>
       </div>
 
-      <div className="nexo-preview-card-body relative flex-1 px-3 py-3">
+      <div className="nexo-preview-card-body relative flex-1 px-4 py-3.5">
         <div className="markdown-preview markdown-preview--card max-h-[154px] overflow-hidden">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
@@ -135,7 +135,7 @@ function PreviewGridCard({
       </div>
 
       <div
-        className="nexo-preview-card-footer mt-auto border-t px-3 py-2 border-[var(--ui-line)] text-[var(--ui-muted)]"
+        className="nexo-preview-card-footer mt-auto border-t px-4 py-2.5 border-[var(--ui-line)] text-[var(--ui-muted)]"
       >
         <p className="m-0 min-w-0 truncate text-[10px]">
           Atualizado em{" "}
@@ -325,21 +325,21 @@ export function CombinedOutputPanel({
             : "Preview Markdown"}
         </h2>
           <div className="flex flex-wrap items-center gap-2">
-            {selectedPreviewItem ? (
-              <button
-                type="button"
-                onClick={() => setSelectedPreviewCardId(null)}
-                className="toolbar-button h-6 px-2 text-xs"
-              >
-                Voltar aos cards
-              </button>
-            ) : null}
-          </div>
+          {selectedPreviewItem ? (
+            <button
+              type="button"
+              onClick={() => setSelectedPreviewCardId(null)}
+              className="toolbar-button h-7 px-3 text-xs rounded-xl"
+            >
+              Voltar aos cards
+            </button>
+          ) : null}
         </div>
+      </div>
 
       <div
         ref={scrollContainerRef}
-        className={`app-scrollbar flex-1 overflow-y-auto pb-28 ${isCardsMode && !selectedPreviewItem ? "" : "nexo-surface p-4"}`}
+        className={`app-scrollbar flex-1 overflow-y-auto pb-28 ${isCardsMode && !selectedPreviewItem ? "" : "nexo-surface rounded-2xl p-5 border border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-sm"}`}
       >
         {isLoading ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
@@ -354,7 +354,7 @@ export function CombinedOutputPanel({
           </div>
         ) : selectedPreviewItem ? (
           <article
-            className="markdown-preview w-full border-0 px-0 py-2 sm:px-2 sm:py-3 border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-[var(--ui-shadow)]"
+            className="markdown-preview w-full border-0 px-0 py-2 sm:px-3 sm:py-3 bg-transparent"
           >
             <section
               id={`preview-item-${selectedPreviewItem.id}`}
@@ -451,7 +451,7 @@ export function CombinedOutputPanel({
           </article>
         ) : (
           <div
-            className="nexo-empty flex h-full min-h-[320px] w-full flex-col items-center justify-center gap-4 rounded border border-dashed px-6 py-12 text-center border-[var(--ui-line)] bg-[var(--ui-surface)]"
+            className="nexo-empty flex h-full min-h-[320px] w-full flex-col items-center justify-center gap-4 rounded-2xl border border-dashed px-6 py-12 text-center border-[var(--ui-line)] bg-[var(--ui-surface)]"
           >
             <span
               className="text-5xl opacity-20"

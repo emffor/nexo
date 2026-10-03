@@ -71,7 +71,7 @@ export function SortableCardsPanel({
     <section
       className={`flex flex-col lg:min-h-0 ${
         isOutlineMode
-          ? "nexo-surface p-2 lg:sticky lg:top-3 lg:max-h-[calc(100vh-5rem)]"
+          ? "nexo-surface rounded-2xl p-2.5 lg:sticky lg:top-3 lg:max-h-[calc(100vh-5rem)]"
           : `lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]`
       }`}
     >
@@ -90,7 +90,7 @@ export function SortableCardsPanel({
 
       {isLoading ? (
         <div
-          className="nexo-empty flex flex-1 flex-col items-center justify-center gap-3 rounded border border-dashed px-6 py-10 border-[var(--ui-line)] bg-[var(--ui-surface)]"
+          className="nexo-empty flex flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-10 border-[var(--ui-line)] bg-[var(--ui-surface)]"
         >
           <div
             className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--ui-line)] border-t-[var(--ui-accent)]"
@@ -105,7 +105,7 @@ export function SortableCardsPanel({
 
       {!isLoading && items.length === 0 ? (
         <div
-          className="nexo-empty flex flex-1 flex-col items-center justify-center gap-4 rounded border border-dashed px-6 py-12 text-center border-[var(--ui-line)] bg-[var(--ui-surface)]"
+          className="nexo-empty flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border border-dashed px-6 py-12 text-center border-[var(--ui-line)] bg-[var(--ui-surface)]"
         >
           <span
             className="text-4xl text-[var(--ui-muted)]"
@@ -124,7 +124,7 @@ export function SortableCardsPanel({
             >
               Clique em <strong>Novo markdown</strong> ou pressione{" "}
               <kbd
-                className="rounded border px-1.5 py-0.5 tabular-nums text-xs border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)]"
+                className="rounded-md border px-1.5 py-0.5 tabular-nums text-xs border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)]"
               >
                 Ctrl+N
               </kbd>{" "}
@@ -149,7 +149,7 @@ export function SortableCardsPanel({
               className={`app-scrollbar flex lg:flex-1 ${
                 isOutlineMode
                   ? "flex-col gap-1.5 overflow-y-auto pr-1"
-                  : "nexo-surface flex-col gap-1 overflow-y-auto p-2"
+                  : "nexo-surface rounded-2xl flex-col gap-1.5 overflow-y-auto p-2.5 shadow-sm"
               }`}
             >
               {items.map((item, index) => (

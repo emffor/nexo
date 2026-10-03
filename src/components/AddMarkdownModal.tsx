@@ -244,23 +244,23 @@ export function AddMarkdownModal({
   return (
     <div
       data-theme={theme}
-      className="nexo-ui fixed inset-0 z-50 flex items-center justify-center bg-[var(--ui-overlay)] px-4 py-8"
+      className="nexo-ui fixed inset-0 z-50 flex items-center justify-center bg-[var(--ui-overlay)] backdrop-blur-md px-4 py-8"
       role="presentation"
       onClick={safeClose}
     >
       <div
         ref={dialogRef}
-        className="nexo-dialog w-full max-w-3xl rounded border p-5 border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)] shadow-[var(--ui-shadow)]"
+        className="nexo-dialog w-full max-w-3xl rounded-2xl border p-6 sm:p-7 border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)] shadow-[var(--ui-shadow-strong)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-markdown-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <form className="flex flex-col gap-3.5" onSubmit={handleSubmit}>
-          <div className="flex items-center justify-between border-b pb-2.5 border-[var(--ui-line)]">
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="flex items-center justify-between border-b pb-3 border-[var(--ui-line)]">
             <h2
               id="add-markdown-title"
-              className="m-0 text-sm font-semibold text-[var(--ui-heading)]"
+              className="m-0 text-base font-semibold tracking-tight text-[var(--ui-heading)]"
             >
               {mode === "edit" ? "Editar Bloco Markdown" : "Novo Bloco Markdown"}
             </h2>
@@ -269,13 +269,13 @@ export function AddMarkdownModal({
               type="button"
               onClick={safeClose}
               aria-label="Fechar modal"
-              className="toolbar-button h-6 px-2 text-xs"
+              className="toolbar-button h-7 w-7 p-0 rounded-lg text-xs"
             >
               <Image src="/venture/close.svg" width={16} height={16} alt="" className="nexo-nav-icon" />
             </button>
           </div>
 
-          <label className="flex flex-col gap-1 text-xs font-medium text-[var(--ui-text)]">
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-[var(--ui-text)]">
             Título do card (opcional)
             <input
               type="text"
@@ -288,14 +288,14 @@ export function AddMarkdownModal({
                 setTitle(event.target.value);
               }}
               placeholder="Ex: P2M-1185 ou Criacao de Pedido"
-              className="nexo-field w-full rounded border px-2.5 text-xs outline-none transition focus:border-[var(--ui-accent)] focus:ring-1 focus:ring-[var(--ui-accent)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)] placeholder:text-[var(--ui-muted)]"
+              className="nexo-field w-full rounded-xl border px-3 text-xs outline-none transition focus:border-[var(--ui-accent)] focus:ring-2 focus:ring-[var(--ui-accent-soft)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)] placeholder:text-[var(--ui-muted)]"
             />
           </label>
 
           <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--ui-muted)]">
             <button
               type="button"
-              className="toolbar-button h-7 px-3 text-xs"
+              className="toolbar-button h-8 px-3.5 text-xs rounded-xl"
               disabled={!issueKey || isLoadingJira || isSaving}
               onClick={() => {
                 if (!issueKey) return;
@@ -327,7 +327,7 @@ export function AddMarkdownModal({
                   type="button"
                   onClick={handleApplyStrikethrough}
                   disabled={isLoadingJira}
-                  className="toolbar-button h-6 px-2 text-xs line-through"
+                  className="toolbar-button h-7 px-2.5 text-xs rounded-lg line-through"
                   title="Riscar texto selecionado"
                 >
                   S
@@ -336,7 +336,7 @@ export function AddMarkdownModal({
                   type="button"
                   onClick={handleRemoveStrikethrough}
                   disabled={isLoadingJira}
-                  className="toolbar-button h-6 px-2 text-xs"
+                  className="toolbar-button h-7 px-2.5 text-xs rounded-lg"
                   title="Desriscar texto selecionado"
                 >
                   Limpar risco
@@ -358,7 +358,7 @@ export function AddMarkdownModal({
               }}
               rows={12}
               placeholder={"# Titulo\n\nCole aqui o conteudo em markdown."}
-              className="nexo-field rounded border p-3 font-mono text-xs leading-5 outline-none transition focus:border-[var(--ui-accent)] focus:ring-1 focus:ring-[var(--ui-accent)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)] placeholder:text-[var(--ui-muted)]"
+              className="nexo-field rounded-xl border p-3.5 font-mono text-xs leading-5 outline-none transition focus:border-[var(--ui-accent)] focus:ring-2 focus:ring-[var(--ui-accent-soft)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)] placeholder:text-[var(--ui-muted)]"
             />
           </div>
 
@@ -368,7 +368,7 @@ export function AddMarkdownModal({
             </p>
           ) : null}
 
-          <div className="nexo-dialog-divider flex flex-wrap items-center justify-between gap-3 border-t pt-3 border-[var(--ui-line)]">
+          <div className="nexo-dialog-divider flex flex-wrap items-center justify-between gap-3 border-t pt-4 border-[var(--ui-line)]">
             <span className="text-[11px] text-[var(--ui-muted)]">
               {isMac ? "⌘" : "Ctrl"}+Enter para salvar
             </span>
@@ -376,14 +376,14 @@ export function AddMarkdownModal({
               <button
                 type="button"
                 onClick={safeClose}
-                className="toolbar-button h-7 px-3 text-xs"
+                className="toolbar-button h-8 px-3.5 text-xs rounded-xl"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSaving || isLoadingJira}
-                className="toolbar-button toolbar-button--accent h-7 px-3 text-xs"
+                className="toolbar-button toolbar-button--accent h-8 px-4 text-xs rounded-xl shadow-sm"
               >
                 {isSaving
                   ? "Salvando..."

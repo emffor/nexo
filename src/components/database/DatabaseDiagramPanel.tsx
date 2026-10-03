@@ -1411,7 +1411,7 @@ export default function DatabaseDiagramPanel({
   return (
     <div
       ref={containerRef}
-      className="nexo-surface nexo-canvas-surface relative h-full min-h-[480px] w-full overflow-hidden rounded border border-[var(--ui-line)] bg-[var(--ui-surface)]"
+      className="nexo-surface nexo-canvas-surface relative h-full min-h-[480px] w-full overflow-hidden rounded-2xl border border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-sm"
       style={{ backgroundColor: stageBg }}
     >
       <Stage
@@ -2229,7 +2229,7 @@ export default function DatabaseDiagramPanel({
       {activeEditor && activeEditorTable ? (
         <form
           onSubmit={handleSubmitEditor}
-          className="absolute z-50 rounded border p-3 shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
+          className="absolute z-50 rounded-2xl border p-3.5 shadow-[var(--ui-shadow-strong)] backdrop-blur-xl border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
           style={{ left: editorLeft, top: editorTop, width: EDITOR_WIDTH }}
         >
           <label
@@ -2249,7 +2249,7 @@ export default function DatabaseDiagramPanel({
                 error: null,
               })
             }
-            className="w-full rounded border px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[var(--ui-accent)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
+            className="w-full rounded-xl border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[var(--ui-accent-soft)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
           />
           {activeEditor.error ? (
             <p className="mt-2 text-xs text-[var(--ui-danger)]">{activeEditor.error}</p>
@@ -2261,7 +2261,7 @@ export default function DatabaseDiagramPanel({
               <button
                 type="button"
                 onClick={() => setRecordsTableId(activeEditorTable.id)}
-                className="rounded px-2 py-1 text-xs font-medium bg-[var(--ui-raised)] text-[var(--ui-text)] hover:bg-[var(--ui-raised)]"
+                className="rounded-xl px-2.5 py-1 text-xs font-medium bg-[var(--ui-raised)] text-[var(--ui-text)] hover:bg-[var(--ui-raised)]"
               >
                 Ver records
               </button>
@@ -2272,13 +2272,13 @@ export default function DatabaseDiagramPanel({
               <button
                 type="button"
                 onClick={() => setActiveEditor(null)}
-                className="rounded px-2 py-1 text-xs text-[var(--ui-muted)] hover:bg-[var(--ui-raised)]"
+                className="rounded-xl px-2.5 py-1 text-xs text-[var(--ui-muted)] hover:bg-[var(--ui-raised)]"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="rounded bg-[var(--ui-primary)] px-2 py-1 text-xs font-semibold text-[var(--ui-on-primary)] hover:bg-[var(--ui-primary-hover)]"
+                className="rounded-xl bg-[var(--ui-primary)] px-3 py-1 text-xs font-semibold text-[var(--ui-on-primary)] hover:bg-[var(--ui-primary-hover)] shadow-xs"
               >
                 Salvar
               </button>
@@ -2288,56 +2288,58 @@ export default function DatabaseDiagramPanel({
       ) : null}
 
       {recordsTable?.records ? (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--ui-overlay)] p-6">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--ui-overlay)] backdrop-blur-md p-6">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="database-records-title"
-            className="max-h-full w-full max-w-4xl overflow-hidden rounded border shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
+            className="max-h-full w-full max-w-4xl overflow-hidden rounded-2xl border shadow-[var(--ui-shadow-strong)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
           >
             <div
-              className="flex items-center justify-between border-b px-4 py-3 border-[var(--ui-line)]"
+              className="flex items-center justify-between border-b px-5 py-3.5 border-[var(--ui-line)]"
             >
-              <h2 id="database-records-title" className="text-sm font-semibold">
+              <h2 id="database-records-title" className="text-sm font-semibold tracking-tight">
                 Records de {recordsTable.name}
               </h2>
               <button
                 type="button"
                 onClick={() => setRecordsTableId(null)}
-                className="rounded px-2 py-1 text-sm hover:bg-[var(--ui-raised)]"
+                className="toolbar-button h-7 px-3 text-xs rounded-xl"
               >
                 Fechar
               </button>
             </div>
             <div className="max-h-[65vh] overflow-auto p-4">
-              <table className="min-w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr>
-                    {recordsTable.records.columns.map((column) => (
-                      <th
-                        key={column.name}
-                        className="border px-3 py-2 font-semibold border-[var(--ui-line)] bg-[var(--ui-surface)]"
-                      >
-                        {column.name}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {recordsTable.records.rows.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {recordsTable.records?.columns.map((column, colIndex) => (
-                        <td
-                          key={`${rowIndex}-${column.name}`}
-                          className="border px-3 py-2 border-[var(--ui-line)]"
+              <div className="overflow-hidden rounded-xl border border-[var(--ui-line)]">
+                <table className="min-w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr>
+                      {recordsTable.records.columns.map((column) => (
+                        <th
+                          key={column.name}
+                          className="border-b px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider border-[var(--ui-line)] bg-[var(--ui-raised)] text-[var(--ui-muted)]"
                         >
-                          {row[colIndex] ?? "(null)"}
-                        </td>
+                          {column.name}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--ui-line)]">
+                    {recordsTable.records.rows.map((row, rowIndex) => (
+                      <tr key={rowIndex} className="transition-colors hover:bg-[var(--ui-raised)]">
+                        {recordsTable.records?.columns.map((column, colIndex) => (
+                          <td
+                            key={`${rowIndex}-${column.name}`}
+                            className="px-4 py-2.5 text-xs text-[var(--ui-text)]"
+                          >
+                            {row[colIndex] ?? "(null)"}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -2347,10 +2349,10 @@ export default function DatabaseDiagramPanel({
         <div
           role="dialog"
           aria-label="Escolher algoritmo de auto-organização"
-          className="absolute bottom-16 left-4 z-50 w-[min(28rem,calc(100%-2rem))] overflow-hidden rounded border shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
+          className="absolute bottom-16 left-4 z-50 w-[min(28rem,calc(100%-2rem))] overflow-hidden rounded-2xl border shadow-[var(--ui-shadow-strong)] backdrop-blur-2xl border-[var(--ui-glass-border)] bg-[var(--ui-glass)] text-[var(--ui-heading)]"
         >
           <div
-            className="border-b px-4 py-3 text-sm font-semibold border-[var(--ui-line)]"
+            className="border-b px-5 py-3.5 text-sm font-semibold border-[var(--ui-line)] tracking-tight"
           >
             Escolha o algoritmo de auto-organização
           </div>
@@ -2360,7 +2362,7 @@ export default function DatabaseDiagramPanel({
                 key={option.id}
                 type="button"
                 onClick={() => handleApplyAutoLayout(option.id)}
-                className="flex w-full items-start gap-4 rounded px-3 py-3 text-left transition hover:bg-[var(--ui-raised)]"
+                className="flex w-full items-start gap-4 rounded-xl px-3.5 py-3 text-left transition hover:bg-[var(--ui-raised)]"
               >
                 <span
                   className="mt-1 shrink-0 text-[var(--ui-text)]"
@@ -2378,7 +2380,7 @@ export default function DatabaseDiagramPanel({
                   </span>
                 </span>
                 <span
-                  className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded border text-xs font-semibold shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-muted)]"
+                  className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-semibold shadow-xs border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-muted)]"
                   aria-hidden="true"
                 >
                   {option.shortcut}
@@ -2390,13 +2392,13 @@ export default function DatabaseDiagramPanel({
       ) : null}
 
       <div
-        className="absolute bottom-4 left-4 z-40 flex items-center overflow-hidden rounded border shadow-[var(--ui-shadow)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-text)]"
+        className="absolute bottom-4 left-4 z-40 flex items-center overflow-hidden rounded-2xl border shadow-[var(--ui-shadow-strong)] backdrop-blur-xl border-[var(--ui-line)] bg-[var(--ui-glass)] text-[var(--ui-text)]"
       >
         <button
           type="button"
           onClick={() => handleZoom(-1)}
           disabled={viewportScale <= MIN_SCALE}
-          className="flex h-9 w-9 items-center justify-center text-base font-semibold transition hover:bg-[var(--ui-raised)] disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-9 w-9 items-center justify-center text-base font-semibold transition hover:bg-[var(--ui-raised)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="Diminuir zoom"
           title="Diminuir zoom"
         >
@@ -2412,7 +2414,7 @@ export default function DatabaseDiagramPanel({
           type="button"
           onClick={() => handleZoom(1)}
           disabled={viewportScale >= MAX_SCALE}
-          className="flex h-9 w-9 items-center justify-center text-base font-semibold transition hover:bg-[var(--ui-raised)] disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-9 w-9 items-center justify-center text-base font-semibold transition hover:bg-[var(--ui-raised)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="Aumentar zoom"
           title="Aumentar zoom"
         >
@@ -2422,7 +2424,7 @@ export default function DatabaseDiagramPanel({
           type="button"
           onClick={() => setIsAutoLayoutOpen((current) => !current)}
           aria-expanded={isAutoLayoutOpen}
-          className={`border-l px-3 py-2 text-xs font-semibold transition ${
+          className={`border-l px-3.5 py-2 text-xs font-semibold transition ${
             isAutoLayoutOpen
               ? "bg-[var(--ui-primary)] text-[var(--ui-on-primary)]"
               : "border-[var(--ui-line)] hover:bg-[var(--ui-raised)]"
@@ -2433,7 +2435,7 @@ export default function DatabaseDiagramPanel({
         <button
           type="button"
           onClick={handleFitToContent}
-          className="border-l px-3 py-2 text-xs font-semibold transition border-[var(--ui-line)] hover:bg-[var(--ui-raised)]"
+          className="border-l px-3.5 py-2 text-xs font-semibold transition border-[var(--ui-line)] hover:bg-[var(--ui-raised)]"
         >
           Ajustar
         </button>
@@ -2447,7 +2449,7 @@ export default function DatabaseDiagramPanel({
           aria-pressed={interactionMode === "pan"}
           aria-label={interactionMode === "pan" ? "Mover canvas" : "Selecionar"}
           title={interactionMode === "pan" ? "Mover canvas" : "Selecionar"}
-          className={`border-l px-3 py-2 text-xs font-semibold transition ${
+          className={`border-l px-3.5 py-2 text-xs font-semibold transition ${
             interactionMode === "pan"
               ? "bg-[var(--ui-primary)] text-[var(--ui-on-primary)]"
               : "border-[var(--ui-line)] hover:bg-[var(--ui-raised)]"
