@@ -435,12 +435,13 @@ export default function App() {
     : null;
 
   if (isProjectsLoading) {
+    // Sem data-theme próprio de propósito: o HTML do servidor não conhece o
+    // tema salvo (localStorage só existe no browser) e renderizar "dark" aqui
+    // pintava a tela de preto no primeiro paint mesmo em modo light. Sem o
+    // atributo, a tela herda as variáveis do <html>, que o script anti-FOUC
+    // do layout já marca com o tema certo antes do primeiro paint.
     return (
-      <main
-        data-theme={theme}
-        suppressHydrationWarning
-        className="nexo-ui flex min-h-screen items-center justify-center"
-      >
+      <main className="nexo-ui flex min-h-screen items-center justify-center">
         <div
           role="status"
           className="nexo-loading flex items-center gap-3 text-sm text-[var(--ui-muted)]"

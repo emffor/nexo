@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   },
 };
 
-const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('organizar-markdown:theme');if(t!=='light'){t='dark';}document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=t;}catch(e){}})();`;
+const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('organizar-markdown:theme');if(t!=='light'){t='dark';}document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=t;if(document.body){document.body.setAttribute('data-theme',t);}}catch(e){}})();`;
 
 export default function RootLayout({
   children,
