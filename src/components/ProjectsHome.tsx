@@ -10,7 +10,7 @@ interface ProjectsHomeProps {
   projects: ProjectSummary[];
   isLoading: boolean;
   theme: AppTheme;
-  storedDataSizeBytes: number;
+  storedDataSizeBytes: number | null;
   onCreateProject: (name: string) => Promise<void>;
   onOpenProject: (projectId: string) => void;
   onRenameProject: (projectId: string, name: string) => Promise<void>;
@@ -123,7 +123,7 @@ export function ProjectsHome({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="toolbar-badge h-8 px-3 text-xs rounded-full">{formatStorageSize(storedDataSizeBytes)}</span>
+            <span className="toolbar-badge h-8 px-3 text-xs rounded-full">{storedDataSizeBytes === null ? "Tamanho indisponível" : formatStorageSize(storedDataSizeBytes)}</span>
             <span className="toolbar-badge h-8 px-3 text-xs rounded-full">{projects.length} {projects.length === 1 ? "projeto" : "projetos"}</span>
             <button type="button" onClick={onImportAll} className="toolbar-button h-8 px-3.5 text-xs rounded-full">Importar</button>
             <button type="button" onClick={onExportAll} disabled={projects.length === 0} className="toolbar-button h-8 px-3.5 text-xs rounded-full">Exportar</button>

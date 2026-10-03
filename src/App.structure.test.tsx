@@ -49,3 +49,14 @@ describe("estrutura da aplicação", () => {
     await waitFor(() => expect(screen.getAllByRole("button", { name: /^abrir workspace/i })).toHaveLength(2));
   });
 });
+
+it('mantém a lista de projetos disponível se a estatística de tamanho falhar', async () => {
+  vi.mocked(fetch).mockImplementation(async (input) => {
+    if (input === '/api/projects') return Response.json(projects);
+    return Response.json({ error: 'offline' }, { status: 503 });
+  });
+  render(<App />);
+  expect(await screen.findAllByRole('button', { name: /^abrir workspace/i })).toHaveLength(2);
+  expect(screen.getByText('Tamanho indisponível')).toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});

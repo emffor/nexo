@@ -19,4 +19,11 @@ O modal monta uma sessão de edição ao abrir e ao trocar o conteúdo inicial. 
 
 Use `pnpm test` e `pnpm build`. Os testes de estrutura (`App.structure.test.tsx`), preferências e workspace usam APIs simuladas. Os testes dos diagramas simulam Konva e não substituem uma verificação visual no navegador.
 
-A baseline desta refatoração tinha 44 testes falhando em `App.test.tsx`, `lib/projects.test.ts` e `hooks/useDatabaseDiagram.test.tsx`, que ainda dependem de premissas antigas de persistência/API. Esses testes foram preservados. O script `pnpm lint` ainda solicita configuração inicial do ESLint.
+A persistência atual usa `services/*Api.ts` e rotas Next.js com Prisma/PostgreSQL. Dexie permanece no legado e no adaptador isolado dos testes; não é a persistência do workspace em produção.
+
+- `PUT /api/items` com `replaceProjectId` substitui cards em transação e preserva IDs. Os outros formatos existentes de criação, limpeza e reordenação continuam disponíveis.
+- `GET /api/diagrams/[projectId]` não persiste registros: retorna o exemplo quando necessário. PUT/DELETE continuam responsáveis por salvar/restaurar.
+- Cards e DBML expõem erro de carregamento e retry. Falhas de mutação não devem ser apresentadas como sucesso.
+- Backup completo falha quando algum projeto não pode ser lido; a estatística de tamanho é carregada separadamente da navegação.
+
+Comandos: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`. ESLint está configurado e Vitest limita descoberta ao `src`. A situação da suíte e os riscos restantes estão documentados em [ANALISE_PROJETO.md](ANALISE_PROJETO.md).

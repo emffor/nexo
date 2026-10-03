@@ -46,7 +46,11 @@ export async function updateItemApi(
   const res = await fetch(`/api/items/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(patch),
+    body: JSON.stringify({
+      ...patch,
+      ...('status' in patch ? { status: patch.status ?? null } : {}),
+      ...('observation' in patch ? { observation: patch.observation ?? null } : {}),
+    }),
   });
   if (!res.ok) {
     throw new Error('Falha ao atualizar item');
@@ -85,4 +89,17 @@ export async function clearProjectItemsApi(projectId: string): Promise<void> {
   if (!res.ok) {
     throw new Error('Falha ao limpar itens do projeto');
   }
+}
+
+export async function replaceProjectItemsApi(
+  projectId: string,
+  items: MarkdownItem[],
+): Promise<MarkdownItem[]> {
+  const res = await fetch('/api/items', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ replaceProjectId: projectId, items }),
+  });
+  if (!res.ok) throw new Error('Falha ao substituir os cards do projeto');
+  return res.json();
 }

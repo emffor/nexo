@@ -1,7 +1,22 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { mockWorkspaceApi } from "./test/mockWorkspaceApi";
+import { forwardRef, type ReactNode } from "react";
+
+vi.mock('react-konva', () => {
+  const passthrough = forwardRef<HTMLDivElement, { children?: ReactNode }>(function Passthrough({ children }, ref) { return <div ref={ref}>{children}</div>; });
+  const Stage = forwardRef<HTMLDivElement, { children?: ReactNode }>(function Stage({ children }, ref) {
+    const stage = { position: vi.fn(), scale: vi.fn(), batchDraw: vi.fn(), x: () => 0, y: () => 0, scaleX: () => 1, width: () => 1000, height: () => 800 };
+    if (typeof ref === 'function') ref(stage as unknown as HTMLDivElement);
+    else if (ref) ref.current = stage as unknown as HTMLDivElement;
+    return <div>{children}</div>;
+  });
+  return { Stage, Layer: passthrough, Group: passthrough, Rect: () => null, Circle: () => null, Arrow: () => null, Path: () => null, Line: () => null, Text: () => null };
+});
+beforeEach(mockWorkspaceApi);
+afterEach(() => vi.unstubAllGlobals());
 import { db } from "./lib/db";
 import { DIAGRAM_STATUS_PALETTE } from "./types/diagram";
 
@@ -10,15 +25,18 @@ async function createAndOpenProject(
   name = "Projeto teste",
 ) {
   await user.type(await screen.findByLabelText(/nome do projeto/i), name);
-  await user.click(screen.getByRole("button", { name: /adicionar projeto/i }));
-  const openButtons = await screen.findAllByRole("button", { name: /^abrir$/i });
-  await user.click(openButtons[openButtons.length - 1]);
-  await screen.findByRole("button", { name: /novo markdown/i });
+  await user.click(screen.getByRole("button", { name: /novo projeto/i }));
+  const projectCard = (await screen.findByRole('heading', { name })).closest('article')!;
+  await user.click(within(projectCard).getByRole('button', { name: /^abrir workspace/i }));
+  await screen.findByRole("button", { name: /novo card/i });
 }
 
 async function openFirstProject(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole("button", { name: /^abrir$/i }));
-  await screen.findByRole("button", { name: /novo markdown/i });
+  await waitFor(() => expect(screen.queryByRole('button', { name: /novo card/i }) ?? screen.queryAllByRole('button', { name: /^abrir workspace/i })[0]).toBeInTheDocument());
+  if (!screen.queryByRole('button', { name: /novo card/i })) {
+    await user.click(screen.getAllByRole('button', { name: /^abrir workspace/i })[0]);
+  }
+  await screen.findByRole('button', { name: /novo card/i });
 }
 
 function mockDownload() {
@@ -160,24 +178,26 @@ describe("App", () => {
     render(<App />);
 
     await createAndOpenProject(user, "Regularizacao");
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "# Task Regularizacao");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "# Task Regularizacao");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
-    await user.click(screen.getByRole("button", { name: /projetos/i }));
+    await user.click(screen.getByRole("button", { name: /^projetos$/i }));
     await createAndOpenProject(user, "Doc Pronto");
 
     expect(screen.queryByText(/task regularizacao/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "# Task Doc Pronto");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "# Task Doc Pronto");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
-    await user.click(screen.getByRole("button", { name: /projetos/i }));
+    await user.click(screen.getByRole("button", { name: /^projetos$/i }));
     const openButtons = await screen.findAllByRole("button", {
-      name: /^abrir$/i,
+      name: /^abrir workspace/i,
     });
-    await user.click(openButtons[0]);
+    await user.click(openButtons[1]);
 
     expect(
       await screen.findByRole("heading", {
@@ -194,19 +214,20 @@ describe("App", () => {
     render(<App />);
 
     await createAndOpenProject(user, "Regularizacao");
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "# Exportavel");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
-    await user.click(screen.getByRole("button", { name: /projetos/i }));
-    await user.click(screen.getByRole("button", { name: /exportar tudo/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "# Exportavel");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /^projetos$/i }));
+    await user.click(screen.getAllByRole("button", { name: /^exportar$/i })[0]);
 
     await waitFor(() => expect(blobs).toHaveLength(1));
     const parsed = JSON.parse(await readBlobText(blobs[0]));
 
     expect(parsed.version).toBe(2);
-    expect(parsed.projects).toHaveLength(1);
-    expect(parsed.projects[0].project.name).toBe("Regularizacao");
-    expect(parsed.projects[0].items[0].content).toBe("# Exportavel");
+    expect(parsed.projects).toHaveLength(2);
+    const exported = parsed.projects.find((entry: { project: { name: string } }) => entry.project.name === "Regularizacao");
+    expect(exported.items[0].content).toBe("# Exportavel");
     clickSpy.mockRestore();
   });
 
@@ -216,12 +237,13 @@ describe("App", () => {
     render(<App />);
 
     await createAndOpenProject(user, "Regularizacao");
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "# Projeto A");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
-    await user.click(screen.getByRole("button", { name: /projetos/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "# Projeto A");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /^projetos$/i }));
     await user.click(
-      screen.getByRole("button", { name: /exportar projeto/i }),
+      within(screen.getByRole("heading", { name: "Regularizacao" }).closest("article")!).getByTitle("Exportar JSON deste projeto"),
     );
 
     await waitFor(() => expect(blobs).toHaveLength(1));
@@ -269,14 +291,14 @@ describe("App", () => {
       { type: "text/plain" },
     );
 
-    await screen.findByRole("heading", { name: /projetos/i });
-    await user.click(screen.getByRole("button", { name: /importar tudo/i }));
+    await screen.findByRole("heading", { name: /^projetos$/i });
+    await user.click(screen.getByRole("button", { name: /^importar$/i }));
     const input = document.querySelector<HTMLInputElement>('input[type="file"]');
     expect(input).not.toBeNull();
     await user.upload(input as HTMLInputElement, file);
 
     expect(await screen.findByText("Regularizacao")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /^abrir$/i }));
+    await user.click(screen.getAllByRole("button", { name: /^abrir workspace/i }).at(-1)!);
     expect(
       await screen.findByRole("heading", { name: "Importado", level: 1 }),
     ).toBeInTheDocument();
@@ -306,14 +328,14 @@ describe("App", () => {
       { type: "text/plain" },
     );
 
-    await screen.findByRole("heading", { name: /projetos/i });
-    await user.click(screen.getByRole("button", { name: /importar tudo/i }));
+    await screen.findByRole("heading", { name: /^projetos$/i });
+    await user.click(screen.getByRole("button", { name: /^importar$/i }));
     const input = document.querySelector<HTMLInputElement>('input[type="file"]');
     expect(input).not.toBeNull();
     await user.upload(input as HTMLInputElement, file);
 
     expect(await screen.findByText(/^Projeto importado /i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /^abrir$/i }));
+    await user.click(screen.getAllByRole("button", { name: /^abrir workspace/i }).at(-1)!);
     expect(
       await screen.findByRole("heading", {
         name: "Sem nome original",
@@ -327,12 +349,13 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
     await user.type(
-      screen.getByLabelText(/conteudo/i),
+      screen.getByLabelText(/conteúdo markdown/i),
       "# Bloco A\n\nTexto do card",
     );
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
     expect(
       await screen.findByRole("button", { name: "Bloco A" }),
@@ -348,8 +371,8 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    const textarea = screen.getByLabelText(/conteudo/i) as HTMLTextAreaElement;
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    const textarea = screen.getByLabelText(/conteúdo markdown/i) as HTMLTextAreaElement;
     fireEvent.change(textarea, {
       target: {
         value: "Texto com trecho riscado",
@@ -358,11 +381,12 @@ describe("App", () => {
     textarea.focus();
     textarea.setSelectionRange(10, 24);
 
-    await user.click(screen.getByRole("button", { name: /^riscar texto$/i }));
+    await user.click(screen.getByRole("button", { name: /^riscar texto selecionado$/i }));
 
     expect(textarea).toHaveValue("Texto com ~~trecho riscado~~");
 
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
     const strikethroughText = await screen.findByText("trecho riscado");
     expect(strikethroughText.closest("del")).toBeInTheDocument();
@@ -373,12 +397,13 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
     await user.type(
-      screen.getByLabelText(/conteudo/i),
+      screen.getByLabelText(/conteúdo markdown/i),
       "Texto com ~~risco manual~~",
     );
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
     const strikethroughText = await screen.findByText("risco manual");
     expect(strikethroughText.closest("del")).toBeInTheDocument();
@@ -389,9 +414,10 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "trecho normal");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "trecho normal");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
     selectVisibleText("trecho normal");
     await user.click(
@@ -408,10 +434,11 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "trecho indice");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
-    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "trecho indice");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /alternar para modo índice/i }));
 
     selectVisibleText("trecho indice");
     await user.click(
@@ -428,9 +455,10 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "trecho cards");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "trecho cards");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /modo cards/i }));
 
     selectVisibleText("trecho cards");
@@ -448,13 +476,14 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    fireEvent.change(screen.getByLabelText(/conteudo/i), {
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    fireEvent.change(screen.getByLabelText(/conteúdo markdown/i), {
       target: {
         value: "Texto com ~~trecho desriscado~~",
       },
     });
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
     selectVisibleText("trecho desriscado");
     await user.click(
@@ -471,13 +500,14 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    fireEvent.change(screen.getByLabelText(/conteudo/i), {
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    fireEvent.change(screen.getByLabelText(/conteúdo markdown/i), {
       target: {
         value: "Texto com ~~Seleção das regularizações~~",
       },
     });
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
     selectVisibleSubstring("Seleção das regularizações", "regularizações");
     await user.click(
@@ -499,8 +529,8 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
 
     expect(
       await screen.findByText(
@@ -514,9 +544,10 @@ describe("App", () => {
     const firstRender = render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "## Persistido");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "## Persistido");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
     expect(
       await screen.findByRole("heading", { name: "Persistido", level: 2 }),
@@ -538,13 +569,14 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    fireEvent.change(screen.getByLabelText(/conteudo/i), {
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    fireEvent.change(screen.getByLabelText(/conteúdo markdown/i), {
       target: {
         value: "## Figma\n\n![Tela](https://example.com/imagem.png)",
       },
     });
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
     expect(await screen.findByRole("img", { name: "Tela" })).toHaveAttribute(
       "src",
@@ -557,13 +589,14 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    fireEvent.change(screen.getByLabelText(/conteudo/i), {
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    fireEvent.change(screen.getByLabelText(/conteúdo markdown/i), {
       target: {
         value: "## Regras\n\n O imovel selecionado deve pertencer ao cliente.",
       },
     });
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
     expect(await screen.findByText(/📌/)).toBeInTheDocument();
     expect(
@@ -594,23 +627,23 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    expect(screen.getByText(/cards em ordem/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^cards$/i })).toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", { name: /ocultar coluna de cards/i }),
     );
 
-    expect(screen.queryByText(/cards em ordem/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /^cards$/i })).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /exibir coluna de cards/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/preview renderizado/i)).toBeInTheDocument();
+    expect(screen.getByText(/preview markdown/i)).toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", { name: /exibir coluna de cards/i }),
     );
 
-    expect(screen.getByText(/cards em ordem/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^cards$/i })).toBeInTheDocument();
   });
 
   it("alterna o tema pela toolbar", async () => {
@@ -618,6 +651,7 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
+    await user.click(screen.getByRole("button", { name: "Ferramentas do workspace" }));
     await user.click(screen.getByRole("button", { name: /modo claro/i }));
 
     expect(
@@ -631,6 +665,7 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
+    await user.click(screen.getByRole("button", { name: "Ferramentas do workspace" }));
     await user.click(screen.getByRole("button", { name: "A+" }));
 
     expect(window.localStorage.getItem("organizar-markdown:font-scale")).toBe(
@@ -643,6 +678,7 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
+    await user.click(screen.getByRole("button", { name: "Ferramentas do workspace" }));
     const decreaseButton = screen.getByRole("button", { name: "A-" });
 
     await user.click(decreaseButton);
@@ -659,6 +695,7 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
+    await user.click(screen.getByRole("button", { name: "Ferramentas do workspace" }));
     await user.click(screen.getByRole("button", { name: /scroll sync/i }));
 
     expect(
@@ -671,19 +708,20 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "# Card original");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "# Card original");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
     await user.click(
       await screen.findByRole("button", { name: /editar card original/i }),
     );
 
-    const textarea = screen.getByLabelText(/conteudo/i);
+    const textarea = screen.getByLabelText(/conteúdo markdown/i);
     await user.clear(textarea);
     await user.type(textarea, "# Card editado");
     await user.click(
-      screen.getByRole("button", { name: /salvar alteracoes/i }),
+      screen.getByRole("button", { name: /salvar alterações/i }),
     );
 
     expect(
@@ -697,15 +735,17 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "# Primeiro");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "# Primeiro");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "# Segundo");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "# Segundo");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
-    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+    await user.click(screen.getByRole("button", { name: /alternar para modo índice/i }));
     await user.click(screen.getByRole("button", { name: /ir para segundo/i }));
 
     expect(
@@ -719,7 +759,7 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+    await user.click(screen.getByRole("button", { name: /alternar para modo índice/i }));
 
     expect(
       screen.getByRole("button", { name: /modo cards/i }),
@@ -730,7 +770,7 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /modo diagrama/i }),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/cards em ordem/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /^cards$/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
 
@@ -740,9 +780,7 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: /modo normal/i }));
 
-    expect(
-      screen.getByRole("button", { name: /modo indice/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /alternar para modo índice/i })).toBeInTheDocument();
   });
 
   it("mostra o indicador de status dos cards nos modos normal, indice e cards", async () => {
@@ -750,9 +788,10 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "# Card finalizado");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "# Card finalizado");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
     await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
     await user.selectOptions(screen.getByRole("combobox"), "finalizado");
@@ -766,7 +805,7 @@ describe("App", () => {
       borderColor: finalizadoPalette.border,
     });
 
-    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+    await user.click(screen.getByRole("button", { name: /alternar para modo índice/i }));
     expect(screen.getAllByTitle(/status: finalizado/i)[0]).toHaveStyle({
       backgroundColor: finalizadoPalette.fill,
       borderColor: finalizadoPalette.border,
@@ -784,9 +823,10 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "# Card com status");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "# Card com status");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
     await user.click(
       screen.getAllByRole("button", {
@@ -800,7 +840,7 @@ describe("App", () => {
       borderColor: DIAGRAM_STATUS_PALETTE.revisando.dark.border,
     });
 
-    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+    await user.click(screen.getByRole("button", { name: /alternar para modo índice/i }));
     await user.click(
       screen.getAllByRole("button", {
         name: /alterar status de card com status/i,
@@ -834,6 +874,7 @@ describe("App", () => {
 
     expect(screen.getByText(/cards no diagrama/i)).toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: "Ferramentas do workspace" }));
     await user.click(screen.getByRole("button", { name: /ocultar cards/i }));
 
     expect(screen.queryByText(/cards no diagrama/i)).not.toBeInTheDocument();
@@ -851,9 +892,10 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "# Card ocultavel");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "# Card ocultavel");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
 
     const visibilityCheckbox = screen.getByRole("checkbox", {
@@ -876,9 +918,10 @@ describe("App", () => {
     const firstRender = render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "# Card persistido");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "# Card persistido");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
     await user.click(
       screen.getByRole("checkbox", {
@@ -887,7 +930,7 @@ describe("App", () => {
     );
 
     await waitFor(async () => {
-      const project = await db.projects.toCollection().first();
+      const project = (await db.projects.toArray()).find((entry) => entry.name === "Projeto teste");
       expect(project?.hiddenDiagramItemIds).toHaveLength(1);
     });
 
@@ -910,6 +953,7 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
 
+    await user.click(screen.getByRole("button", { name: "Ferramentas do workspace" }));
     const edgeStyleButton = screen.getByRole("button", {
       name: /linha curva/i,
     });
@@ -927,9 +971,8 @@ describe("App", () => {
     await openFirstProject(user);
     await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
 
-    expect(
-      await screen.findByRole("button", { name: /linha quadrada/i }),
-    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ferramentas do workspace" }));
+    expect(screen.getByRole("button", { name: /linha quadrada/i })).toBeInTheDocument();
   });
 
   it("mantem estilos de linha isolados entre diagrama e banco", async () => {
@@ -938,6 +981,7 @@ describe("App", () => {
     await createAndOpenProject(user);
 
     await user.click(screen.getByRole("button", { name: /modo diagrama/i }));
+    await user.click(screen.getByRole("button", { name: "Ferramentas do workspace" }));
     await user.click(screen.getByRole("button", { name: /linha curva/i }));
 
     expect(
@@ -987,7 +1031,7 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+    await user.click(screen.getByRole("button", { name: /alternar para modo índice/i }));
     await user.click(screen.getByRole("button", { name: /modo cards/i }));
 
     expect(window.localStorage.getItem("organizar-markdown:view-mode")).toBe(
@@ -1000,18 +1044,20 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "# Primeiro");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "# Primeiro");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
-    await user.type(screen.getByLabelText(/conteudo/i), "## Segundo");
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
+    await user.type(screen.getByLabelText(/conteúdo markdown/i), "## Segundo");
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
-    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+    await user.click(screen.getByRole("button", { name: /alternar para modo índice/i }));
     await user.click(screen.getByRole("button", { name: /modo cards/i }));
 
-    expect(screen.getByText(/preview em cards/i)).toBeInTheDocument();
+    expect(screen.getByText(/quadro de cards/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /selecionar card primeiro/i }),
     ).toBeInTheDocument();
@@ -1028,14 +1074,15 @@ describe("App", () => {
     render(<App />);
     await createAndOpenProject(user);
 
-    await user.click(screen.getByRole("button", { name: /novo markdown/i }));
+    await user.click(screen.getByRole("button", { name: /novo card/i }));
     await user.type(
-      screen.getByLabelText(/conteudo/i),
+      screen.getByLabelText(/conteúdo markdown/i),
       "# Card longo\n\nTexto em markdown para validar expansao.",
     );
-    await user.click(screen.getByRole("button", { name: /salvar card/i }));
+    await user.click(screen.getByRole("button", { name: /criar card|salvar alterações/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
-    await user.click(screen.getByRole("button", { name: /modo indice/i }));
+    await user.click(screen.getByRole("button", { name: /alternar para modo índice/i }));
     await user.click(screen.getByRole("button", { name: /modo cards/i }));
     await user.click(
       screen.getByRole("button", { name: /selecionar card card longo/i }),
@@ -1044,7 +1091,7 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /voltar aos cards/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/preview renderizado/i)).toBeInTheDocument();
+    expect(screen.getByText(/preview markdown/i)).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /selecionar card card longo/i }),
     ).not.toBeInTheDocument();

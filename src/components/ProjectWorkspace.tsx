@@ -83,6 +83,8 @@ export function ProjectWorkspace({
     updateItemObservation,
     reorderItems,
     isLoading,
+    loadError,
+    retryLoad,
     leftScrollRef,
     rightScrollRef,
     diagramResetSignal,
@@ -90,6 +92,7 @@ export function ProjectWorkspace({
     diagramReloadStateSignal,
     messages,
     dismissToast,
+    reportActionError,
     databaseDiagram,
     databaseParseResult,
     databaseResetSignal,
@@ -98,6 +101,8 @@ export function ProjectWorkspace({
     undoDatabase,
     redoDatabase,
     databaseSaveStatus,
+    databaseLoadError,
+    retryDatabaseLoad,
     onDatabaseContentChange,
     onDatabaseStateChange,
     onRenameDatabaseTable,
@@ -139,6 +144,16 @@ export function ProjectWorkspace({
         onChange={handleImportFile}
       />
 
+      {loadError ? <div role="alert" className="nexo-ui flex items-center justify-center gap-3 p-4">
+        <p>{loadError}</p>
+        <button type="button" className="toolbar-button" onClick={retryLoad}>Tentar novamente</button>
+      </div> : null}
+
+      {databaseLoadError ? <div role="alert" className="nexo-ui flex items-center justify-center gap-3 p-4">
+        <p>{databaseLoadError}</p>
+        <button type="button" className="toolbar-button" onClick={retryDatabaseLoad}>Recarregar diagrama</button>
+      </div> : null}
+
       <AppShell
         itemsCount={items.length}
         isPreviewMaximized={isPreviewMaximized}
@@ -166,7 +181,7 @@ export function ProjectWorkspace({
             viewMode === "cards")
         }
         onToggleStrikethrough={() => {
-          void handleTogglePreviewStrikethrough();
+          void handleTogglePreviewStrikethrough().catch(reportActionError);
         }}
         onToggleDiagramSidebar={() =>
           setIsDiagramSidebarVisible((current) => !current)
@@ -200,7 +215,7 @@ export function ProjectWorkspace({
           setFontScale((current) => clampFontScale(current + FONT_SCALE.step))
         }
         onExport={() => {
-          void handleExport();
+          void handleExport().catch(reportActionError);
         }}
         onImport={handleImportClick}
         onCopyAll={() => {
@@ -229,10 +244,10 @@ export function ProjectWorkspace({
               onSelectItem={handleSelectDiagramItem}
               onToggleItemVisibility={handleToggleDiagramItemVisibility}
               onChangeStatus={(itemId, status) => {
-                void updateItemStatus(itemId, status);
+                void updateItemStatus(itemId, status).catch(reportActionError);
               }}
               onChangeObservation={(itemId, observation) => {
-                void updateItemObservation(itemId, observation);
+                void updateItemObservation(itemId, observation).catch(reportActionError);
               }}
               onResetLayout={handleResetDiagramLayout}
               onClearEdges={handleClearDiagramEdges}
@@ -248,7 +263,7 @@ export function ProjectWorkspace({
               activeItemId={activeItemId}
               scrollContainerRef={leftScrollRef}
               theme={theme}
-              onReorder={reorderItems}
+              onReorder={(activeId, overId) => reorderItems(activeId, overId).catch(reportActionError)}
               onSelect={handleSelectItemFromList}
               onEdit={(item) => {
                 setEditingItem(item);
@@ -258,7 +273,7 @@ export function ProjectWorkspace({
                 void handleDeleteItem(item);
               }}
               onChangeStatus={(itemId, status) => {
-                void updateItemStatus(itemId, status);
+                void updateItemStatus(itemId, status).catch(reportActionError);
               }}
             />
           )
@@ -307,7 +322,7 @@ export function ProjectWorkspace({
               edgeStyle={diagramEdgeStyle}
               onSelectItem={handleSelectDiagramItem}
               onChangeStatus={(itemId, status) => {
-                void updateItemStatus(itemId, status);
+                void updateItemStatus(itemId, status).catch(reportActionError);
               }}
               scrollContainerRef={rightScrollRef}
               resetLayoutSignal={diagramResetSignal}
@@ -325,9 +340,9 @@ export function ProjectWorkspace({
               activeItemId={activeItemId}
               scrollContainerRef={rightScrollRef}
               onSelect={handleSelectItem}
-              onReorder={reorderItems}
+              onReorder={(activeId, overId) => reorderItems(activeId, overId).catch(reportActionError)}
               onChangeStatus={(itemId, status) => {
-                void updateItemStatus(itemId, status);
+                void updateItemStatus(itemId, status).catch(reportActionError);
               }}
             />
           )
@@ -360,7 +375,7 @@ export function ProjectWorkspace({
         variant="danger"
         theme={theme}
         onConfirm={() => {
-          void executeClearAll();
+          void executeClearAll().catch(reportActionError);
         }}
         onCancel={() => setConfirmClearAll(false)}
       />
@@ -374,7 +389,7 @@ export function ProjectWorkspace({
         variant="danger"
         theme={theme}
         onConfirm={() => {
-          void executeDeleteItem();
+          void executeDeleteItem().catch(reportActionError);
         }}
         onCancel={() => setDeletingItem(null)}
       />

@@ -25,7 +25,7 @@ export function useProjects() {
   const loadRequestRef = useRef(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [projectsDataSizeBytes, setProjectsDataSizeBytes] = useState(0);
+  const [projectsDataSizeBytes, setProjectsDataSizeBytes] = useState<number | null>(null);
   const [isProjectsLoading, setIsProjectsLoading] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
@@ -40,9 +40,9 @@ export function useProjects() {
     const requestId = ++loadRequestRef.current;
     setIsProjectsLoading(true);
     setLoadError(null);
+    setProjectsDataSizeBytes(null);
     try {
       const summaries = await getProjectSummaries();
-      const projectsData = await getAllProjectsData();
       if (requestId !== loadRequestRef.current) return;
       const storedSelectedProjectId = readStoredSelectedProjectId();
       const selected = summaries.some((project) => project.id === storedSelectedProjectId)
@@ -52,7 +52,14 @@ export function useProjects() {
         window.localStorage.removeItem(STORAGE_KEYS.selectedProjectId);
       }
       setProjects(summaries);
-      setProjectsDataSizeBytes(new Blob([JSON.stringify({ projects: projectsData })]).size);
+      // A estatística não bloqueia a navegação nem transforma falhas parciais em backup válido.
+      void getAllProjectsData(summaries).then((projectsData) => {
+        if (requestId === loadRequestRef.current) {
+          setProjectsDataSizeBytes(new Blob([JSON.stringify({ projects: projectsData })]).size);
+        }
+      }).catch(() => {
+        if (requestId === loadRequestRef.current) setProjectsDataSizeBytes(null);
+      });
     } catch {
       if (requestId === loadRequestRef.current) {
         setLoadError("Não foi possível carregar os projetos. Tente novamente.");
@@ -160,6 +167,7 @@ export function useProjects() {
     projectsImportInputRef,
     messages,
     dismissToast,
+    reportActionError: () => addToast("Não foi possível concluir a operação. Tente novamente.", "error"),
     loadProjects,
     handleCreateProject,
     handleRenameProject,

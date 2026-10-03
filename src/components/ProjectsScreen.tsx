@@ -24,6 +24,7 @@ export function ProjectsScreen() {
     projectsImportInputRef,
     messages,
     dismissToast,
+    reportActionError,
     loadProjects,
     handleCreateProject,
     handleRenameProject,
@@ -88,10 +89,10 @@ export function ProjectsScreen() {
         onRenameProject={handleRenameProject}
         onDeleteProject={setProjectToDelete}
         onExportProject={(projectId) => {
-          void handleExportProject(projectId);
+          void handleExportProject(projectId).catch(reportActionError);
         }}
         onExportAll={() => {
-          void handleExportAll();
+          void handleExportAll().catch(reportActionError);
         }}
         onImportAll={handleImportProjectsClick}
       />
@@ -115,7 +116,7 @@ export function ProjectsScreen() {
         variant="danger"
         theme={theme}
         onConfirm={() => {
-          void executeDeleteProject();
+          void executeDeleteProject().catch(reportActionError);
         }}
         onCancel={() => setProjectToDelete(null)}
       />

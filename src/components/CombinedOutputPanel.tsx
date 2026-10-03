@@ -22,6 +22,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { getDisplayTitle } from "../lib/items";
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -37,6 +38,12 @@ import remarkGfm from "remark-gfm";
 import { DIAGRAM_STATUS_OPTIONS } from "../types/diagram";
 import { StatusDot } from "./StatusDot";
 import { StatusPicker } from "./StatusPicker";
+
+// Defesa adicional para HTML importado; não substitui sanitização de atributos.
+const DISALLOWED_MARKDOWN_ELEMENTS = [
+  "script", "style", "iframe", "object", "embed", "form", "button",
+  "textarea", "select", "option", "link", "meta", "base", "svg", "math",
+];
 
 const KANBAN_COLUMNS: { status: DiagramStatus | undefined; label: string; color: string }[] = [
   { status: undefined, label: "Sem status", color: "#64748b" },
@@ -190,6 +197,7 @@ function PreviewGridCard({
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeRaw]}
+            disallowedElements={DISALLOWED_MARKDOWN_ELEMENTS}
           >
             {item.content}
           </ReactMarkdown>
@@ -262,7 +270,11 @@ function PreviewMarkdownSection({
           {getDisplayTitle(item, 72)}
         </p>
       </div>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
+        disallowedElements={DISALLOWED_MARKDOWN_ELEMENTS}
+      >
         {item.content}
       </ReactMarkdown>
     </section>
@@ -297,6 +309,7 @@ export function CombinedOutputPanel({
   >(null);
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const draggedItem = items.find((item) => item.id === draggedItemId);
+  const itemPositions = useMemo(() => new Map(items.map((item, index) => [item.id, index])), [items]);
   const isCardsMode = viewMode === "cards";
   const isNormalMode = viewMode === "normal" || viewMode === "index";
   const selectedPreviewItem =
@@ -503,6 +516,7 @@ export function CombinedOutputPanel({
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw]}
+                disallowedElements={DISALLOWED_MARKDOWN_ELEMENTS}
               >
                 {selectedPreviewItem.content}
               </ReactMarkdown>
@@ -545,7 +559,7 @@ export function CombinedOutputPanel({
                         <PreviewGridCard
                           key={item.id}
                           item={item}
-                          position={items.findIndex((candidate) => candidate.id === item.id)}
+                          position={itemPositions.get(item.id) ?? 0}
                           theme={theme}
                           isActive={item.id === activeItemId}
                           onClick={handlePreviewCardClick}

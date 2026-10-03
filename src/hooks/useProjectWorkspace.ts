@@ -15,6 +15,8 @@ import {
 } from "../lib/preferences";
 import { getSelectionPreviewItemId, toggleStrikethroughInContent } from "../lib/previewStrikethrough";
 import {
+  remapDiagramState,
+  remapHiddenDiagramItemIds,
   updateProjectDiagramState,
   updateProjectHiddenDiagramItemIds
 } from "../lib/projects";
@@ -53,6 +55,8 @@ export function useProjectWorkspace(project: Project) {
     clearItems,
     replaceItems,
     isLoading,
+    loadError,
+    retryLoad,
   } = useMarkdownBoard(project.id);
   const { leftScrollRef, rightScrollRef } = useScrollSync(
     isScrollSyncEnabled && !isPreviewMaximized && (viewMode === "normal" || viewMode === "index"),
@@ -71,6 +75,8 @@ export function useProjectWorkspace(project: Project) {
     undoDatabase,
     redoDatabase,
     databaseSaveStatus,
+    databaseLoadError,
+    retryDatabaseLoad,
     getCurrentDatabaseDiagram,
     onDatabaseContentChange,
     onDatabaseStateChange,
@@ -126,6 +132,13 @@ export function useProjectWorkspace(project: Project) {
   const executeClearAll = async () => {
     setConfirmClearAll(false);
     const snapshot = [...items];
+    const previousDiagramState = diagramStateRef.current ?? EMPTY_DIAGRAM_STATE;
+    const previousHiddenIds = [...hiddenDiagramItemIds];
+    const previousDatabaseDiagram = await getCurrentDatabaseDiagram();
+    await updateProjectDiagramState(project.id, EMPTY_DIAGRAM_STATE);
+    await updateProjectHiddenDiagramItemIds(project.id, []);
+    await clearItems();
+    await resetDatabaseDiagramToDefault();
     diagramStateRef.current = EMPTY_DIAGRAM_STATE;
     setHiddenDiagramItemIds(new Set());
     setWorkspaceProject((current) => ({
@@ -133,17 +146,22 @@ export function useProjectWorkspace(project: Project) {
       diagramState: EMPTY_DIAGRAM_STATE,
       hiddenDiagramItemIds: [],
     }));
-    await updateProjectDiagramState(project.id, EMPTY_DIAGRAM_STATE);
-    await updateProjectHiddenDiagramItemIds(project.id, []);
-    await clearItems();
-    await resetDatabaseDiagramToDefault();
     addToast(
       "Dados removidos e banco restaurado para o exemplo inicial",
       "info",
       {
         label: "Desfazer",
         onClick: () => {
-          void replaceItems(snapshot);
+          void (async () => {
+            await replaceItems(snapshot);
+            await updateProjectDiagramState(project.id, previousDiagramState);
+            await updateProjectHiddenDiagramItemIds(project.id, previousHiddenIds);
+            await replaceDatabaseDiagramRecord(previousDatabaseDiagram);
+            diagramStateRef.current = previousDiagramState;
+            setHiddenDiagramItemIds(new Set(previousHiddenIds));
+            setWorkspaceProject((current) => ({ ...current, diagramState: previousDiagramState, hiddenDiagramItemIds: previousHiddenIds }));
+            setDiagramReloadStateSignal((value) => value + 1);
+          })().catch(() => addToast("Não foi possível restaurar todos os dados.", "error"));
         },
       },
     );
@@ -168,8 +186,10 @@ export function useProjectWorkspace(project: Project) {
       ...current,
       diagramState: state,
     }));
-    void updateProjectDiagramState(project.id, state);
-  }, [project.id]);
+    void updateProjectDiagramState(project.id, state).catch(() => {
+      addToast("Não foi possível salvar o diagrama de cards.", "error");
+    });
+  }, [project.id, addToast]);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -187,10 +207,10 @@ export function useProjectWorkspace(project: Project) {
     try {
       const rawText = await readTextFile(file);
       const importedBackup = parseBackupFile(rawText);
-      await replaceItems(importedBackup.items);
-      const nextDiagramState =
-        importedBackup.diagramState ?? EMPTY_DIAGRAM_STATE;
-      const nextHiddenItemIds = importedBackup.hiddenDiagramItemIds ?? [];
+      const itemIdMap = new Map(importedBackup.items.map((item) => [item.id, crypto.randomUUID()]));
+      await replaceItems(importedBackup.items.map((item) => ({ ...item, id: itemIdMap.get(item.id)! })));
+      const nextDiagramState = remapDiagramState(importedBackup.diagramState, itemIdMap) ?? EMPTY_DIAGRAM_STATE;
+      const nextHiddenItemIds = remapHiddenDiagramItemIds(importedBackup.hiddenDiagramItemIds, itemIdMap);
       diagramStateRef.current = nextDiagramState;
       setHiddenDiagramItemIds(new Set(nextHiddenItemIds));
       setWorkspaceProject((current) => ({
@@ -342,7 +362,7 @@ export function useProjectWorkspace(project: Project) {
   const handleResetDatabaseLayout = useCallback(() => {
     void resetDatabaseDiagramToDefault().then(() => {
       addToast("Banco restaurado para o exemplo inicial", "info");
-    });
+    }).catch(() => addToast("Não foi possível restaurar o banco.", "error"));
   }, [addToast, resetDatabaseDiagramToDefault]);
 
   const handleSelectDiagramItem = (item: MarkdownItem) => {
@@ -399,6 +419,8 @@ export function useProjectWorkspace(project: Project) {
     updateItemObservation,
     reorderItems,
     isLoading,
+    loadError,
+    retryLoad,
     leftScrollRef,
     rightScrollRef,
     diagramResetSignal,
@@ -406,6 +428,7 @@ export function useProjectWorkspace(project: Project) {
     diagramReloadStateSignal,
     messages,
     dismissToast,
+    reportActionError: () => addToast("Não foi possível concluir a operação. Tente novamente.", "error"),
     databaseDiagram,
     databaseParseResult,
     databaseResetSignal,
@@ -414,6 +437,8 @@ export function useProjectWorkspace(project: Project) {
     undoDatabase,
     redoDatabase,
     databaseSaveStatus,
+    databaseLoadError,
+    retryDatabaseLoad,
     onDatabaseContentChange,
     onDatabaseStateChange,
     onRenameDatabaseTable,

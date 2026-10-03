@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import type { AppTheme } from "../lib/preferences";
 
 interface ConfirmModalProps {
@@ -26,6 +27,10 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const descriptionId = useId();
+  useFocusTrap(dialogRef, open);
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -63,20 +68,21 @@ export function ConfirmModal({
     >
       <div
         className="nexo-dialog w-full max-w-sm rounded-2xl border p-6 shadow-[var(--ui-shadow-strong)] border-[var(--ui-line)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
+        ref={dialogRef}
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="confirm-modal-title"
-        aria-describedby="confirm-modal-desc"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
         onClick={(event) => event.stopPropagation()}
       >
         <h2
-          id="confirm-modal-title"
+          id={titleId}
           className="m-0 text-base font-semibold tracking-tight text-[var(--ui-heading)]"
         >
           {title}
         </h2>
         <p
-          id="confirm-modal-desc"
+          id={descriptionId}
           className="mt-2 text-sm leading-relaxed text-[var(--ui-muted)]"
         >
           {description}

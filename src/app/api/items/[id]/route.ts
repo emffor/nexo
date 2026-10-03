@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCardTitle } from '@/lib/items';
+import { DIAGRAM_STATUS_OPTIONS } from '@/types/diagram';
 
 interface Params {
   params: {
@@ -9,9 +10,14 @@ interface Params {
 }
 
 export async function PUT(req: Request, { params }: Params) {
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== 'object' || Array.isArray(body)
+    || ['content', 'title', 'observation'].some((key) => body[key] != null && typeof body[key] !== 'string')
+    || (body.status != null && body.status !== '' && !DIAGRAM_STATUS_OPTIONS.some((option) => option.value === body.status))) {
+    return NextResponse.json({ error: 'Payload inválido' }, { status: 400 });
+  }
   try {
     const { id } = params;
-    const body = await req.json();
 
     const dataToUpdate: Record<string, unknown> = {};
 

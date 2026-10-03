@@ -222,3 +222,12 @@ describe("CombinedOutputPanel no modo kanban", () => {
     expect(screen.queryByRole("button", { name: /Mover card/i })).not.toBeInTheDocument();
   });
 });
+
+it('bloqueia elementos HTML ativos e mantém Markdown, tabelas e listas de tarefas', () => {
+  const content = '# Seguro\n\n<style>body { display: none }</style>\n\n<iframe src="https://example.com"></iframe>\n\n<form action="/api/items"><button>Enviar</button></form>\n\n- [x] Feito\n\n| Coluna |\n| --- |\n| Valor |';
+  const { container } = render(<CombinedOutputPanel items={[buildItem('safe', content)]} isLoading={false} theme="light" viewMode="normal" onSelect={vi.fn()} onReorder={vi.fn()} />);
+  expect(container.querySelector('style, iframe, form, button[type="submit"]')).toBeNull();
+  expect(screen.getByRole('heading', { name: 'Seguro' })).toBeInTheDocument();
+  expect(screen.getByRole('table')).toBeInTheDocument();
+  expect(screen.getByRole('checkbox')).toBeDisabled();
+});

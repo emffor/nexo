@@ -10,7 +10,7 @@ import {
   updateProjectApi,
   deleteProjectApi,
 } from '../services/projectsApi';
-import { clearProjectItemsApi, createItemApi, createBatchItemsApi } from '../services/itemsApi';
+import { createBatchItemsApi } from '../services/itemsApi';
 import { saveDatabaseDiagramApi } from '../services/databaseDiagramApi';
 
 export const DEFAULT_PROJECT_ID = 'default-project';
@@ -39,7 +39,7 @@ function buildImportedProjectName(name?: string): string {
   return `Projeto importado ${crypto.randomUUID().slice(0, 8)}`;
 }
 
-function remapDiagramState(
+export function remapDiagramState(
   diagramState: DiagramState | undefined,
   itemIdMap: Map<string, string>,
 ): DiagramState | undefined {
@@ -79,7 +79,7 @@ function remapDiagramState(
   };
 }
 
-function remapHiddenDiagramItemIds(
+export function remapHiddenDiagramItemIds(
   hiddenDiagramItemIds: string[] | undefined,
   itemIdMap: Map<string, string>,
 ): string[] {
@@ -173,14 +173,10 @@ export async function getProjectData(
   }
 }
 
-export async function getAllProjectsData(): Promise<ProjectData[]> {
-  const projects = await ensureProjectsReady();
-  const data = await Promise.all(
-    projects.map((project) => getProjectData(project.id)),
-  );
-  return data.filter(
-    (projectData): projectData is ProjectData => projectData !== null,
-  );
+export async function getAllProjectsData(knownProjects?: Project[]): Promise<ProjectData[]> {
+  const projects = knownProjects ?? await ensureProjectsReady();
+  // Um backup completo deve falhar se qualquer projeto não puder ser lido.
+  return Promise.all(projects.map((project) => fetchProjectDetails(project.id)));
 }
 
 export async function importProjectsBackup(

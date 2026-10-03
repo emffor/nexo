@@ -31,6 +31,8 @@ export interface UseDatabaseDiagramResult {
   databaseDiagram: DatabaseDiagramRecord | null;
   databaseParseResult: DatabaseDiagramParseResult;
   databaseResetSignal: number;
+  databaseLoadError: string | null;
+  retryDatabaseLoad: () => void;
   canUndoDatabase: boolean;
   canRedoDatabase: boolean;
   undoDatabase: () => void;
@@ -69,6 +71,9 @@ export function useDatabaseDiagram({
 }: UseDatabaseDiagramOptions = {}): UseDatabaseDiagramResult {
   const [databaseDiagram, setDatabaseDiagram] =
     useState<DatabaseDiagramRecord | null>(null);
+  const [databaseLoadError, setDatabaseLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const retryDatabaseLoad = useCallback(() => setLoadAttempt((value) => value + 1), []);
   const [databaseResetSignal, setDatabaseResetSignal] = useState(0);
   const [isContentStable, setIsContentStable] = useState(true);
 
@@ -124,6 +129,9 @@ export function useDatabaseDiagram({
             setDatabaseSaveStatus('saved');
           }
         } catch {
+          if (databaseDiagramRef.current === snapshot && !pendingSnapshotRef.current) {
+            pendingSnapshotRef.current = snapshot;
+          }
           setDatabaseSaveStatus('error');
           if (!hasAutosaveErrorRef.current) {
             hasAutosaveErrorRef.current = true;
@@ -213,6 +221,7 @@ export function useDatabaseDiagram({
   useEffect(() => {
     let active = true;
     resetHistory();
+    setDatabaseLoadError(null);
     databaseDiagramRef.current = null;
     setDatabaseDiagram(null);
 
@@ -223,12 +232,14 @@ export function useDatabaseDiagram({
       databaseDiagramRef.current = record;
       setDatabaseDiagram(record);
       markContentAsStable();
+    }).catch(() => {
+      if (active) setDatabaseLoadError("Não foi possível carregar o diagrama de banco.");
     });
 
     return () => {
       active = false;
     };
-  }, [markContentAsStable, projectId, resetHistory]);
+  }, [markContentAsStable, projectId, resetHistory, loadAttempt]);
 
   useEffect(() => {
     const handlePageHide = () => {
@@ -396,10 +407,14 @@ export function useDatabaseDiagram({
       resetHistory();
       cancelPendingSnapshot();
       markContentAsStable();
+      await autosaveQueueRef.current;
+      cancelPendingSnapshot();
       const next = await saveDatabaseDiagramRecord(record, projectId);
       await touchProject(projectId);
       databaseDiagramRef.current = next;
       setDatabaseDiagram(next);
+      setDatabaseSaveStatus('saved');
+      hasAutosaveErrorRef.current = false;
       return next;
     },
     [cancelPendingSnapshot, markContentAsStable, projectId, resetHistory],
@@ -409,10 +424,14 @@ export function useDatabaseDiagram({
     resetHistory();
     cancelPendingSnapshot();
     markContentAsStable();
+    await autosaveQueueRef.current;
+    cancelPendingSnapshot();
     const next = await resetDatabaseDiagram(projectId);
     await touchProject(projectId);
     databaseDiagramRef.current = next;
     setDatabaseDiagram(next);
+    setDatabaseSaveStatus('saved');
+    hasAutosaveErrorRef.current = false;
     setDatabaseResetSignal((value) => value + 1);
     return next;
   }, [cancelPendingSnapshot, markContentAsStable, projectId, resetHistory]);
@@ -423,6 +442,8 @@ export function useDatabaseDiagram({
     undoDatabase,
     redoDatabase,
     databaseSaveStatus,
+    databaseLoadError,
+    retryDatabaseLoad,
     databaseDiagram,
     databaseParseResult,
     databaseResetSignal,

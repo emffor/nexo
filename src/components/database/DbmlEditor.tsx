@@ -201,7 +201,6 @@ export function DbmlEditor({
               </>
             )}
           </span>
-          <span className="text-zinc-500">Última alteração há 3 minutos</span>
         </div>
       )}
 

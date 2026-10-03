@@ -52,7 +52,7 @@ export function useDatabaseViewport({ stageRef, stateRef, state, size, tables, n
         },
       });
     },
-    [onStateChange, stageRef, stateRef],
+    [onStateChange, stateRef],
   );
 
   const handleWheel = useCallback(

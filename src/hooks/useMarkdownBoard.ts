@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildCombinedContent,
   isContentBlank,
@@ -14,6 +14,7 @@ import {
   createItemApi,
   deleteItemApi,
   reorderItemsApi,
+  replaceProjectItemsApi,
   updateItemApi,
 } from '../services/itemsApi';
 
@@ -21,6 +22,8 @@ export interface UseMarkdownBoardResult {
   items: MarkdownItem[];
   combinedContent: string;
   isLoading: boolean;
+  loadError: string | null;
+  retryLoad: () => void;
   addItem: (content: string, title?: string) => Promise<void>;
   updateItem: (itemId: string, content: string, title?: string) => Promise<void>;
   updateItemStatus: (itemId: string, status: DiagramStatus | undefined) => Promise<void>;
@@ -32,12 +35,18 @@ export interface UseMarkdownBoardResult {
 }
 
 export function useMarkdownBoard(projectId: string): UseMarkdownBoardResult {
+  const reorderQueue = useRef<Promise<void>>(Promise.resolve());
   const [items, setItems] = useState<MarkdownItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const retryLoad = useCallback(() => setLoadAttempt((value) => value + 1), []);
 
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
+    setLoadError(null);
 
     const hydrate = async () => {
       try {
@@ -45,8 +54,8 @@ export function useMarkdownBoard(projectId: string): UseMarkdownBoardResult {
         if (!isMounted) return;
 
         setItems(details.items || []);
-      } catch (err) {
-        console.error('Erro ao carregar itens:', err);
+      } catch {
+        if (isMounted) setLoadError('Não foi possível carregar os cards. Tente novamente.');
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -59,7 +68,7 @@ export function useMarkdownBoard(projectId: string): UseMarkdownBoardResult {
     return () => {
       isMounted = false;
     };
-  }, [projectId]);
+  }, [projectId, loadAttempt]);
 
   const combinedContent = useMemo(() => buildCombinedContent(items), [items]);
 
@@ -90,100 +99,72 @@ export function useMarkdownBoard(projectId: string): UseMarkdownBoardResult {
 
     const cleanTitle = title?.trim() || undefined;
 
-    // Atualização otimista
-    setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.id === itemId
-          ? {
-              ...item,
-              title: cleanTitle,
-              content: normalizedContent,
-              updatedAt: new Date().toISOString(),
-            }
-          : item
-      )
-    );
-
-    await updateItemApi(itemId, {
+    const saved = await updateItemApi(itemId, {
       content: normalizedContent,
       title: cleanTitle,
     });
+    setItems((current) => current.map((item) => item.id === itemId
+      ? { ...item, content: saved.content, title: saved.title, updatedAt: saved.updatedAt }
+      : item));
   };
 
   const deleteItem = async (itemId: string) => {
-    const remaining = items
-      .filter((item) => item.id !== itemId)
-      .map((item, index) => ({ ...item, order: index }));
-
-    setItems(remaining);
     await deleteItemApi(itemId);
+    setItems((current) => current.filter((item) => item.id !== itemId));
   };
 
-  const updateItemStatus = async (
-    itemId: string,
-    status: DiagramStatus | undefined
-  ) => {
-    setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.id === itemId ? { ...item, status } : item
-      )
-    );
-    await updateItemApi(itemId, { status });
+  const updateItemStatus = async (itemId: string, status: DiagramStatus | undefined) => {
+    const saved = await updateItemApi(itemId, { status });
+    setItems((current) => current.map((item) => item.id === itemId
+      ? { ...item, status: saved.status, updatedAt: saved.updatedAt } : item));
   };
 
-  const updateItemObservation = async (
-    itemId: string,
-    observation: string
-  ) => {
-    const cleanObservation = observation.trim() || undefined;
-    setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.id === itemId ? { ...item, observation: cleanObservation } : item
-      )
-    );
-    await updateItemApi(itemId, { observation: cleanObservation });
+  const updateItemObservation = async (itemId: string, observation: string) => {
+    const saved = await updateItemApi(itemId, { observation: observation.trim() || undefined });
+    setItems((current) => current.map((item) => item.id === itemId
+      ? { ...item, observation: saved.observation, updatedAt: saved.updatedAt } : item));
   };
 
   const reorderItems = async (activeId: string, overId: string) => {
     const reorderedItems = reorderMarkdownItems(items, activeId, overId);
-
-    if (reorderedItems === items) {
-      return;
-    }
-
+    if (reorderedItems === items) return;
     setItems(reorderedItems);
-    await reorderItemsApi(
-      reorderedItems.map((it, idx) => ({ id: it.id, order: idx }))
-    );
+    try {
+      const request = reorderQueue.current.then(() => reorderItemsApi(reorderedItems.map((item, order) => ({ id: item.id, order }))));
+      reorderQueue.current = request.catch(() => undefined);
+      await request;
+    } catch (error) {
+      setItems((current) => {
+        if (current.length !== reorderedItems.length || current.some((item, index) => item.id !== reorderedItems[index].id)) return current;
+        const currentById = new Map(current.map((item) => [item.id, item]));
+        return items.map((item) => {
+          const latest = currentById.get(item.id)!;
+          const optimistic = reorderedItems.find((entry) => entry.id === item.id)!;
+          return { ...latest, order: item.order, updatedAt: latest.updatedAt === optimistic.updatedAt ? item.updatedAt : latest.updatedAt };
+        });
+      });
+      throw error;
+    }
   };
 
   const clearItems = async () => {
-    setItems([]);
     await clearProjectItemsApi(projectId);
+    setItems([]);
   };
 
   const replaceItems = async (nextItems: MarkdownItem[]) => {
-    await clearProjectItemsApi(projectId);
-    const createdList: MarkdownItem[] = [];
-
-    for (const item of nextItems) {
-      const created = await createItemApi({
-        projectId,
-        content: normalizeMarkdownContent(item.content),
-        title: item.title,
-        status: item.status,
-        observation: item.observation,
-      });
-      createdList.push(created);
-    }
-
-    setItems(createdList);
+    const created = await replaceProjectItemsApi(projectId, nextItems.map((item) => ({
+      ...item, content: normalizeMarkdownContent(item.content),
+    })));
+    setItems(created);
   };
 
   return {
     items,
     combinedContent,
     isLoading,
+    loadError,
+    retryLoad,
     addItem,
     updateItem,
     updateItemStatus,

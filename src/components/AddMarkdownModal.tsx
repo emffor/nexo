@@ -324,6 +324,7 @@ function MarkdownEditor({
                   disabled={isLoadingJira}
                   className="toolbar-button h-7 px-2.5 text-xs rounded-lg line-through"
                   title="Riscar texto selecionado"
+                  aria-label="Riscar texto selecionado"
                 >
                   S
                 </button>
@@ -333,6 +334,7 @@ function MarkdownEditor({
                   disabled={isLoadingJira}
                   className="toolbar-button h-7 px-2.5 text-xs rounded-lg"
                   title="Desriscar texto selecionado"
+                  aria-label="Desriscar texto selecionado"
                 >
                   Limpar risco
                 </button>

@@ -31,22 +31,29 @@ function ToastItem({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    requestAnimationFrame(() => setIsVisible(true));
+    const frame = requestAnimationFrame(() => setIsVisible(true));
+    let dismissTimer: ReturnType<typeof setTimeout> | undefined;
 
     const duration = message.action ? 5000 : 2800;
 
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(() => onDismiss(message.id), 300);
+      dismissTimer = setTimeout(() => onDismiss(message.id), 300);
     }, duration);
 
-    return () => clearTimeout(timer);
-  }, [message.id, onDismiss]);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+      clearTimeout(dismissTimer);
+    };
+  }, [message.id, message.action, onDismiss]);
 
   return (
     <div
       data-theme={theme}
       data-kind={message.type ?? "success"}
+      role={message.type === "error" ? "alert" : "status"}
+      aria-atomic="true"
       className={`nexo-ui nexo-toast px-4 py-3 text-sm font-medium transition-all duration-300 ${
         isVisible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
       }`}

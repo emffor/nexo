@@ -19,15 +19,18 @@ export async function GET(_req: Request, { params }: Params) {
     });
 
     if (!diagram) {
-      diagram = await prisma.databaseDiagram.create({
-        data: {
-          id: projectId,
-          projectId,
-          title: DEFAULT_TITLE,
-          content: DEFAULT_DATABASE_DBML,
-          state: { positions: {}, viewport: { x: 0, y: 0, scale: 1 } },
-        },
-      });
+      const project = await prisma.project.findUnique({ where: { id: projectId } });
+      if (!project) return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 });
+      // A leitura entrega o exemplo; somente PUT/DELETE persistem o diagrama.
+      diagram = {
+        id: projectId,
+        projectId,
+        title: DEFAULT_TITLE,
+        content: DEFAULT_DATABASE_DBML,
+        state: { positions: {}, viewport: { x: 0, y: 0, scale: 1 } },
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+      };
     }
 
     return NextResponse.json({
