@@ -55,7 +55,6 @@
   main.nexo-ui { background: var(--ui-canvas); }
 
   .nexo-brand-mark, .nexo-nav-icon { flex-shrink: 0; }
-  [data-theme="dark"] .nexo-brand-mark,
   [data-theme="dark"] .nexo-nav-icon { filter: invert(1); }
 
   .nexo-view-navigation { overflow-x: auto; padding: 4px 0; }

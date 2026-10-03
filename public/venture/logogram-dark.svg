@@ -1,0 +1,7 @@
+<svg width="128" height="128" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Nexo">
+    <rect x="3" y="3" width="6" height="26" rx="3" fill="#FFFFFF" />
+    <rect x="23" y="3" width="6" height="26" rx="3" fill="#FFFFFF" />
+    <path d="M6 9L26 23" stroke="#4976F4" stroke-width="4" stroke-linecap="round" />
+    <circle cx="6" cy="9" r="4" fill="#4976F4" />
+    <circle cx="26" cy="23" r="4" fill="#4976F4" />
+</svg>

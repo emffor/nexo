@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Image from "next/image";
+import { NexoLogo } from "./NexoLogo";
 
 import type { AppTheme, DiagramEdgeStyle, ViewMode } from "../lib/preferences";
 
@@ -176,11 +177,10 @@ export function AppShell({
                 title="Voltar para a lista de projetos"
                 aria-label="Projetos"
               >
-                <Image
-                  src="/venture/logogram.svg"
+                <NexoLogo
+                  theme={theme}
                   width={22}
                   height={19}
-                  alt=""
                   className="nexo-brand-mark shrink-0 transition-transform group-hover:scale-105"
                 />
                 <span className="font-semibold text-sm tracking-tight text-[var(--ui-heading)]">Nexo</span>
@@ -189,11 +189,10 @@ export function AppShell({
               </button>
             ) : (
               <div className="inline-flex items-center gap-2 px-1">
-                <Image
-                  src="/venture/logogram.svg"
+                <NexoLogo
+                  theme={theme}
                   width={22}
                   height={19}
-                  alt=""
                   className="nexo-brand-mark shrink-0"
                 />
                 <span className="font-semibold text-sm tracking-tight text-[var(--ui-heading)]">Nexo</span>

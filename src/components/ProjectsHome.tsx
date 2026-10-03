@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Image from "next/image";
+import { NexoLogo } from "./NexoLogo";
 import type { AppTheme } from "../lib/preferences";
 import type { ProjectSummary } from "../lib/projects";
 
@@ -103,7 +104,7 @@ export function ProjectsHome({
       >
         <div className="mx-auto flex min-h-[47px] max-w-[1440px] flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Image src="/venture/logogram.svg" width={28} height={24.0732} alt="" className="nexo-brand-mark" priority />
+            <NexoLogo theme={theme} width={28} height={24} className="nexo-brand-mark" />
             <span
               className="font-semibold text-sm tracking-tight text-[var(--ui-heading)]"
             >
