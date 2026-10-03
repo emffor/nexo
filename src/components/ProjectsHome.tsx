@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Image from "next/image";
 import type { AppTheme } from "../lib/preferences";
 import type { ProjectSummary } from "../lib/projects";
 
@@ -71,16 +72,16 @@ export function ProjectsHome({
   return (
     <main
       data-theme={theme}
-      className="nexo-ui min-h-screen"
+      className="nexo-ui nexo-app-frame nexo-projects-home min-h-screen"
     >
-      {/* Cabeçalho principal */}
       <header
         className={`nexo-topbar border-b px-5 py-3 sm:px-8 ${
           isDark ? "border-zinc-800 bg-[#161b22]" : "border-[#e6eff5] bg-white"
         }`}
       >
-        <div className="mx-auto flex min-h-[32px] max-w-[1440px] flex-wrap items-center justify-between gap-4">
+        <div className="mx-auto flex min-h-[47px] max-w-[1440px] flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
+            <Image src="/venture/logogram.svg" width={28} height={24.0732} alt="" className="nexo-brand-mark" priority />
             <span
               className={`font-semibold text-sm tracking-tight ${
                 isDark ? "text-zinc-100" : "text-[#343c6a]"
@@ -105,41 +106,26 @@ export function ProjectsHome({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="toolbar-badge">
-              {formatStorageSize(storedDataSizeBytes)}
-            </span>
-            <button
-              type="button"
-              onClick={onImportAll}
-              className="toolbar-button"
-            >
-              Importar
-            </button>
-            <button
-              type="button"
-              onClick={onExportAll}
-              disabled={projects.length === 0}
-              className="toolbar-button"
-            >
-              Exportar
-            </button>
+            <span className="toolbar-badge">{formatStorageSize(storedDataSizeBytes)}</span>
+            <span className="toolbar-badge">{projects.length} {projects.length === 1 ? "projeto" : "projetos"}</span>
+            <button type="button" onClick={onImportAll} className="toolbar-button">Importar</button>
+            <button type="button" onClick={onExportAll} disabled={projects.length === 0} className="toolbar-button">Exportar</button>
           </div>
         </div>
       </header>
 
-      {/* Conteúdo central */}
-      <section className="mx-auto max-w-[1440px] px-5 py-6 sm:px-8">
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <section className="nexo-projects-content mx-auto w-full max-w-[1600px] px-5 py-6 sm:px-8">
+        <div className="nexo-section-heading mb-8 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h1
-              className={`text-xl font-semibold tracking-tight ${
+              className={`text-2xl font-medium tracking-tight ${
                 isDark ? "text-zinc-100" : "text-[#343c6a]"
               }`}
             >
               Projetos
             </h1>
             <p
-              className={`mt-0.5 text-xs ${
+              className={`mt-2 text-sm ${
                 isDark ? "text-zinc-400" : "text-zinc-600"
               }`}
             >
@@ -147,7 +133,6 @@ export function ProjectsHome({
             </p>
           </div>
 
-          {/* Criação de projeto compacta */}
           <form onSubmit={handleCreate} className="flex flex-wrap items-center gap-2">
             <label className="sr-only" htmlFor="new-project-name">
               Nome do projeto
@@ -167,6 +152,7 @@ export function ProjectsHome({
               type="submit"
               className="toolbar-button toolbar-button--accent"
             >
+              <span aria-hidden="true" className="mr-2 text-lg leading-none">+</span>
               Novo Projeto
             </button>
           </form>
@@ -180,7 +166,7 @@ export function ProjectsHome({
 
         {!isLoading && projects.length === 0 ? (
           <div
-            className={`rounded border border-dashed px-6 py-12 text-center text-xs ${
+            className={`nexo-empty rounded border border-dashed px-6 py-12 text-center text-sm ${
               isDark
                 ? "border-zinc-800 bg-zinc-900/50 text-zinc-500"
                 : "border-[#e6eff5] bg-white text-[#718ebf]"
@@ -191,7 +177,7 @@ export function ProjectsHome({
         ) : null}
 
         {!isLoading && projects.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {projects.map((project) => {
               const isEditing = editingProjectId === project.id;
               return (
@@ -244,6 +230,10 @@ export function ProjectsHome({
                         onClick={() => onOpenProject(project.id)}
                         className="block w-full rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                       >
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                          <span className="nexo-project-tag">Workspace</span>
+                          <span className="nexo-project-count">{project.itemsCount} {project.itemsCount === 1 ? "item" : "itens"}</span>
+                        </div>
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <h2
                             className={`m-0 line-clamp-1 text-sm font-medium ${
@@ -252,9 +242,7 @@ export function ProjectsHome({
                           >
                             {project.name}
                           </h2>
-                          <span className="font-mono text-[11px] text-zinc-500 shrink-0">
-                            {project.itemsCount} {project.itemsCount === 1 ? "item" : "itens"}
-                          </span>
+
                         </div>
                         <p
                           className={`mt-1.5 text-[11px] ${
@@ -266,7 +254,7 @@ export function ProjectsHome({
                       </button>
 
                       <div
-                        className={`mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-2 ${
+                        className={`nexo-project-footer mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-2 ${
                           isDark ? "border-zinc-800/80" : "border-[#e6eff5]"
                         }`}
                       >

@@ -117,7 +117,7 @@ function PreviewGridCard({
       >
         <div className="flex items-center justify-between gap-3">
           <span
-            className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] ${
+            className={`nexo-preview-number rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] ${
               theme === "dark"
                 ? "bg-slate-800 text-slate-400"
                 : "bg-white text-slate-500"
@@ -392,7 +392,7 @@ export function CombinedOutputPanel({
               items={items.map((item) => item.id)}
               strategy={rectSortingStrategy}
             >
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {items.map((item, index) => (
                   <PreviewGridCard
                     key={item.id}

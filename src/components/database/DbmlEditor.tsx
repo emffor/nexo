@@ -21,7 +21,7 @@ export function DbmlEditor({ value, theme, onChange, errors }: DbmlEditorProps) 
       }`}
     >
       <div
-        className={`flex items-center justify-between border-b px-5 py-5 text-base font-semibold ${
+        className={`nexo-dbml-heading flex items-center justify-between border-b px-5 py-5 text-base font-semibold ${
           isDark
             ? "border-white/10 text-slate-300"
             : "border-slate-200 text-slate-500"
@@ -40,7 +40,7 @@ export function DbmlEditor({ value, theme, onChange, errors }: DbmlEditorProps) 
         value={value}
         spellCheck={false}
         onChange={(event) => onChange(event.target.value)}
-        className={`flex-1 min-h-0 w-full resize-none border-0 px-5 py-4 font-mono text-[13px] leading-relaxed outline-none ${
+        className={`nexo-dbml-input flex-1 min-h-0 w-full resize-none border-0 px-5 py-4 font-mono text-[13px] leading-relaxed outline-none ${
           isDark
             ? "bg-transparent text-slate-100 placeholder:text-slate-500"
             : "bg-transparent text-slate-800 placeholder:text-slate-400"

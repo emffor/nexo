@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import Image from "next/image";
 
 import type { AppTheme, DiagramEdgeStyle, ViewMode } from "../lib/preferences";
 
@@ -85,6 +86,14 @@ const VIEW_MODE_OPTIONS: { mode: ViewMode; label: string; title: string }[] = [
   },
 ];
 
+const VIEW_MODE_ICONS: Record<ViewMode, string> = {
+  normal: "notes",
+  index: "clipboard",
+  cards: "grid",
+  diagram: "chart",
+  database: "projects",
+};
+
 const VIEW_MODE_ACCESSIBLE_LABELS: Record<ViewMode, string> = {
   normal: "Modo normal",
   index: "Modo indice",
@@ -150,30 +159,31 @@ export function AppShell({
     <main
       data-layout-mode={isCompactMode ? "compact" : "default"}
       data-theme={theme}
-      className={`nexo-ui flex w-full flex-col ${
+      data-view-mode={viewMode}
+      className={`nexo-ui nexo-app-frame flex w-full flex-col ${
         isCanvasMode ? "h-screen min-h-0 overflow-hidden" : "min-h-screen"
       }`}
       style={{ ["--font-scale" as string]: String(fontScale) }}
     >
       <header className="nexo-topbar border-b px-5 sm:px-6">
-        <div className="flex min-h-[64px] flex-col gap-2 py-3 md:flex-row md:items-center md:justify-between">
+        <div className="nexo-header-main flex min-h-[72px] flex-col gap-2 py-3 md:flex-row md:items-center md:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             {onBackToProjects ? (
               <button
                 type="button"
                 onClick={onBackToProjects}
-                className="toolbar-button h-7 px-2 text-xs"
+                className="toolbar-button shrink-0 gap-2"
                 title="Voltar para a lista de projetos"
               >
-                ← Projetos
+                <Image src="/venture/projects.svg" width={20} height={20} alt="" className="nexo-nav-icon" />
+                Projetos
               </button>
             ) : null}
-
             <div className="flex min-w-0 flex-col items-start gap-1">
               <span className="text-xs font-medium text-[var(--ui-muted)]">
                 Workspace /
               </span>
-              <h1 className="m-0 truncate text-xl font-semibold tracking-tight">
+              <h1 className="m-0 truncate text-2xl font-medium tracking-tight">
                 {projectName ?? "Jira Markdown"}
               </h1>
             </div>
@@ -217,11 +227,7 @@ export function AppShell({
           </div>
         </div>
 
-        <div
-          className={`nexo-toolbar flex-wrap items-center gap-2 py-2 ${
-            isToolbarExpanded ? "flex" : "hidden md:flex"
-          }`}
-        >
+        <nav aria-label="Visualizações do workspace" className="nexo-view-navigation">
           <ToolbarGroup label="Modo de visualiza\u00e7\u00e3o" className="nexo-view-tabs">
             {VIEW_MODE_OPTIONS.map(({ mode, label, title }) => {
               const isActive = viewMode === mode;
@@ -235,12 +241,25 @@ export function AppShell({
                   aria-pressed={isActive}
                   className="font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                 >
+                  <Image
+                    src={`/venture/${VIEW_MODE_ICONS[mode]}.svg`}
+                    width={20}
+                    height={20}
+                    alt=""
+                    className="nexo-nav-icon"
+                  />
                   {label}
                 </button>
               );
             })}
           </ToolbarGroup>
+        </nav>
 
+        <div
+          className={`nexo-toolbar flex-wrap items-center gap-2 py-2 ${
+            isToolbarExpanded ? "flex" : "hidden md:flex"
+          }`}
+        >
           <ToolbarGroup label="Layout">
             <button
               type="button"
@@ -405,7 +424,7 @@ export function AppShell({
       </header>
 
       <section
-        className={`nexo-workspace grid flex-1 min-h-0 px-5 py-4 sm:px-6 ${
+        className={`nexo-workspace grid flex-1 min-h-0 px-5 py-6 sm:px-8 ${
           isDatabaseMode
             ? `lg:grid-cols-[minmax(280px,0.25fr)_minmax(0,0.75fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
             : isPreviewMaximized

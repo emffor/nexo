@@ -1257,13 +1257,13 @@ export default function DatabaseDiagramPanel({
   );
 
   const isDark = theme === "dark";
-  const stageBg = isDark ? "#080d15" : "#f7f7f7";
-  const tableBg = isDark ? "#101827" : "#ffffff";
-  const tableBorder = isDark ? "#1f2d3d" : "#d8dde4";
-  const headerBg = isDark ? "#244394" : "#2f6f9f";
-  const headerText = "#ffffff";
-  const rowText = isDark ? "#d8dee9" : "#263238";
-  const typeText = isDark ? "#8f9bad" : "#66727f";
+  const stageBg = isDark ? "#141414" : "#f9f9f9";
+  const tableBg = isDark ? "#1b1b1b" : "#ffffff";
+  const tableBorder = isDark ? "#343434" : "#e4e4e4";
+  const headerBg = isDark ? "#262626" : "#f2f2f2";
+  const headerText = isDark ? "#f5f5f5" : "#171717";
+  const rowText = isDark ? "#d4d4d4" : "#404040";
+  const typeText = isDark ? "#a3a3a3" : "#727272";
   const edgeColor = isDark ? "#64748b" : "#b7bdc6";
   const activeEdgeColor = isDark ? "#60a5fa" : "#2f7ebd";
   const badgeBg = isDark ? "#243247" : "#e8ecef";

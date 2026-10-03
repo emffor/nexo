@@ -860,7 +860,7 @@ export default function DiagramPanel({
   );
 
   const isDark = theme === "dark";
-  const stageBg = isDark ? "#0b0f17" : "#f8fafc";
+  const stageBg = isDark ? "#141414" : "#f9f9f9";
   const edgeColor = isDark ? "#94a3b8" : "#475569";
   const edgeHoverColor = isDark ? "#f87171" : "#dc2626";
   const portColor = isDark ? "#5eead4" : "#0d9488";
