@@ -1,6 +1,7 @@
-import type { DatabaseRelationPathPoint, DatabaseRelationSide } from '../types/database';
+import type { DatabaseRelationPathPoint } from '../types/database';
 
 type Point = DatabaseRelationPathPoint;
+type ConnectionSide = 'top' | 'right' | 'bottom' | 'left';
 export type DatabaseRoutingObstacle = Point & { width: number; height: number };
 const CLEARANCE = 20;
 
@@ -90,13 +91,17 @@ export function isDatabaseCurveBlocked(points: Point[], obstacles: DatabaseRouti
 
 export function routeDatabaseConnection(
   from: Point,
-  fromSide: DatabaseRelationSide,
+  fromSide: ConnectionSide,
   to: Point,
-  toSide: DatabaseRelationSide,
+  toSide: ConnectionSide,
   obstacles: DatabaseRoutingObstacle[],
 ): Point[] | null {
-  const start = { x: from.x + (fromSide === 'right' ? CLEARANCE : -CLEARANCE), y: from.y };
-  const finish = { x: to.x + (toSide === 'right' ? CLEARANCE : -CLEARANCE), y: to.y };
+  const offset = (point: Point, side: ConnectionSide): Point => ({
+    x: point.x + (side === 'right' ? CLEARANCE : side === 'left' ? -CLEARANCE : 0),
+    y: point.y + (side === 'bottom' ? CLEARANCE : side === 'top' ? -CLEARANCE : 0),
+  });
+  const start = offset(from, fromSide);
+  const finish = offset(to, toSide);
   if (isDatabasePathBlocked([from, start], obstacles) || isDatabasePathBlocked([finish, to], obstacles)) return null;
   const padded = obstacles.map((rect) => ({
     x: rect.x - CLEARANCE, y: rect.y - CLEARANCE,

@@ -8,7 +8,7 @@ import {
   useState,
   type RefObject,
 } from "react";
-import { Arrow, Circle, Group, Layer, Rect, Stage, Text } from "react-konva";
+import { Arrow, Circle, Group, Layer, Path, Rect, Stage, Text } from "react-konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import Konva from "konva";
 
@@ -22,6 +22,14 @@ import {
   computeAutoLayout,
   snapToGrid,
 } from "../lib/diagramLayout";
+import {
+  buildRoutedDatabasePath,
+  isDatabaseCurveBlocked,
+  isDatabasePathBlocked,
+  resolveDatabaseTablePosition,
+  routeDatabaseConnection,
+  type DatabaseRoutingObstacle,
+} from "../lib/databaseRouting";
 import { readDiagramState } from "../lib/diagramState";
 import type { AppTheme, DiagramEdgeStyle } from "../lib/preferences";
 import { DIAGRAM_STATUS_PALETTE } from "../types/diagram";
@@ -302,18 +310,30 @@ export default function DiagramPanel({
   );
 
   const visualPositions = useMemo(() => {
-    if (!liveNodePosition) {
-      return positions;
+    const result = { ...positions };
+    const obstacles: DatabaseRoutingObstacle[] = [];
+    for (const item of visibleItems) {
+      const position = positions[item.id];
+      if (!position) continue;
+      const candidate = liveNodePosition?.id === item.id ? liveNodePosition : position;
+      const resolved = resolveDatabaseTablePosition(
+        candidate, DIAGRAM_NODE_WIDTH, DIAGRAM_NODE_HEIGHT, obstacles,
+      );
+      result[item.id] = resolved;
+      obstacles.push({ ...resolved, width: DIAGRAM_NODE_WIDTH, height: DIAGRAM_NODE_HEIGHT });
     }
+    return result;
+  }, [liveNodePosition, positions, visibleItems]);
 
-    return {
-      ...positions,
-      [liveNodePosition.id]: {
-        x: liveNodePosition.x,
-        y: liveNodePosition.y,
-      },
-    };
-  }, [liveNodePosition, positions]);
+  const routingObstacles = useMemo(() => visibleItems.flatMap((item) => {
+    const position = visualPositions[item.id];
+    return position ? [{ id: item.id, ...position, width: DIAGRAM_NODE_WIDTH, height: DIAGRAM_NODE_HEIGHT }] : [];
+  }), [visualPositions, visibleItems]);
+
+  const constrainNodePosition = useCallback((id: string, position: DiagramNodePosition) =>
+    resolveDatabaseTablePosition(position, DIAGRAM_NODE_WIDTH, DIAGRAM_NODE_HEIGHT,
+      routingObstacles.filter((obstacle) => obstacle.id !== id)),
+  [routingObstacles]);
 
   const emitDiagramState = useCallback(
     (state: DiagramState) => {
@@ -572,8 +592,9 @@ export default function DiagramPanel({
   const handleNodeDragEnd = useCallback(
     (id: string, event: KonvaEventObject<DragEvent>) => {
       const node = event.target;
-      const x = snapToGrid(node.x());
-      const y = snapToGrid(node.y());
+      const { x, y } = constrainNodePosition(id, {
+        x: snapToGrid(node.x()), y: snapToGrid(node.y()),
+      });
       const nodesLayer = nodesLayerRef.current;
       if (nodesLayer && node.getLayer() !== nodesLayer) {
         node.moveTo(nodesLayer);
@@ -583,24 +604,22 @@ export default function DiagramPanel({
       nodesLayer?.batchDraw();
       dragLayerRef.current?.batchDraw();
       const nextPositions = {
-        ...positionsRef.current,
+        ...visualPositions,
         [id]: { x, y },
       };
       setDiagramPositions(nextPositions);
     },
-    [setDiagramPositions],
+    [constrainNodePosition, setDiagramPositions, visualPositions],
   );
 
   const handleNodeDragMove = useCallback(
     (id: string, event: KonvaEventObject<DragEvent>) => {
       const node = event.target;
-      setLiveNodePosition({
-        id,
-        x: node.x(),
-        y: node.y(),
-      });
+      const position = constrainNodePosition(id, { x: node.x(), y: node.y() });
+      node.position(position);
+      setLiveNodePosition({ id, ...position });
     },
-    [],
+    [constrainNodePosition],
   );
 
   const handleNodeDragStart = useCallback(
@@ -918,43 +937,69 @@ export default function DiagramPanel({
               edgeStyle === "curve"
                 ? getCurveEdgePoints(fromPos, fromPort, toPos, toPort)
                 : getSquareEdgePoints(fromPos, fromPort, toPos, toPort);
+            const pathPoints = Array.from({ length: points.length / 2 }, (_, index) => ({
+              x: points[index * 2], y: points[index * 2 + 1],
+            }));
+            const blocked = edgeStyle === "curve"
+              ? isDatabaseCurveBlocked(pathPoints, routingObstacles)
+              : isDatabasePathBlocked(pathPoints, routingObstacles);
+            const routed = blocked ? routeDatabaseConnection(
+              getPortPosition(fromPos, fromPort), fromPort,
+              getPortPosition(toPos, toPort), toPort, routingObstacles,
+            ) : null;
+            if (blocked && !routed) return null;
             const isHover = hoveredEdgeId === edge.id;
+            const appearance = {
+              stroke: isHover ? edgeHoverColor : edgeColor,
+              strokeWidth: isHover ? EDGE_HOVER_STROKE_WIDTH : EDGE_STROKE_WIDTH,
+              hitStrokeWidth: EDGE_HIT_STROKE_WIDTH,
+              lineCap: "round" as const,
+              lineJoin: "round" as const,
+              perfectDrawEnabled: false,
+              shadowForStrokeEnabled: false,
+            };
+            const events = {
+              onMouseEnter: (event: KonvaEventObject<MouseEvent>) => {
+                setHoveredEdgeId(edge.id);
+                const stage = event.target.getStage();
+                if (stage) stage.container().style.cursor = "pointer";
+              },
+              onMouseLeave: (event: KonvaEventObject<MouseEvent>) => {
+                setHoveredEdgeId((current) => current === edge.id ? null : current);
+                const stage = event.target.getStage();
+                if (stage) stage.container().style.cursor = "default";
+              },
+              onClick: () => handleEdgeClick(edge.id),
+              onTap: () => handleEdgeClick(edge.id),
+            };
+            const curvedRoute = routed && edgeStyle === "curve";
+            let arrowPoints = routed ? routed.flatMap((point) => [point.x, point.y]) : points;
+            if (curvedRoute) {
+              const end = routed[routed.length - 1];
+              const before = routed[routed.length - 2];
+              const length = Math.hypot(end.x - before.x, end.y - before.y);
+              const headLength = Math.min(EDGE_POINTER_SIZE, length / 2);
+              arrowPoints = [
+                end.x + (before.x - end.x) * headLength / length,
+                end.y + (before.y - end.y) * headLength / length,
+                end.x, end.y,
+              ];
+            }
             return (
-              <Arrow
-                key={edge.id}
-                points={points}
-                stroke={isHover ? edgeHoverColor : edgeColor}
-                strokeWidth={
-                  isHover ? EDGE_HOVER_STROKE_WIDTH : EDGE_STROKE_WIDTH
-                }
-                fill={isHover ? edgeHoverColor : edgeColor}
-                bezier={edgeStyle === "curve"}
-                lineCap="round"
-                lineJoin="round"
-                perfectDrawEnabled={false}
-                shadowForStrokeEnabled={false}
-                pointerLength={EDGE_POINTER_SIZE}
-                pointerWidth={EDGE_POINTER_SIZE}
-                hitStrokeWidth={EDGE_HIT_STROKE_WIDTH}
-                onMouseEnter={(event) => {
-                  setHoveredEdgeId(edge.id);
-                  const stage = event.target.getStage();
-                  if (stage) {
-                    stage.container().style.cursor = "pointer";
-                  }
-                }}
-                onMouseLeave={(event) => {
-                  setHoveredEdgeId((current) =>
-                    current === edge.id ? null : current,
-                  );
-                  const stage = event.target.getStage();
-                  if (stage) {
-                    stage.container().style.cursor = "default";
-                  }
-                }}
-                onClick={() => handleEdgeClick(edge.id)}
-                onTap={() => handleEdgeClick(edge.id)}
-              />
+              <Group key={edge.id}>
+                {curvedRoute && (
+                  <Path data={buildRoutedDatabasePath(routed, true)} {...appearance} {...events} />
+                )}
+                <Arrow
+                  points={arrowPoints}
+                  {...appearance}
+                  {...events}
+                  fill={appearance.stroke}
+                  bezier={!routed && edgeStyle === "curve"}
+                  pointerLength={EDGE_POINTER_SIZE}
+                  pointerWidth={EDGE_POINTER_SIZE}
+                />
+              </Group>
             );
           })}
 
@@ -968,14 +1013,20 @@ export default function DiagramPanel({
                   return null;
                 }
                 const from = getPortPosition(fromPos, pending.fromPort);
+                const targetPort = findPortAtPoint(pending.pointerX, pending.pointerY);
+                const to = targetPort
+                  ? getPortPosition(visualPositions[targetPort.item.id], targetPort.side)
+                  : { x: pending.pointerX, y: pending.pointerY };
+                const toSide = targetPort?.side ?? (
+                  Math.abs(to.x - from.x) > Math.abs(to.y - from.y)
+                    ? (to.x > from.x ? "left" : "right")
+                    : (to.y > from.y ? "top" : "bottom")
+                );
+                const route = routeDatabaseConnection(from, pending.fromPort, to, toSide, routingObstacles);
+                if (!route) return null;
                 return (
                   <Arrow
-                    points={[
-                      from.x,
-                      from.y,
-                      pending.pointerX,
-                      pending.pointerY,
-                    ]}
+                    points={route.flatMap((point) => [point.x, point.y])}
                     stroke={portColor}
                     strokeWidth={2}
                     fill={portColor}

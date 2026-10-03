@@ -55,3 +55,31 @@ describe('roteamento das conexões do banco', () => {
     expect(route).not.toBeNull();
   });
 });
+
+
+describe('roteamento nos quatro lados dos cards', () => {
+  const obstacles = [
+    { x: 0, y: 0, width: 220, height: 130 },
+    { x: 0, y: 250, width: 220, height: 130 },
+    { x: 0, y: 500, width: 220, height: 130 },
+  ];
+
+  it.each(['top', 'right', 'bottom', 'left'] as const)('preserva a saída pela porta %s sem atravessar cards', (side) => {
+    const from = side === 'top' ? { x: 110, y: 0 } : side === 'bottom' ? { x: 110, y: 130 }
+      : side === 'left' ? { x: 0, y: 65 } : { x: 220, y: 65 };
+    const to = { x: 110, y: 500 };
+    const route = routeDatabaseConnection(from, side, to, 'top', obstacles)!;
+    expect(route).not.toBeNull();
+    expect(route[0]).toEqual(from);
+    expect(route.at(-1)).toEqual(to);
+    expect(isDatabasePathBlocked(route, obstacles)).toBe(false);
+    expect(isDatabasePathBlocked([...route].reverse(), obstacles)).toBe(false);
+  });
+
+  it('separa cards salvos sobrepostos sem bloquear suas portas', () => {
+    const position = resolveDatabaseTablePosition({ x: 0, y: 0 }, 220, 130, [obstacles[0]]);
+    expect(position).toEqual({ x: 0, y: -178 });
+    const separated = [obstacles[0], { ...position, width: 220, height: 130 }];
+    expect(routeDatabaseConnection({ x: 110, y: 0 }, 'top', { x: 110, y: -48 }, 'bottom', separated)).not.toBeNull();
+  });
+});
