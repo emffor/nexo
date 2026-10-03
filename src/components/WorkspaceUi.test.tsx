@@ -8,7 +8,6 @@ import { ProjectsHome } from "./ProjectsHome";
 function shellProps(): ComponentProps<typeof AppShell> {
   return {
     itemsCount: 2,
-    isCompactMode: false,
     isPreviewMaximized: false,
     isDiagramSidebarVisible: true,
     diagramEdgeStyle: "curve",
@@ -21,7 +20,6 @@ function shellProps(): ComponentProps<typeof AppShell> {
     fontScale: 1,
     onBackToProjects: vi.fn(),
     onOpenModal: vi.fn(),
-    onToggleCompactMode: vi.fn(),
     onTogglePreviewMaximized: vi.fn(),
     onToggleDiagramSidebar: vi.fn(),
     onSetDiagramEdgeStyle: vi.fn(),

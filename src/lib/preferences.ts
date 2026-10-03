@@ -1,5 +1,4 @@
 export const STORAGE_KEYS = {
-  compactMode: 'organizar-markdown:compact-mode',
   fontScale: 'organizar-markdown:font-scale',
   previewMaximized: 'organizar-markdown:preview-maximized',
   outlineMode: 'organizar-markdown:outline-mode',
@@ -29,14 +28,6 @@ export const FONT_SCALE: {
 
 export function clampFontScale(value: number): number {
   return Math.min(FONT_SCALE.max, Math.max(FONT_SCALE.min, Number(value.toFixed(2))));
-}
-
-export function readStoredCompactMode(): boolean {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  return window.localStorage.getItem(STORAGE_KEYS.compactMode) === 'true';
 }
 
 export function readStoredFontScale(): number {

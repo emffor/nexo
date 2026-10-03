@@ -7,7 +7,6 @@ import type { AppTheme, DiagramEdgeStyle, ViewMode } from "../lib/preferences";
 
 interface AppShellProps {
   itemsCount: number;
-  isCompactMode: boolean;
   isPreviewMaximized: boolean;
   isDiagramSidebarVisible: boolean;
   diagramEdgeStyle: DiagramEdgeStyle;
@@ -26,7 +25,6 @@ interface AppShellProps {
   theme: AppTheme;
   fontScale: number;
   onOpenModal: () => void;
-  onToggleCompactMode: () => void;
   onTogglePreviewMaximized: () => void;
   onToggleDiagramSidebar: () => void;
   onSetDiagramEdgeStyle: (style: DiagramEdgeStyle) => void;
@@ -112,7 +110,6 @@ function formatStorageSize(bytes: number): string {
 
 export function AppShell({
   itemsCount,
-  isCompactMode,
   isPreviewMaximized,
   isDiagramSidebarVisible,
   diagramEdgeStyle,
@@ -123,7 +120,6 @@ export function AppShell({
   theme,
   fontScale,
   onOpenModal,
-  onToggleCompactMode,
   onTogglePreviewMaximized,
   onToggleDiagramSidebar,
   onSetDiagramEdgeStyle,
@@ -157,7 +153,7 @@ export function AppShell({
 
   return (
     <main
-      data-layout-mode={isCompactMode ? "compact" : "default"}
+      data-layout-mode="compact"
       data-theme={theme}
       data-view-mode={viewMode}
       className={`nexo-ui nexo-app-frame flex w-full flex-col ${
@@ -270,19 +266,6 @@ export function AppShell({
               title="Alternar preview em tela cheia"
             >
               {isPreviewMaximized ? "Restaurar colunas" : "Maximizar preview"}
-            </button>
-            <button
-              type="button"
-              onClick={onToggleCompactMode}
-              aria-label={
-                isCompactMode ? "Restaurar espacamento" : "Usar tela inteira"
-              }
-              className={`toolbar-button border-transparent bg-transparent ${
-                isCompactMode ? "toolbar-button--primary" : ""
-              }`}
-              title="Alternar espa\u00e7amento da p\u00e1gina"
-            >
-              {isCompactMode ? "Restaurar espa\u00e7amento" : "Tela inteira"}
             </button>
             <button
               type="button"
@@ -426,16 +409,16 @@ export function AppShell({
       <section
         className={`nexo-workspace grid flex-1 min-h-0 px-5 py-6 sm:px-8 ${
           isDatabaseMode
-            ? `lg:grid-cols-[minmax(280px,0.25fr)_minmax(0,0.75fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
+            ? `lg:grid-cols-[minmax(280px,0.25fr)_minmax(0,0.75fr)] gap-2`
             : isPreviewMaximized
               ? "grid-cols-1"
               : isFullWidthMode
                 ? "grid-cols-1"
                 : isIndexMode
-                  ? `lg:grid-cols-[140px_minmax(0,1fr)] ${isCompactMode ? "gap-3" : "gap-5"}`
+                  ? `lg:grid-cols-[140px_minmax(0,1fr)] gap-3`
                   : isDiagramMode
-                    ? `lg:grid-cols-[minmax(240px,0.25fr)_minmax(0,0.75fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
-                    : `lg:grid-cols-[minmax(280px,0.33fr)_minmax(0,0.67fr)] ${isCompactMode ? "gap-2" : "gap-4"}`
+                    ? `lg:grid-cols-[minmax(240px,0.25fr)_minmax(0,0.75fr)] gap-2`
+                    : `lg:grid-cols-[minmax(280px,0.33fr)_minmax(0,0.67fr)] gap-2`
         }`}
       >
         {isDatabaseMode

@@ -573,24 +573,20 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
-  it("alterna para o modo sem espacamentos", async () => {
+  it("mantem o layout sempre sem espacamentos", async () => {
     const user = userEvent.setup();
     render(<App />);
     await createAndOpenProject(user);
-
-    const layout = document.querySelector('[data-layout-mode="default"]');
-    expect(layout).toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole("button", { name: /usar tela inteira/i }),
-    );
 
     expect(
       document.querySelector('[data-layout-mode="compact"]'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /restaurar espacamento/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /usar tela inteira/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /restaurar espacamento/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("maximiza o preview escondendo a coluna esquerda", async () => {

@@ -50,7 +50,6 @@ import {
   FONT_SCALE,
   readStoredDatabaseEdgeStyle,
   readStoredDiagramEdgeStyle,
-  readStoredCompactMode,
   readStoredFontScale,
   readStoredPreviewMaximized,
   readStoredSelectedProjectId,
@@ -519,7 +518,6 @@ function ProjectWorkspace({
   const [editingItem, setEditingItem] = useState<MarkdownItem | null>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [isScrollSyncEnabled, setIsScrollSyncEnabled] = useState(false);
-  const [isCompactMode, setIsCompactMode] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("normal");
   const [isDiagramSidebarVisible, setIsDiagramSidebarVisible] = useState(true);
   const [diagramEdgeStyle, setDiagramEdgeStyle] =
@@ -580,10 +578,6 @@ function ProjectWorkspace({
   const [deletingItem, setDeletingItem] = useState<MarkdownItem | null>(null);
 
   useEffect(() => {
-    setIsCompactMode(readStoredCompactMode());
-  }, []);
-
-  useEffect(() => {
     setViewMode(readStoredViewMode());
   }, []);
 
@@ -601,17 +595,6 @@ function ProjectWorkspace({
     setDatabaseEdgeStyle(readStoredDatabaseEdgeStyle());
     setArePreferencesLoaded(true);
   }, []);
-
-  useEffect(() => {
-    if (!arePreferencesLoaded) {
-      return;
-    }
-
-    window.localStorage.setItem(
-      STORAGE_KEYS.compactMode,
-      String(isCompactMode),
-    );
-  }, [arePreferencesLoaded, isCompactMode]);
 
   useEffect(() => {
     if (!arePreferencesLoaded) {
@@ -1038,7 +1021,6 @@ function ProjectWorkspace({
 
       <AppShell
         itemsCount={items.length}
-        isCompactMode={isCompactMode}
         isPreviewMaximized={isPreviewMaximized}
         isDiagramSidebarVisible={isDiagramSidebarVisible}
         diagramEdgeStyle={diagramEdgeStyle}
@@ -1048,7 +1030,6 @@ function ProjectWorkspace({
         theme={theme}
         fontScale={fontScale}
         onOpenModal={() => setIsModalOpen(true)}
-        onToggleCompactMode={() => setIsCompactMode((current) => !current)}
         onTogglePreviewMaximized={() =>
           setIsPreviewMaximized((current) => !current)
         }
