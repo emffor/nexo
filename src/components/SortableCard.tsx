@@ -77,10 +77,12 @@ export function SortableCard({
     <article
       ref={setNodeRef}
       style={style}
+      data-active={isActive}
+      data-dragging={isDragging}
       className={`relative transition-all duration-150 ${
         isOutlineMode
-          ? `rounded p-0.5 ${outlineContainerClass}`
-          : `rounded border px-3 py-2 ${
+          ? `nexo-outline-card rounded p-0.5 ${outlineContainerClass}`
+          : `nexo-item-card rounded border px-3 py-2 ${
               isDragging
                 ? theme === "dark"
                   ? "border-zinc-500 bg-zinc-800"
@@ -98,7 +100,7 @@ export function SortableCard({
       <div className={`flex items-center ${isOutlineMode ? "gap-1" : "gap-2.5"}`}>
         {isOutlineMode ? null : (
           <span
-            className={`font-mono text-xs font-medium px-1.5 py-0.5 rounded ${
+            className={`nexo-item-number font-mono text-xs font-medium px-1.5 py-0.5 rounded ${
               theme === "dark"
                 ? "bg-zinc-800 text-zinc-400"
                 : "bg-zinc-100 text-zinc-600"
@@ -114,7 +116,7 @@ export function SortableCard({
               onClick={() => onSelect(item)}
               title={getDisplayTitle(item, 56)}
               aria-label={`Ir para ${getDisplayTitle(item, 56)}`}
-              className={`relative flex h-8 w-full cursor-grab items-center justify-center rounded border px-2 text-xs font-medium transition active:cursor-grabbing ${outlineButtonClass}`}
+              className={`nexo-outline-button relative flex h-8 w-full cursor-grab items-center justify-center rounded border px-2 text-xs font-medium transition active:cursor-grabbing ${outlineButtonClass}`}
               {...attributes}
               {...listeners}
             >
@@ -167,7 +169,7 @@ export function SortableCard({
               type="button"
               onClick={() => onSelect(item)}
               title={displayTitle}
-              className={`min-w-0 flex-1 cursor-grab truncate text-left text-sm font-medium active:cursor-grabbing ${
+              className={`nexo-item-title min-w-0 flex-1 cursor-grab truncate text-left text-sm font-medium active:cursor-grabbing ${
                 theme === "dark" ? "text-zinc-200" : "text-zinc-900"
               }`}
               {...attributes}
@@ -180,7 +182,7 @@ export function SortableCard({
                 type="button"
                 onClick={() => onEdit(item)}
                 aria-label={`Editar ${getDisplayTitle(item, 56)}`}
-                className={`inline-flex h-6 w-6 items-center justify-center rounded border text-xs transition ${
+                className={`nexo-card-action inline-flex h-6 w-6 items-center justify-center rounded border text-xs transition ${
                   theme === "dark"
                     ? "border-zinc-700 bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
                     : "border-zinc-200 bg-zinc-50 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
@@ -193,7 +195,7 @@ export function SortableCard({
                 type="button"
                 onClick={() => onDelete(item)}
                 aria-label={`Remover ${getDisplayTitle(item, 56)}`}
-                className={`inline-flex h-6 w-6 items-center justify-center rounded border text-xs transition ${
+                className={`nexo-card-action nexo-card-action--danger inline-flex h-6 w-6 items-center justify-center rounded border text-xs transition ${
                   theme === "dark"
                     ? "border-zinc-700 bg-zinc-800 text-red-400 hover:border-red-900 hover:bg-red-950/40 hover:text-red-300"
                     : "border-zinc-200 bg-zinc-50 text-red-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"

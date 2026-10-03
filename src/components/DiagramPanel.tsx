@@ -874,7 +874,7 @@ export default function DiagramPanel({
             el;
         }
       }}
-      className={`relative h-full min-h-[480px] w-full overflow-hidden rounded-[1.25rem] border ${
+      className={`nexo-surface nexo-canvas-surface relative h-full min-h-[480px] w-full overflow-hidden rounded-[1.25rem] border ${
         isDark ? "border-white/10 bg-ink/60" : "border-slate-200 bg-white"
       }`}
       style={{ backgroundColor: stageBg }}

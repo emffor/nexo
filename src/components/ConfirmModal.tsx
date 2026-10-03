@@ -53,16 +53,17 @@ export function ConfirmModal({
   const confirmButtonClass =
     variant === "danger"
       ? "border-red-600 bg-red-600 text-white hover:bg-red-500 focus:ring-red-400"
-      : "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white hover:bg-zinc-800 focus:ring-zinc-400";
+      : "border-[#1814f3] bg-[#1814f3] text-white hover:bg-[#2d60ff] focus:ring-blue-400";
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+      data-theme={theme}
+      className="nexo-ui fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
       role="presentation"
       onClick={onCancel}
     >
       <div
-        className={`w-full max-w-sm rounded border p-5 shadow-lg ${
+        className={`nexo-dialog w-full max-w-sm rounded border p-5 shadow-lg ${
           isDark
             ? "border-zinc-800 bg-[#161b22] text-zinc-200"
             : "border-zinc-200 bg-white text-zinc-900"
@@ -85,7 +86,7 @@ export function ConfirmModal({
         >
           {description}
         </p>
-        <div className="mt-5 flex items-center justify-end gap-2 border-t pt-3 border-zinc-200 dark:border-zinc-800">
+        <div className="nexo-dialog-divider mt-5 flex items-center justify-end gap-2 border-t pt-3 border-zinc-200 dark:border-zinc-800">
           <button
             ref={cancelRef}
             type="button"
@@ -97,7 +98,7 @@ export function ConfirmModal({
           <button
             type="button"
             onClick={onConfirm}
-            className={`inline-flex items-center justify-center rounded border px-3 h-7 text-xs font-medium transition focus:outline-none focus:ring-1 ${confirmButtonClass}`}
+            className={`inline-flex min-h-10 items-center justify-center rounded-xl border px-4 text-sm font-medium transition focus:outline-none focus:ring-1 ${confirmButtonClass}`}
           >
             {confirmLabel}
           </button>

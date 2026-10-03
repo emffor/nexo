@@ -89,7 +89,8 @@ function PreviewGridCard({
       aria-label={`Selecionar card ${displayTitle}`}
       onClick={(event) => onClick(event, item)}
       onKeyDown={(event) => onKeyDown(event, item)}
-      className={`group flex min-h-[236px] scroll-mt-6 cursor-grab flex-col overflow-hidden rounded-xl border text-left transition active:cursor-grabbing ${
+      data-active={isActive}
+      className={`nexo-preview-grid-card group flex min-h-[236px] scroll-mt-6 cursor-grab flex-col overflow-hidden rounded-xl border text-left transition active:cursor-grabbing ${
         isActive ? "preview-item-active" : ""
       } ${
         isDragging
@@ -108,7 +109,7 @@ function PreviewGridCard({
       {...listeners}
     >
       <div
-        className={`border-b px-3 py-2.5 ${
+        className={`nexo-preview-card-header border-b px-3 py-2.5 ${
           theme === "dark"
             ? "border-slate-800/80 bg-slate-950/20"
             : "border-slate-200 bg-slate-50"
@@ -135,7 +136,7 @@ function PreviewGridCard({
         </h3>
       </div>
 
-      <div className="relative flex-1 px-3 py-3">
+      <div className="nexo-preview-card-body relative flex-1 px-3 py-3">
         <div className="markdown-preview markdown-preview--card max-h-[154px] overflow-hidden">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
@@ -145,7 +146,7 @@ function PreviewGridCard({
           </ReactMarkdown>
         </div>
         <div
-          className={`pointer-events-none absolute inset-x-0 bottom-0 h-16 ${
+          className={`nexo-preview-fade pointer-events-none absolute inset-x-0 bottom-0 h-16 ${
             theme === "dark"
               ? "bg-gradient-to-t from-[#0c1219] to-transparent"
               : "bg-gradient-to-t from-white to-transparent"
@@ -154,7 +155,7 @@ function PreviewGridCard({
       </div>
 
       <div
-        className={`mt-auto border-t px-3 py-2 ${
+        className={`nexo-preview-card-footer mt-auto border-t px-3 py-2 ${
           theme === "dark"
             ? "border-slate-800/80 text-slate-500"
             : "border-slate-200 text-slate-500"
@@ -278,20 +279,20 @@ export function CombinedOutputPanel({
 
   return (
     <section
-      className={`flex min-h-[420px] flex-col overflow-hidden rounded border lg:min-h-0 ${
+      className={`flex min-h-[420px] flex-col lg:min-h-0 ${
         theme === "dark"
-          ? "border-zinc-800 bg-[#161b22]"
-          : "border-zinc-200 bg-white"
+          ? "text-slate-100"
+          : "text-[#343c6a]"
       }`}
     >
       <div
-        className={`border-b px-4 py-2.5 flex items-center justify-between ${
-          theme === "dark" ? "border-zinc-800" : "border-zinc-200"
+        className={`nexo-panel-heading flex items-center justify-between ${
+          theme === "dark" ? "border-zinc-800" : "border-[#e6eff5]"
         }`}
       >
         <h2
           className={`m-0 text-xs font-semibold uppercase tracking-wider ${
-            theme === "dark" ? "text-zinc-400" : "text-zinc-500"
+            theme === "dark" ? "text-zinc-400" : "text-[#343c6a]"
           }`}
         >
           {isCardsMode && !selectedPreviewItem
@@ -313,7 +314,7 @@ export function CombinedOutputPanel({
 
       <div
         ref={scrollContainerRef}
-        className={`app-scrollbar flex-1 overflow-y-auto p-4 pb-28 sm:p-5 sm:pb-28 ${theme === "dark" ? "bg-[#0b1118]" : "bg-slate-50/80"}`}
+        className={`app-scrollbar flex-1 overflow-y-auto pb-28 ${isCardsMode && !selectedPreviewItem ? "" : "nexo-surface p-5 sm:p-7"}`}
       >
         {isLoading ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
@@ -328,7 +329,7 @@ export function CombinedOutputPanel({
           </div>
         ) : selectedPreviewItem ? (
           <article
-            className={`markdown-preview w-full rounded-[1.35rem] border px-6 py-7 sm:px-8 sm:py-9 ${
+            className={`markdown-preview w-full border-0 px-0 py-2 sm:px-2 sm:py-3 ${
               theme === "dark"
                 ? "border-slate-800/65 bg-[#0c1219]"
                 : "border-slate-200 bg-white shadow-sm"
@@ -391,7 +392,7 @@ export function CombinedOutputPanel({
               items={items.map((item) => item.id)}
               strategy={rectSortingStrategy}
             >
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {items.map((item, index) => (
                   <PreviewGridCard
                     key={item.id}
@@ -408,7 +409,7 @@ export function CombinedOutputPanel({
           </DndContext>
         ) : items.length > 0 ? (
           <article
-            className={`markdown-preview w-full rounded-[1.35rem] border px-6 py-7 sm:px-8 sm:py-9 ${
+            className={`markdown-preview w-full border-0 px-0 py-2 sm:px-2 sm:py-3 ${
               theme === "dark"
                 ? "border-slate-800/65 bg-[#0c1219]"
                 : "border-slate-200 bg-white shadow-sm"
@@ -458,7 +459,7 @@ export function CombinedOutputPanel({
           </article>
         ) : (
           <div
-            className={`flex h-full min-h-[320px] w-full flex-col items-center justify-center gap-4 rounded-[1.35rem] border border-dashed px-6 py-12 text-center ${
+            className={`nexo-empty flex h-full min-h-[320px] w-full flex-col items-center justify-center gap-4 rounded-[1.35rem] border border-dashed px-6 py-12 text-center ${
               theme === "dark"
                 ? "border-slate-700/80 bg-[#0c1219]"
                 : "border-slate-300 bg-white"

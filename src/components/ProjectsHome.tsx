@@ -71,19 +71,21 @@ export function ProjectsHome({
   return (
     <main
       data-theme={theme}
-      className={`min-h-screen ${
-        isDark ? "bg-[#0d1117] text-zinc-200" : "bg-zinc-50 text-zinc-900"
-      }`}
+      className="nexo-ui min-h-screen"
     >
-      {/* Barra superior de navegação sóbria */}
+      {/* Cabeçalho principal */}
       <header
-        className={`border-b px-6 py-3 ${
-          isDark ? "border-zinc-800 bg-[#161b22]" : "border-zinc-200 bg-white"
+        className={`nexo-topbar border-b px-5 py-5 sm:px-8 ${
+          isDark ? "border-zinc-800 bg-[#161b22]" : "border-[#e6eff5] bg-white"
         }`}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
+        <div className="mx-auto flex min-h-[60px] max-w-[1440px] flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="font-semibold text-sm tracking-tight text-zinc-100">
+            <span
+              className={`font-semibold text-sm tracking-tight ${
+                isDark ? "text-zinc-100" : "text-[#343c6a]"
+              }`}
+            >
               Nexo
             </span>
             <span
@@ -102,7 +104,7 @@ export function ProjectsHome({
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="toolbar-badge">
               {formatStorageSize(storedDataSizeBytes)}
             </span>
@@ -126,10 +128,16 @@ export function ProjectsHome({
       </header>
 
       {/* Conteúdo central */}
-      <section className="mx-auto max-w-6xl px-6 py-8">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <section className="mx-auto max-w-[1440px] px-5 py-8 sm:px-8 lg:px-10">
+        <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Projetos</h1>
+            <h1
+              className={`text-[28px] font-semibold tracking-tight ${
+                isDark ? "text-zinc-100" : "text-[#343c6a]"
+              }`}
+            >
+              Projetos
+            </h1>
             <p
               className={`mt-0.5 text-xs ${
                 isDark ? "text-zinc-400" : "text-zinc-600"
@@ -140,7 +148,7 @@ export function ProjectsHome({
           </div>
 
           {/* Criação de projeto compacta */}
-          <form onSubmit={handleCreate} className="flex gap-2">
+          <form onSubmit={handleCreate} className="nexo-surface flex flex-wrap items-center gap-3 p-5">
             <label className="sr-only" htmlFor="new-project-name">
               Nome do projeto
             </label>
@@ -149,7 +157,7 @@ export function ProjectsHome({
               value={newProjectName}
               onChange={(event) => setNewProjectName(event.target.value)}
               placeholder="Criar novo workspace..."
-              className={`h-8 w-64 rounded border px-2.5 text-xs outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
+              className={`nexo-field w-full min-w-0 rounded border sm:w-64 outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
                 isDark
                   ? "border-zinc-700 bg-zinc-900 text-zinc-100 placeholder:text-zinc-500"
                   : "border-zinc-300 bg-white text-zinc-900 placeholder:text-zinc-400"
@@ -157,7 +165,7 @@ export function ProjectsHome({
             />
             <button
               type="submit"
-              className="toolbar-button toolbar-button--accent h-8"
+              className="toolbar-button toolbar-button--accent min-h-12 px-5"
             >
               Novo Projeto
             </button>
@@ -175,7 +183,7 @@ export function ProjectsHome({
             className={`rounded border border-dashed px-6 py-12 text-center text-xs ${
               isDark
                 ? "border-zinc-800 bg-zinc-900/50 text-zinc-500"
-                : "border-zinc-300 bg-white text-zinc-500"
+                : "border-[#e6eff5] bg-white text-[#718ebf]"
             }`}
           >
             Nenhum projeto cadastrado no banco.
@@ -183,16 +191,16 @@ export function ProjectsHome({
         ) : null}
 
         {!isLoading && projects.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {projects.map((project) => {
               const isEditing = editingProjectId === project.id;
               return (
                 <article
                   key={project.id}
-                  className={`flex flex-col justify-between rounded border p-4 transition-colors ${
+                  className={`nexo-surface nexo-project-card flex flex-col justify-between transition-colors ${
                     isDark
                       ? "border-zinc-800 bg-[#161b22] hover:border-zinc-700"
-                      : "border-zinc-200 bg-white hover:border-zinc-300"
+                      : "border-transparent bg-white shadow-[0_4px_18px_-2px_rgba(231,228,232,0.8)] hover:shadow-[0_8px_24px_-4px_rgba(231,228,232,0.9)]"
                   }`}
                 >
                   {isEditing ? (
@@ -207,7 +215,7 @@ export function ProjectsHome({
                         id={`project-name-${project.id}`}
                         value={editingName}
                         onChange={(event) => setEditingName(event.target.value)}
-                        className={`h-8 rounded border px-2 text-xs outline-none focus:ring-1 focus:ring-zinc-400 ${
+                        className={`nexo-field w-full rounded border outline-none focus:ring-1 focus:ring-zinc-400 ${
                           isDark
                             ? "border-zinc-700 bg-zinc-900 text-zinc-100"
                             : "border-zinc-300 bg-white text-zinc-900"
@@ -234,10 +242,14 @@ export function ProjectsHome({
                       <button
                         type="button"
                         onClick={() => onOpenProject(project.id)}
-                        className="block w-full text-left focus:outline-none"
+                        className="block w-full rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <h2 className="m-0 line-clamp-1 text-sm font-medium text-zinc-100">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <h2
+                            className={`m-0 line-clamp-1 text-sm font-medium ${
+                              isDark ? "text-zinc-100" : "text-[#343c6a]"
+                            }`}
+                          >
                             {project.name}
                           </h2>
                           <span className="font-mono text-[11px] text-zinc-500 shrink-0">
@@ -253,7 +265,11 @@ export function ProjectsHome({
                         </p>
                       </button>
 
-                      <div className="mt-4 flex items-center justify-between border-t pt-3 border-zinc-800/80">
+                      <div
+                        className={`mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-4 ${
+                          isDark ? "border-zinc-800/80" : "border-[#e6eff5]"
+                        }`}
+                      >
                         <button
                           type="button"
                           onClick={() => onOpenProject(project.id)}
@@ -262,7 +278,7 @@ export function ProjectsHome({
                           Abrir workspace →
                         </button>
 
-                        <div className="flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-2">
                           <button
                             type="button"
                             onClick={() => onExportProject(project.id)}

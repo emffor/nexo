@@ -16,12 +16,12 @@ export function DbmlEditor({ value, theme, onChange, errors }: DbmlEditorProps) 
 
   return (
     <div
-      className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[1.25rem] border ${
+      className={`nexo-surface flex h-full min-h-0 flex-col overflow-hidden rounded-[1.25rem] border ${
         isDark ? "border-white/10 bg-ink/70" : "border-slate-200 bg-white"
       }`}
     >
       <div
-        className={`flex items-center justify-between border-b px-4 py-2 text-[11px] font-medium uppercase tracking-[0.18em] ${
+        className={`flex items-center justify-between border-b px-5 py-5 text-base font-semibold ${
           isDark
             ? "border-white/10 text-slate-300"
             : "border-slate-200 text-slate-500"
@@ -40,7 +40,7 @@ export function DbmlEditor({ value, theme, onChange, errors }: DbmlEditorProps) 
         value={value}
         spellCheck={false}
         onChange={(event) => onChange(event.target.value)}
-        className={`flex-1 min-h-0 w-full resize-none border-0 px-4 py-3 font-mono text-[12px] leading-relaxed outline-none ${
+        className={`flex-1 min-h-0 w-full resize-none border-0 px-5 py-4 font-mono text-[13px] leading-relaxed outline-none ${
           isDark
             ? "bg-transparent text-slate-100 placeholder:text-slate-500"
             : "bg-transparent text-slate-800 placeholder:text-slate-400"

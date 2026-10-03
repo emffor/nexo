@@ -80,7 +80,8 @@ export function StatusPicker({
 
       {isOpen ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm"
+          data-theme={theme}
+      className="nexo-ui fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm"
           role="presentation"
           onClick={() => setIsOpen(false)}
         >
@@ -89,7 +90,7 @@ export function StatusPicker({
             role="dialog"
             aria-modal="true"
             aria-label={`Alterar status de ${label}`}
-            className={`w-full max-w-sm overflow-hidden rounded-xl border py-1 shadow-2xl ${
+            className={`nexo-dialog w-full max-w-sm overflow-hidden rounded-xl border py-1 shadow-2xl ${
               isDark
                 ? "border-slate-700 bg-[#141b24] text-slate-100"
                 : "border-slate-200 bg-white text-slate-900"
@@ -110,7 +111,7 @@ export function StatusPicker({
                   type="button"
                   aria-pressed={isSelected}
                   onClick={() => handleSelect(option.value)}
-                  className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold transition ${
+                  className={`nexo-status-option flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold transition ${
                     isSelected
                       ? "bg-blue-600 text-white"
                       : isDark

@@ -243,13 +243,14 @@ export function AddMarkdownModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+      data-theme={theme}
+      className="nexo-ui fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
       role="presentation"
       onClick={safeClose}
     >
       <div
         ref={dialogRef}
-        className={`w-full max-w-3xl rounded border p-5 ${
+        className={`nexo-dialog w-full max-w-3xl rounded border p-5 ${
           isDark
             ? "border-zinc-800 bg-[#161b22] text-zinc-200"
             : "border-zinc-200 bg-white text-zinc-900"
@@ -290,7 +291,7 @@ export function AddMarkdownModal({
                 setTitle(event.target.value);
               }}
               placeholder="Ex: P2M-1185 ou Criacao de Pedido"
-              className={`h-8 rounded border px-2.5 text-xs outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
+              className={`nexo-field w-full rounded border px-2.5 text-xs outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
                 isDark
                   ? "border-zinc-700 bg-zinc-900 text-zinc-100 placeholder:text-zinc-500"
                   : "border-zinc-300 bg-white text-zinc-900 placeholder:text-zinc-400"
@@ -364,7 +365,7 @@ export function AddMarkdownModal({
               }}
               rows={12}
               placeholder={"# Titulo\n\nCole aqui o conteudo em markdown."}
-              className={`rounded border p-3 font-mono text-xs leading-5 outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
+              className={`nexo-field rounded border p-3 font-mono text-xs leading-5 outline-none transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 ${
                 isDark
                   ? "border-zinc-700 bg-zinc-900 text-zinc-200 placeholder:text-zinc-600"
                   : "border-zinc-300 bg-white text-zinc-900 placeholder:text-zinc-400"
@@ -378,7 +379,7 @@ export function AddMarkdownModal({
             </p>
           ) : null}
 
-          <div className="flex items-center justify-between border-t pt-3 border-zinc-200 dark:border-zinc-800">
+          <div className="nexo-dialog-divider flex flex-wrap items-center justify-between gap-3 border-t pt-3 border-zinc-200 dark:border-zinc-800">
             <span className="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">
               {isMac ? "⌘" : "Ctrl"}+Enter para salvar
             </span>

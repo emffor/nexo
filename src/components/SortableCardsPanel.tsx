@@ -71,12 +71,12 @@ export function SortableCardsPanel({
     <section
       className={`flex flex-col lg:min-h-0 ${
         isOutlineMode
-          ? "rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#161b22] p-2 lg:sticky lg:top-3 lg:max-h-[calc(100vh-5rem)]"
-          : `panel-surface p-5 sm:p-6 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]`
+          ? "nexo-surface p-2 lg:sticky lg:top-3 lg:max-h-[calc(100vh-5rem)]"
+          : `lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]`
       }`}
     >
       {isOutlineMode ? null : (
-        <div className="mb-3 flex items-center justify-between border-b pb-2 border-zinc-200 dark:border-zinc-800">
+        <div className="nexo-panel-heading">
           <div className="flex items-center gap-2">
             <h2 className="m-0 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               Cards
@@ -90,7 +90,7 @@ export function SortableCardsPanel({
 
       {isLoading ? (
         <div
-          className={`flex flex-1 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed px-6 py-10 ${theme === "dark" ? "border-slate-700/80 bg-[#0c1219]" : "border-slate-300 bg-slate-50"}`}
+          className={`nexo-empty flex flex-1 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed px-6 py-10 ${theme === "dark" ? "border-slate-700/80 bg-[#0c1219]" : "border-slate-300 bg-slate-50"}`}
         >
           <div
             className={`h-5 w-5 animate-spin rounded-full border-2 ${theme === "dark" ? "border-slate-700 border-t-teal-400" : "border-slate-300 border-t-teal-500"}`}
@@ -105,7 +105,7 @@ export function SortableCardsPanel({
 
       {!isLoading && items.length === 0 ? (
         <div
-          className={`flex flex-1 flex-col items-center justify-center gap-4 rounded-3xl border border-dashed px-6 py-12 text-center ${theme === "dark" ? "border-slate-700/80 bg-[#0c1219]" : "border-slate-300 bg-slate-50"}`}
+          className={`nexo-empty flex flex-1 flex-col items-center justify-center gap-4 rounded-3xl border border-dashed px-6 py-12 text-center ${theme === "dark" ? "border-slate-700/80 bg-[#0c1219]" : "border-slate-300 bg-slate-50"}`}
         >
           <span
             className={`text-4xl ${theme === "dark" ? "text-slate-600" : "text-slate-400"}`}
@@ -149,7 +149,7 @@ export function SortableCardsPanel({
               className={`app-scrollbar flex lg:flex-1 ${
                 isOutlineMode
                   ? "flex-col gap-1.5 overflow-y-auto pr-1"
-                  : "flex-col gap-2 overflow-y-auto pr-1"
+                  : "nexo-surface flex-col gap-1 overflow-y-auto p-4 sm:p-5"
               }`}
             >
               {items.map((item, index) => (
