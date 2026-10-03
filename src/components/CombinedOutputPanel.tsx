@@ -176,6 +176,58 @@ function PreviewGridCard({
   );
 }
 
+interface PreviewMarkdownSectionProps {
+  item: MarkdownItem;
+  position: number;
+  theme: AppTheme;
+  isActive?: boolean;
+  withDivider?: boolean;
+  onChangeStatus?: (itemId: string, status: DiagramStatus | undefined) => void;
+}
+
+function PreviewMarkdownSection({
+  item,
+  position,
+  theme,
+  isActive = false,
+  withDivider = false,
+  onChangeStatus,
+}: PreviewMarkdownSectionProps) {
+  return (
+    <section
+      id={`preview-item-${item.id}`}
+      data-preview-item-id={item.id}
+      className={`scroll-mt-6 ${withDivider ? "preview-item-divider mt-12 pt-12" : ""} ${isActive ? "preview-item-active" : ""}`}
+    >
+      <div className="mb-4 flex items-center gap-3">
+        <span
+          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${theme === "dark" ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-500"}`}
+        >
+          {String(position + 1).padStart(2, "0")}
+        </span>
+        {onChangeStatus ? (
+          <StatusPicker
+            status={item.status}
+            theme={theme}
+            label={getDisplayTitle(item, 72)}
+            onChangeStatus={(status) => onChangeStatus(item.id, status)}
+          />
+        ) : (
+          <StatusDot status={item.status} theme={theme} />
+        )}
+        <p
+          className={`m-0 text-xs font-medium uppercase tracking-[0.22em] ${theme === "dark" ? "text-slate-500" : "text-slate-400"}`}
+        >
+          {getDisplayTitle(item, 72)}
+        </p>
+      </div>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+        {item.content}
+      </ReactMarkdown>
+    </section>
+  );
+}
+
 interface CombinedOutputPanelProps {
   items: MarkdownItem[];
   isLoading: boolean;
@@ -206,10 +258,17 @@ export function CombinedOutputPanel({
   >(null);
   const shouldIgnoreNextClickRef = useRef(false);
   const isCardsMode = viewMode === "cards";
+  const isNormalMode = viewMode === "normal";
   const selectedPreviewItem =
     isCardsMode && selectedPreviewCardId
       ? items.find((item) => item.id === selectedPreviewCardId)
       : null;
+  const activeNormalItem = isNormalMode
+    ? (items.find((item) => item.id === activeItemId) ?? items[0] ?? null)
+    : null;
+  const activeNormalPosition = activeNormalItem
+    ? items.findIndex((item) => item.id === activeNormalItem.id)
+    : 0;
 
   useEffect(() => {
     if (!isCardsMode) {
@@ -407,6 +466,21 @@ export function CombinedOutputPanel({
               </div>
             </SortableContext>
           </DndContext>
+        ) : isNormalMode && activeNormalItem ? (
+          <article
+            className={`markdown-preview w-full border-0 px-0 py-2 sm:px-2 sm:py-3 ${
+              theme === "dark"
+                ? "border-slate-800/65 bg-[#0c1219]"
+                : "border-slate-200 bg-white shadow-sm"
+            }`}
+          >
+            <PreviewMarkdownSection
+              item={activeNormalItem}
+              position={activeNormalPosition}
+              theme={theme}
+              onChangeStatus={onChangeStatus}
+            />
+          </article>
         ) : items.length > 0 ? (
           <article
             className={`markdown-preview w-full border-0 px-0 py-2 sm:px-2 sm:py-3 ${
@@ -416,45 +490,15 @@ export function CombinedOutputPanel({
             }`}
           >
             {items.map((item, index) => (
-              <section
+              <PreviewMarkdownSection
                 key={item.id}
-                id={`preview-item-${item.id}`}
-                data-preview-item-id={item.id}
-                className={`scroll-mt-6 ${
-                  index > 0 ? "preview-item-divider mt-12 pt-12" : ""
-                } ${item.id === activeItemId ? "preview-item-active" : ""}`}
-              >
-                <div className="mb-4 flex items-center gap-3">
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${theme === "dark" ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-500"}`}
-                  >
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  {onChangeStatus ? (
-                    <StatusPicker
-                      status={item.status}
-                      theme={theme}
-                      label={getDisplayTitle(item, 72)}
-                      onChangeStatus={(status) =>
-                        onChangeStatus(item.id, status)
-                      }
-                    />
-                  ) : (
-                    <StatusDot status={item.status} theme={theme} />
-                  )}
-                  <p
-                    className={`m-0 text-xs font-medium uppercase tracking-[0.22em] ${theme === "dark" ? "text-slate-500" : "text-slate-400"}`}
-                  >
-                    {getDisplayTitle(item, 72)}
-                  </p>
-                </div>
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw]}
-                >
-                  {item.content}
-                </ReactMarkdown>
-              </section>
+                item={item}
+                position={index}
+                theme={theme}
+                isActive={item.id === activeItemId}
+                withDivider={index > 0}
+                onChangeStatus={onChangeStatus}
+              />
             ))}
           </article>
         ) : (

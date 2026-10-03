@@ -931,6 +931,15 @@ function ProjectWorkspace({
 
   const handleSelectItem = (item: MarkdownItem) => {
     setActiveItemId(item.id);
+  };
+
+  const handleSelectItemFromList = (item: MarkdownItem) => {
+    setActiveItemId(item.id);
+
+    if (viewMode !== "index") {
+      return;
+    }
+
     document.getElementById(`preview-item-${item.id}`)?.scrollIntoView({
       behavior: "smooth",
       block: "start",
@@ -1116,7 +1125,7 @@ function ProjectWorkspace({
               scrollContainerRef={leftScrollRef}
               theme={theme}
               onReorder={reorderItems}
-              onSelect={handleSelectItem}
+              onSelect={handleSelectItemFromList}
               onEdit={(item) => {
                 setEditingItem(item);
                 setIsModalOpen(true);
