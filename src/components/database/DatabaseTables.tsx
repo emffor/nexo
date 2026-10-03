@@ -138,21 +138,21 @@ export function DatabaseTables({
           <Rect
             width={DB_TABLE_WIDTH}
             height={height}
-            cornerRadius={UI_RADIUS}
-            fill={tableBg}
-            stroke={isTableSelected ? selectedBorder : tableBorder}
+            cornerRadius={8}
+            fill={isDark ? "#18181b" : "#ffffff"}
+            stroke={isTableSelected ? selectedBorder : isDark ? "#27272a" : "#e2e8f0"}
             strokeWidth={isTableSelected ? 1.5 : 1}
-            shadowColor={colors.shadowColor}
-            shadowBlur={isTableSelected ? 10 : 6}
-            shadowOpacity={isTableSelected ? 0.28 : isDark ? 0.4 : 0.15}
+            shadowColor="#000000"
+            shadowBlur={isTableSelected ? 12 : 6}
+            shadowOpacity={isDark ? 0.35 : 0.08}
             shadowOffsetY={2}
             perfectDrawEnabled={false}
           />
           <Rect
             width={DB_TABLE_WIDTH}
             height={DB_HEADER_HEIGHT}
-            cornerRadius={[UI_RADIUS, UI_RADIUS, 0, 0]}
-            fill={table.headerColor ?? headerBg}
+            cornerRadius={[8, 8, 0, 0]}
+            fill={table.headerColor ?? (isDark ? "#27272a" : "#f1f5f9")}
             perfectDrawEnabled={false}
           />
           <Text
@@ -163,7 +163,7 @@ export function DatabaseTables({
             fontSize={13}
             fontStyle="600"
             fontFamily={UI_CODE_FONT_FAMILY}
-            fill={tableHeaderText}
+            fill={table.headerColor ? tableHeaderText : isDark ? "#f4f4f5" : "#1e293b"}
             ellipsis
             onClick={(event) => {
               event.cancelBubble = true;
@@ -251,9 +251,8 @@ export function DatabaseTables({
                       DB_TABLE_WIDTH - 8,
                       DB_ROW_HEIGHT,
                     ]}
-                    stroke={tableBorder}
-                    strokeWidth={0.5}
-                    opacity={0.6}
+                    stroke={isDark ? "#27272a" : "#f1f5f9"}
+                    strokeWidth={1}
                     perfectDrawEnabled={false}
                   />
                 )}
@@ -266,7 +265,7 @@ export function DatabaseTables({
                   ellipsis
                   fontStyle="600"
                   fontFamily={UI_CODE_FONT_FAMILY}
-                  fill={rowText}
+                  fill={isDark ? "#e4e4e7" : "#334155"}
                   onMouseEnter={(event) => {
                     const stage = event.target.getStage();
                     if (stage) {
@@ -292,7 +291,7 @@ export function DatabaseTables({
                   onTap={enumType ? (event) => { event.cancelBubble = true; onInspect({ title: enumType.name, values: enumType.values }); } : undefined}
                   fontSize={11}
                   fontFamily={UI_CODE_FONT_FAMILY}
-                  fill={typeText}
+                  fill={isDark ? "#a1a1aa" : "#64748b"}
                   ellipsis
                   perfectDrawEnabled={false}
                 />
@@ -311,8 +310,20 @@ export function DatabaseTables({
                     <Rect
                       width={22}
                       height={14}
-                      cornerRadius={UI_RADIUS}
-                      fill={badge === "PK" ? (isDark ? "#4b3b20" : "#fff3d9") : badge === "FK" ? (isDark ? "#233c48" : "#e7f2f7") : badgeBg}
+                      cornerRadius={3}
+                      fill={
+                        badge === "PK"
+                          ? isDark
+                            ? "#451a03"
+                            : "#fef3c7"
+                          : badge === "FK"
+                            ? isDark
+                              ? "#082f49"
+                              : "#e0f2fe"
+                            : isDark
+                              ? "#27272a"
+                              : "#f1f5f9"
+                      }
                       perfectDrawEnabled={false}
                     />
                     <Text
@@ -324,7 +335,19 @@ export function DatabaseTables({
                       fontSize={9}
                       fontStyle="700"
                       fontFamily={UI_FONT_FAMILY}
-                      fill={badge === "PK" ? (isDark ? "#f5d08a" : "#a3712e") : badge === "FK" ? (isDark ? "#9dd5e9" : "#42788c") : badgeText}
+                      fill={
+                        badge === "PK"
+                          ? isDark
+                            ? "#fde68a"
+                            : "#b45309"
+                          : badge === "FK"
+                            ? isDark
+                              ? "#7dd3fc"
+                              : "#0369a1"
+                            : isDark
+                              ? "#a1a1aa"
+                              : "#475569"
+                      }
                       perfectDrawEnabled={false}
                     />
                   </Group>

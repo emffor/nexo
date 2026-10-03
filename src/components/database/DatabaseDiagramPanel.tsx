@@ -163,6 +163,11 @@ export default function DatabaseDiagramPanel({
   onRenameColumn,
   edgeStyle = "square",
   resetSignal = 0,
+  editor,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }: DatabaseDiagramPanelProps) {
   const [colorTarget, setColorTarget] = useState<DatabaseColorTarget | null>(null);
   const [inspection, setInspection] = useState<DatabaseInspection | null>(null);
@@ -239,60 +244,301 @@ export default function DatabaseDiagramPanel({
     editorTop,
     recordsTable,
   } = useDatabaseCanvas({ tables, notes, groups, relations, theme, state, onStateChange, onRenameTable, onRenameColumn, edgeStyle, resetSignal });
+
+  const handleExportPng = () => {
+    try {
+      const stage = stageRef.current;
+      if (!stage) return;
+      const anchor = document.createElement('a');
+      const canvas = stage.toCanvas({ pixelRatio: 2 });
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Canvas indisponível');
+      context.globalCompositeOperation = 'destination-over';
+      if (showGrid) {
+        const spacing = 40 * viewportScale;
+        context.strokeStyle = tableBorder;
+        context.globalAlpha = 0.4;
+        context.beginPath();
+        for (let x = ((stage.x() * 2) % spacing + spacing) % spacing; x < canvas.width; x += spacing) {
+          context.moveTo(x, 0);
+          context.lineTo(x, canvas.height);
+        }
+        for (let y = ((stage.y() * 2) % spacing + spacing) % spacing; y < canvas.height; y += spacing) {
+          context.moveTo(0, y);
+          context.lineTo(canvas.width, y);
+        }
+        context.stroke();
+        context.globalAlpha = 1;
+      }
+      context.fillStyle = stageBg;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      anchor.href = canvas.toDataURL('image/png');
+      anchor.download = 'diagrama.png';
+      anchor.click();
+      setExportError(null);
+    } catch {
+      setExportError('Não foi possível exportar a imagem.');
+    }
+  };
+
   return (
-    <div
-      ref={containerRef}
-      className="nexo-surface nexo-canvas-surface relative h-full min-h-[480px] w-full overflow-hidden rounded-2xl border border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-sm"
-      style={{ backgroundColor: stageBg }}
-    >
-      {showGrid && <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{
-        backgroundImage: 'linear-gradient(var(--ui-line) 1px, transparent 1px), linear-gradient(90deg, var(--ui-line) 1px, transparent 1px)',
-        backgroundSize: `${20 * viewportScale}px ${20 * viewportScale}px`,
-        backgroundPosition: `${state.viewport?.x ?? 0}px ${state.viewport?.y ?? 0}px`, opacity: 0.4,
-      }} />}
-      <div className="absolute right-3 top-3 z-40 flex max-w-[calc(100%-1.5rem)] flex-wrap justify-end gap-1 rounded-xl border border-[var(--ui-line)] bg-[var(--ui-surface)] p-1 text-xs">
-        <button type="button" className="toolbar-button px-3 py-2" aria-pressed={showGrid} onClick={() => setShowGrid(!showGrid)}>Grade</button>
-        <button type="button" className="toolbar-button px-3 py-2" aria-pressed={showDetails} onClick={() => setShowDetails(!showDetails)}>Estrutura</button>
-        <button type="button" className="toolbar-button px-3 py-2" onClick={() => onStateChange({ ...state, viewport: { x: 0, y: 0, scale: 1 } })}>Zoom 100%</button>
-        <button type="button" className="toolbar-button px-3 py-2" onClick={() => downloadTextFile('diagrama.dbml', content)}>DBML ↓</button>
-        <button type="button" className="toolbar-button px-3 py-2" onClick={() => {
-          try {
-            const stage = stageRef.current;
-            if (!stage) return;
-            const anchor = document.createElement('a');
-            const canvas = stage.toCanvas({ pixelRatio: 2 });
-            const context = canvas.getContext('2d');
-            if (!context) throw new Error('Canvas indisponível');
-            context.globalCompositeOperation = 'destination-over';
-            if (showGrid) {
-              const spacing = 40 * viewportScale;
-              context.strokeStyle = tableBorder;
-              context.globalAlpha = 0.4;
-              context.beginPath();
-              for (let x = ((stage.x() * 2) % spacing + spacing) % spacing; x < canvas.width; x += spacing) {
-                context.moveTo(x, 0);
-                context.lineTo(x, canvas.height);
-              }
-              for (let y = ((stage.y() * 2) % spacing + spacing) % spacing; y < canvas.height; y += spacing) {
-                context.moveTo(0, y);
-                context.lineTo(canvas.width, y);
-              }
-              context.stroke();
-              context.globalAlpha = 1;
-            }
-            context.fillStyle = stageBg;
-            context.fillRect(0, 0, canvas.width, canvas.height);
-            anchor.href = canvas.toDataURL('image/png');
-            anchor.download = 'diagrama.png';
-            anchor.click();
-            setExportError(null);
-          } catch { setExportError('Não foi possível exportar a imagem.'); }
-        }} title="Exportar área visível em PNG">PNG ↓</button>
-        <button type="button" className="toolbar-button px-3 py-2" aria-expanded={showHelp} onClick={() => setShowHelp(!showHelp)}>Ajuda</button>
+    <div className="flex h-full w-full flex-col min-h-0">
+      {/* Barra de cabeçalho da Modelagem (Foto 2) */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-1">
+        <div>
+          <h2 className="text-base sm:text-lg font-bold text-[var(--ui-heading)] tracking-tight">
+            Modelagem do banco de dados
+          </h2>
+          <p className="text-xs text-[var(--ui-muted)]">
+            {tables.length} tabelas · {relations.length} relações
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-[var(--ui-line)] bg-[var(--ui-surface)] p-1 shadow-xs text-xs text-[var(--ui-text)]">
+          {/* Desfazer */}
+          <button
+            type="button"
+            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] disabled:opacity-30 transition-colors"
+            aria-label="Desfazer"
+            title="Desfazer (Ctrl/⌘ Z)"
+            disabled={!canUndo}
+            onClick={onUndo}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 7v6h6" />
+              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+            </svg>
+          </button>
+
+          {/* Refazer */}
+          <button
+            type="button"
+            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] disabled:opacity-30 transition-colors"
+            aria-label="Refazer"
+            title="Refazer (Ctrl/⌘ Shift Z)"
+            disabled={!canRedo}
+            onClick={onRedo}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 7v6h-6" />
+              <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
+            </svg>
+          </button>
+
+          <div className="mx-0.5 h-4 w-px bg-[var(--ui-line)]" />
+
+          {/* Diminuir zoom */}
+          <button
+            type="button"
+            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] disabled:opacity-30 transition-colors"
+            onClick={() => handleZoom(-1)}
+            disabled={viewportScale <= MIN_SCALE}
+            aria-label="Diminuir zoom"
+            title="Diminuir zoom"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <line x1="8" y1="11" x2="14" y2="11" />
+            </svg>
+          </button>
+
+          {/* Percentual de zoom */}
+          <span className="min-w-[38px] text-center text-xs font-semibold tabular-nums text-[var(--ui-heading)]">
+            {Math.round(viewportScale * 100)}%
+          </span>
+
+          {/* Aumentar zoom */}
+          <button
+            type="button"
+            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] disabled:opacity-30 transition-colors"
+            onClick={() => handleZoom(1)}
+            disabled={viewportScale >= MAX_SCALE}
+            aria-label="Aumentar zoom"
+            title="Aumentar zoom"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <line x1="11" y1="8" x2="11" y2="14" />
+              <line x1="8" y1="11" x2="14" y2="11" />
+            </svg>
+          </button>
+
+          {/* Reset zoom / 100% */}
+          <button
+            type="button"
+            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] transition-colors"
+            onClick={() => onStateChange({ ...state, viewport: { x: 0, y: 0, scale: 1 } })}
+            aria-label="Zoom 100%"
+            title="Zoom 100% / Centralizar"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+          </button>
+
+          <div className="mx-0.5 h-4 w-px bg-[var(--ui-line)]" />
+
+          {/* Grade */}
+          <button
+            type="button"
+            className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
+              showGrid
+                ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
+                : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
+            }`}
+            aria-pressed={showGrid}
+            aria-label="Grade"
+            title="Alternar grade"
+            onClick={() => setShowGrid(!showGrid)}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="14" width="7" height="7" rx="1.5" />
+              <rect x="3" y="14" width="7" height="7" rx="1.5" />
+            </svg>
+          </button>
+
+          {/* Organizar */}
+          <button
+            type="button"
+            className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
+              isAutoLayoutOpen
+                ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
+                : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
+            }`}
+            aria-expanded={isAutoLayoutOpen}
+            aria-label="Organizar"
+            title="Organizar layout"
+            onClick={() => setIsAutoLayoutOpen((prev) => !prev)}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="18" r="3" />
+              <circle cx="6" cy="6" r="3" />
+              <path d="M6 9v12" />
+              <path d="M18 15a9 9 0 0 0-9-9" />
+            </svg>
+          </button>
+
+          {/* DBML ↓ */}
+          <button
+            type="button"
+            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] text-[var(--ui-muted)] hover:text-[var(--ui-heading)] transition-colors"
+            aria-label="DBML ↓"
+            title="Exportar DBML"
+            onClick={() => downloadTextFile('diagrama.dbml', content)}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 18l6-6-6-6" />
+              <path d="M8 6l-6 6 6 6" />
+              <path d="M12 11v6m0 0l-2-2m2 2l2-2" />
+            </svg>
+          </button>
+
+          {/* PNG ↓ */}
+          <button
+            type="button"
+            className="toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg hover:bg-[var(--ui-raised)] text-[var(--ui-muted)] hover:text-[var(--ui-heading)] transition-colors"
+            aria-label="PNG ↓"
+            title="Exportar área visível em PNG"
+            onClick={handleExportPng}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </button>
+
+          {/* Ajuda */}
+          <button
+            type="button"
+            className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
+              showHelp
+                ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
+                : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
+            }`}
+            aria-expanded={showHelp}
+            aria-label="Ajuda"
+            title="Ajuda"
+            onClick={() => setShowHelp(!showHelp)}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </button>
+
+          {/* Estrutura */}
+          <button
+            type="button"
+            className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
+              showDetails
+                ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
+                : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
+            }`}
+            aria-pressed={showDetails}
+            aria-label="Estrutura"
+            title="Estrutura do banco"
+            onClick={() => setShowDetails(!showDetails)}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6" />
+              <line x1="8" y1="12" x2="21" y2="12" />
+              <line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" />
+              <line x1="3" y1="12" x2="3.01" y2="12" />
+              <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
+          </button>
+
+          <div className="mx-0.5 h-4 w-px bg-[var(--ui-line)]" />
+
+          {/* Mover / Selecionar (Hand) */}
+          <button
+            type="button"
+            className={`toolbar-button flex h-7 w-7 items-center justify-center p-0 rounded-lg transition-colors ${
+              interactionMode === "pan"
+                ? "bg-[var(--ui-raised)] text-[var(--ui-heading)] font-semibold shadow-xs border border-[var(--ui-line)]"
+                : "hover:bg-[var(--ui-raised)] text-[var(--ui-muted)]"
+            }`}
+            aria-pressed={interactionMode === "pan"}
+            aria-label={interactionMode === "pan" ? "Mover canvas" : "Selecionar"}
+            title={interactionMode === "pan" ? "Mover canvas" : "Selecionar"}
+            onClick={() => setInteractionMode((current) => (current === "pan" ? "select" : "pan"))}
+          >
+            <HandIcon />
+          </button>
+        </div>
       </div>
-      {exportError && <p role="alert" className="absolute right-4 top-16 z-50 bg-[var(--ui-surface)] p-3 text-sm">{exportError}</p>}
-      {showHelp && <section aria-label="Ajuda do diagrama" className="absolute right-4 top-16 z-50 max-h-[70%] w-80 max-w-[calc(100%-2rem)] overflow-auto rounded-xl border border-[var(--ui-line)] bg-[var(--ui-surface)] p-4 text-xs leading-6 text-[var(--ui-text)]">
-        <div className="flex justify-between"><strong>Modelagem do banco</strong><button type="button" onClick={() => setShowHelp(false)}>Fechar</button></div>
+
+      {/* Conteúdo: Editor (à esquerda) + Canvas (à direita) */}
+      <div className="flex flex-1 min-h-0 gap-3">
+        {editor ? (
+          <div className="w-[340px] shrink-0 h-full">
+            {editor}
+          </div>
+        ) : null}
+
+        <div
+          ref={containerRef}
+          className="nexo-surface nexo-canvas-surface relative h-full min-h-[480px] flex-1 overflow-hidden rounded-2xl border border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-sm"
+          style={{ backgroundColor: stageBg }}
+        >
+          {showGrid && <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{
+            backgroundImage: isDark
+              ? 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)'
+              : 'linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px)',
+            backgroundSize: `${20 * viewportScale}px ${20 * viewportScale}px`,
+            backgroundPosition: `${state.viewport?.x ?? 0}px ${state.viewport?.y ?? 0}px`,
+          }} />}
+          {exportError && <p role="alert" className="absolute right-4 top-4 z-50 bg-[var(--ui-surface)] p-3 text-sm rounded-xl border border-[var(--ui-line)] shadow-md">{exportError}</p>}
+          {showHelp && <section aria-label="Ajuda do diagrama" className="absolute right-4 top-4 z-50 max-h-[70%] w-80 max-w-[calc(100%-2rem)] overflow-auto rounded-xl border border-[var(--ui-line)] bg-[var(--ui-surface)] p-4 text-xs leading-6 text-[var(--ui-text)] shadow-lg">
+            <div className="flex justify-between"><strong>Modelagem do banco</strong><button type="button" onClick={() => setShowHelp(false)}>Fechar</button></div>
         <p>Use a paleta no cabeçalho para alterar cores. Clique no nome do grupo para recolher ou expandir. Clique nos tipos sublinhados e nos ícones de nota para consultar detalhes. Os mesmos controles estão disponíveis por teclado em Estrutura.</p>
         <p>Arraste tabelas e notas. Use o modo mão para mover o canvas. Ctrl/⌘ + rolagem controla o zoom. Organizar distribui as tabelas; Ajustar enquadra o conteúdo.</p>
         <p>Desfaça e refaça alterações pelos botões do editor ou Ctrl/⌘ Z e Ctrl/⌘ Shift Z no editor. PNG exporta a área visível; DBML exporta o código completo.</p>
@@ -545,7 +791,7 @@ Note lembrete {
         <div
           role="dialog"
           aria-label="Escolher algoritmo de auto-organização"
-          className="absolute bottom-16 left-4 z-50 w-[min(28rem,calc(100%-2rem))] overflow-hidden rounded-2xl border shadow-[var(--ui-shadow-strong)] backdrop-blur-2xl border-[var(--ui-glass-border)] bg-[var(--ui-glass)] text-[var(--ui-heading)]"
+          className="absolute right-4 top-4 z-50 w-[min(28rem,calc(100%-2rem))] overflow-hidden rounded-2xl border shadow-[var(--ui-shadow-strong)] backdrop-blur-2xl border-[var(--ui-glass-border)] bg-[var(--ui-surface)] text-[var(--ui-heading)]"
         >
           <div
             className="border-b px-5 py-3.5 text-sm font-semibold border-[var(--ui-line)] tracking-tight"
@@ -586,71 +832,7 @@ Note lembrete {
           </div>
         </div>
       ) : null}
-
-      <div
-        className="absolute bottom-4 left-4 z-40 flex items-center overflow-hidden rounded-2xl border shadow-[var(--ui-shadow-strong)] backdrop-blur-xl border-[var(--ui-line)] bg-[var(--ui-glass)] text-[var(--ui-text)]"
-      >
-        <button
-          type="button"
-          onClick={() => handleZoom(-1)}
-          disabled={viewportScale <= MIN_SCALE}
-          className="flex h-9 w-9 items-center justify-center text-base font-semibold transition hover:bg-[var(--ui-raised)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-          aria-label="Diminuir zoom"
-          title="Diminuir zoom"
-        >
-          -
-        </button>
-        <div
-          className="border-x px-3 py-2 text-[11px] font-semibold tabular-nums border-[var(--ui-line)]"
-          title="Zoom: Ctrl/⌘ + rolagem ou botões − e +"
-        >
-          {Math.round(viewportScale * 100)}%
         </div>
-        <button
-          type="button"
-          onClick={() => handleZoom(1)}
-          disabled={viewportScale >= MAX_SCALE}
-          className="flex h-9 w-9 items-center justify-center text-base font-semibold transition hover:bg-[var(--ui-raised)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-          aria-label="Aumentar zoom"
-          title="Aumentar zoom"
-        >
-          +
-        </button>
-        <button
-          type="button"
-          onClick={() => setIsAutoLayoutOpen((current) => !current)}
-          aria-expanded={isAutoLayoutOpen}
-          className={`border-l px-3.5 py-2 text-xs font-semibold transition ${isAutoLayoutOpen
-              ? "bg-[var(--ui-primary)] text-[var(--ui-on-primary)]"
-              : "border-[var(--ui-line)] hover:bg-[var(--ui-raised)]"
-            }`}
-        >
-          Organizar
-        </button>
-        <button
-          type="button"
-          onClick={handleFitToContent}
-          className="border-l px-3.5 py-2 text-xs font-semibold transition border-[var(--ui-line)] hover:bg-[var(--ui-raised)]"
-        >
-          Ajustar
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            setInteractionMode((current) =>
-              current === "pan" ? "select" : "pan",
-            )
-          }
-          aria-pressed={interactionMode === "pan"}
-          aria-label={interactionMode === "pan" ? "Mover canvas" : "Selecionar"}
-          title={interactionMode === "pan" ? "Mover canvas" : "Selecionar"}
-          className={`border-l px-3.5 py-2 text-xs font-semibold transition ${interactionMode === "pan"
-              ? "bg-[var(--ui-primary)] text-[var(--ui-on-primary)]"
-              : "border-[var(--ui-line)] hover:bg-[var(--ui-raised)]"
-            }`}
-        >
-          <HandIcon />
-        </button>
       </div>
     </div>
   );

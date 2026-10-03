@@ -434,15 +434,15 @@ export function useDatabaseCanvas({
 
   const isDark = theme === "dark";
   const colors = UI_THEME[theme];
-  const stageBg = colors.canvas;
-  const tableBg = colors.surface;
-  const tableBorder = colors.line;
-  const headerBg = isDark ? colors.raised : "#eaf0f2";
-  const headerText = colors.heading;
-  const rowText = colors.text;
-  const typeText = colors.muted;
-  const edgeColor = isDark ? "#d7a27c" : "#c78c62";
-  const activeEdgeColor = isDark ? "#ffd1a8" : "#a75d2c";
+  const stageBg = isDark ? colors.canvas : "#fbfbfa";
+  const tableBg = isDark ? "#18181b" : "#ffffff";
+  const tableBorder = isDark ? "#27272a" : "#e2e8f0";
+  const headerBg = isDark ? "#27272a" : "#f1f5f9";
+  const headerText = isDark ? "#f4f4f5" : "#1e293b";
+  const rowText = isDark ? "#e4e4e7" : "#334155";
+  const typeText = isDark ? "#a1a1aa" : "#64748b";
+  const edgeColor = isDark ? "#f59e0b" : "#d97706";
+  const activeEdgeColor = isDark ? "#fbbf24" : "#b45309";
   const badgeBg = colors.tagBg;
   const badgeText = colors.tag;
   const rowHighlight = colors.accentSoft;

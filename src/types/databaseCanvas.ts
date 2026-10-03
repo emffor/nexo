@@ -47,4 +47,9 @@ export interface DatabaseDiagramPanelProps {
   ) => boolean;
   edgeStyle?: DiagramEdgeStyle;
   resetSignal?: number;
+  editor?: React.ReactNode;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }

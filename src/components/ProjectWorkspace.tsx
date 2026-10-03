@@ -276,6 +276,23 @@ export function ProjectWorkspace({
               onRenameColumn={onRenameDatabaseColumn}
               edgeStyle={databaseEdgeStyle}
               resetSignal={databaseResetSignal}
+              editor={
+                <DbmlEditor
+                  value={databaseDiagram?.content ?? ""}
+                  theme={theme}
+                  onChange={onDatabaseContentChange}
+                  errors={databaseParseResult.errors}
+                  onUndo={undoDatabase}
+                  onRedo={redoDatabase}
+                  canUndo={canUndoDatabase}
+                  canRedo={canRedoDatabase}
+                  saveStatus={databaseSaveStatus}
+                />
+              }
+              onUndo={undoDatabase}
+              onRedo={redoDatabase}
+              canUndo={canUndoDatabase}
+              canRedo={canRedoDatabase}
             />
           ) : viewMode === "diagram" ? (
             <DiagramPanel

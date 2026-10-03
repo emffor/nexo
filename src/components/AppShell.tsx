@@ -414,9 +414,9 @@ export function AppShell({
       </header>
 
       <section
-        className={`nexo-workspace grid flex-1 min-h-0 px-5 py-6 sm:px-8 ${
+        className={`nexo-workspace grid flex-1 min-h-0 px-5 py-4 sm:px-8 ${
           isDatabaseMode
-            ? `lg:grid-cols-[minmax(280px,0.25fr)_minmax(0,0.75fr)] gap-2`
+            ? "grid-cols-1"
             : isPreviewMaximized
               ? "grid-cols-1"
               : isFullWidthMode
@@ -428,24 +428,10 @@ export function AppShell({
                     : `lg:grid-cols-[minmax(240px,0.25fr)_minmax(0,0.75fr)] gap-2`
         }`}
       >
-        {isDatabaseMode
-          ? leftPanel
-          : isPreviewMaximized || isFullWidthMode
-            ? null
-            : leftPanel}
+        {isDatabaseMode || isPreviewMaximized || isFullWidthMode
+          ? null
+          : leftPanel}
         {rightPanel}
-        {isDatabaseMode && databaseInfo ? (
-          <p
-            className="col-span-full text-[10px] uppercase tracking-[0.18em] text-[var(--ui-muted)]"
-          >
-            {databaseInfo.tables} tabela{databaseInfo.tables === 1 ? "" : "s"} ·{" "}
-            {databaseInfo.relations} relação
-            {databaseInfo.relations === 1 ? "" : "es"}
-            {databaseInfo.errors > 0
-              ? ` · ${databaseInfo.errors} erro${databaseInfo.errors === 1 ? "" : "s"} no DBML`
-              : ""}
-          </p>
-        ) : null}
       </section>
 
       {isSidebarToggleVisible || isStrikethroughVisible ? (
