@@ -1,4 +1,6 @@
 "use client";
+import { DatabaseInspector, type DatabaseInspection } from "./DatabaseInspector";
+import { setDbmlColor, type DatabaseColorTarget } from "../../lib/dbml";
 import { useState } from "react";
 import { downloadTextFile } from "../../lib/textFiles";
 import { DatabaseAnnotations } from "./DatabaseAnnotations";
@@ -151,6 +153,7 @@ export default function DatabaseDiagramPanel({
   notes = [],
   enums = [],
   content = "",
+  onContentChange,
   tables,
   relations,
   theme,
@@ -161,6 +164,17 @@ export default function DatabaseDiagramPanel({
   edgeStyle = "square",
   resetSignal = 0,
 }: DatabaseDiagramPanelProps) {
+  const [colorTarget, setColorTarget] = useState<DatabaseColorTarget | null>(null);
+  const [inspection, setInspection] = useState<DatabaseInspection | null>(null);
+  const hiddenTables = new Set(groups.filter((group) => state.collapsedGroups?.includes(group.name)).flatMap((group) => group.tables.map((member) => member.name)));
+  const visibleTables = tables.filter((table) => !hiddenTables.has(table.name));
+  const visibleRelations = relations.filter((relation) => !hiddenTables.has(relation.fromTable) && !hiddenTables.has(relation.toTable));
+  const openColor = onContentChange ? (target: DatabaseColorTarget) => { setInspection(null); setColorTarget(target); } : undefined;
+  const inspect = (next: DatabaseInspection) => { setColorTarget(null); setInspection(next); };
+  const toggleGroup = (name: string) => {
+    const collapsed = state.collapsedGroups ?? [];
+    onStateChange({ ...state, collapsedGroups: collapsed.includes(name) ? collapsed.filter((entry) => entry !== name) : [...collapsed, name] });
+  };
   const [showGrid, setShowGrid] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -224,7 +238,7 @@ export default function DatabaseDiagramPanel({
     editorLeft,
     editorTop,
     recordsTable,
-  } = useDatabaseCanvas({ tables, notes, relations, theme, state, onStateChange, onRenameTable, onRenameColumn, edgeStyle, resetSignal });
+  } = useDatabaseCanvas({ tables, notes, groups, relations, theme, state, onStateChange, onRenameTable, onRenameColumn, edgeStyle, resetSignal });
   return (
     <div
       ref={containerRef}
@@ -279,6 +293,7 @@ export default function DatabaseDiagramPanel({
       {exportError && <p role="alert" className="absolute right-4 top-16 z-50 bg-[var(--ui-surface)] p-3 text-sm">{exportError}</p>}
       {showHelp && <section aria-label="Ajuda do diagrama" className="absolute right-4 top-16 z-50 max-h-[70%] w-80 max-w-[calc(100%-2rem)] overflow-auto rounded-xl border border-[var(--ui-line)] bg-[var(--ui-surface)] p-4 text-xs leading-6 text-[var(--ui-text)]">
         <div className="flex justify-between"><strong>Modelagem do banco</strong><button type="button" onClick={() => setShowHelp(false)}>Fechar</button></div>
+        <p>Use a paleta no cabeçalho para alterar cores. Clique no nome do grupo para recolher ou expandir. Clique nos tipos sublinhados e nos ícones de nota para consultar detalhes. Os mesmos controles estão disponíveis por teclado em Estrutura.</p>
         <p>Arraste tabelas e notas. Use o modo mão para mover o canvas. Ctrl/⌘ + rolagem controla o zoom. Organizar distribui as tabelas; Ajustar enquadra o conteúdo.</p>
         <p>Desfaça e refaça alterações pelos botões do editor ou Ctrl/⌘ Z e Ctrl/⌘ Shift Z no editor. PNG exporta a área visível; DBML exporta o código completo.</p>
         <pre className="overflow-auto rounded-lg bg-[var(--ui-raised)] p-2">{`Enum status {
@@ -298,10 +313,23 @@ Note lembrete {
       </section>}
       {showDetails && <section aria-label="Estrutura do banco" className="absolute right-4 top-16 z-40 max-h-[70%] w-72 max-w-[calc(100%-2rem)] overflow-auto rounded-xl border border-[var(--ui-line)] bg-[var(--ui-surface)] p-4 text-xs text-[var(--ui-text)]">
         <div className="mb-3 flex justify-between"><strong>Estrutura do banco</strong><button type="button" onClick={() => setShowDetails(false)}>Fechar</button></div>
-        {tables.map((table) => <details key={table.id} className="mb-3"><summary className="cursor-pointer font-semibold">{table.name}</summary>{table.note && <p className="mt-2 whitespace-pre-wrap text-[var(--ui-muted)]">{table.note}</p>}<ul className="mt-2 space-y-2">{table.columns.map((column) => <li key={column.id}>{column.name} · {column.type}{column.note && <p className="text-[var(--ui-muted)]">{column.note}</p>}</li>)}</ul></details>)}
+        {groups.map((group) => <div key={group.name} className="mb-3 flex flex-wrap gap-2">
+          <button type="button" aria-expanded={!state.collapsedGroups?.includes(group.name)} onClick={() => toggleGroup(group.name)}>{state.collapsedGroups?.includes(group.name) ? 'Expandir' : 'Recolher'} {group.name}</button>
+          {openColor && <button type="button" className="toolbar-button px-2" onClick={() => openColor({ kind: 'TableGroup', name: group.name })}>Cor do grupo {group.name}</button>}
+        </div>)}
+        {tables.map((table) => <details key={table.id} className="mb-3">
+          <summary className="cursor-pointer font-semibold">{table.name}</summary>
+          {openColor && <button type="button" className="toolbar-button my-2 px-2 py-1" onClick={() => openColor({ kind: 'Table', name: table.name })}>Cor da tabela {table.name}</button>}
+          {table.note && <p className="mt-2 whitespace-pre-wrap text-[var(--ui-muted)]">{table.note}</p>}
+          <ul className="mt-2 space-y-2">{table.columns.map((column) => <li key={column.id}>{column.name} · {column.type}{column.note && <button type="button" className="ml-2 underline" onClick={() => inspect({ title: `${table.name}.${column.name}`, text: column.note })}>Ver nota de {column.name}</button>}</li>)}</ul>
+        </details>)}
+        {notes.map((note) => <div key={note.name} className="mb-3 flex flex-wrap gap-2"><button type="button" onClick={() => inspect({ title: note.name, text: note.text })}>{note.name}</button>{openColor && <button type="button" className="toolbar-button px-2" onClick={() => openColor({ kind: 'Note', name: note.name })}>Cor da nota {note.name}</button>}</div>)}
         <h3 className="mb-2 font-semibold">Enums ({enums.length})</h3>
         {enums.map((entry) => <details key={entry.name} className="mb-3"><summary className="cursor-pointer">{entry.name}</summary><p className="mt-1 text-[var(--ui-muted)]">{entry.values.join(' · ')}</p></details>)}
       </section>}
+      <DatabaseInspector target={colorTarget} inspection={inspection} onClose={() => { setColorTarget(null); setInspection(null); }} onColor={(color) => {
+        if (colorTarget && onContentChange) onContentChange(setDbmlColor(content, colorTarget, color));
+      }} />
       <Stage
         ref={stageRef}
         width={size.width}
@@ -311,6 +339,8 @@ Note lembrete {
         onWheel={handleWheel}
         onClick={(event) => {
           if (event.target === event.target.getStage()) {
+            setColorTarget(null);
+            setInspection(null);
             setActiveEditor(null);
             setSelectedTableId(null);
             setSelectedRelationId(null);
@@ -319,11 +349,11 @@ Note lembrete {
         }}
       >
         <Layer>
-          <DatabaseAnnotations groups={groups} notes={notes} tables={tables} state={state} onStateChange={onStateChange} positions={visualPositions} foreground={headerText} />
+          <DatabaseAnnotations groups={groups} notes={notes} tables={tables} state={state} onStateChange={onStateChange} positions={visualPositions} foreground={headerText} onOpenColor={openColor} onToggleGroup={toggleGroup} />
         </Layer>
         <Layer>
           <DatabaseRelations
-            relations={relations}
+            relations={visibleRelations}
             tableLookup={tableLookup}
             visualPositions={visualPositions}
             visualRelationPaths={visualRelationPaths}
@@ -331,7 +361,7 @@ Note lembrete {
             activeRelationIds={activeRelationIds}
             editingRelationId={editingRelationId}
             edgeStyle={edgeStyle}
-            routingObstacles={routingObstacles}
+            routingObstacles={routingObstacles.filter((obstacle) => !hiddenTables.has(obstacle.id))}
             activeEdgeColor={activeEdgeColor}
             edgeColor={edgeColor}
             colors={colors}
@@ -350,7 +380,10 @@ Note lembrete {
 
         <Layer>
           <DatabaseTables
-            tables={tables}
+            tables={visibleTables}
+            enums={enums}
+            onOpenColor={openColor}
+            onInspect={inspect}
             visualPositions={visualPositions}
             selectedTableId={selectedTableId}
             setSelectedTableId={setSelectedTableId}

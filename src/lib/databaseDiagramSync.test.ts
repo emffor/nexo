@@ -1,3 +1,4 @@
+import { DB_TABLE_WIDTH, DB_HEADER_HEIGHT, DB_ROW_HEIGHT } from './databaseLayout';
 import { describe, expect, it } from 'vitest';
 import {
   reanchorRelationPathsForMovedTable,
@@ -230,17 +231,17 @@ describe('databaseDiagramSync', () => {
     const state = {
       positions: {
         users: { x: 40, y: 40 },
-        posts: { x: 360, y: 40 },
+        posts: { x: 500, y: 40 },
       },
       relationPaths: {
         [rel.id]: {
           fromSide: 'left' as const,
           toSide: 'right' as const,
           points: [
-            { x: 360, y: 111 },
-            { x: 320, y: 111 },
-            { x: 320, y: 85 },
-            { x: 280, y: 85 },
+            { x: 500, y: 40 + DB_HEADER_HEIGHT + DB_ROW_HEIGHT * 1.5 },
+            { x: 420, y: 40 + DB_HEADER_HEIGHT + DB_ROW_HEIGHT * 1.5 },
+            { x: 420, y: 40 + DB_HEADER_HEIGHT + DB_ROW_HEIGHT / 2 },
+            { x: 40 + DB_TABLE_WIDTH, y: 40 + DB_HEADER_HEIGHT + DB_ROW_HEIGHT / 2 },
           ],
         },
       },
@@ -255,10 +256,10 @@ describe('databaseDiagramSync', () => {
     });
 
     expect(next.relationPaths?.[rel.id]?.points).toEqual([
-      { x: 360, y: 111 },
-      { x: 320, y: 111 },
-      { x: 320, y: 125 },
-      { x: 280, y: 125 },
+      { x: 500, y: 40 + DB_HEADER_HEIGHT + DB_ROW_HEIGHT * 1.5 },
+      { x: 420, y: 40 + DB_HEADER_HEIGHT + DB_ROW_HEIGHT * 1.5 },
+      { x: 420, y: 80 + DB_HEADER_HEIGHT + DB_ROW_HEIGHT / 2 },
+      { x: 40 + DB_TABLE_WIDTH, y: 80 + DB_HEADER_HEIGHT + DB_ROW_HEIGHT / 2 },
     ]);
   });
 });

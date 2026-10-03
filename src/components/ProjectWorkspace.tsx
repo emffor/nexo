@@ -266,6 +266,7 @@ export function ProjectWorkspace({
               notes={databaseParseResult.notes}
               enums={databaseParseResult.enums}
               content={databaseDiagram?.content ?? ""}
+              onContentChange={onDatabaseContentChange}
               tables={databaseParseResult.tables}
               relations={databaseParseResult.relations}
               theme={theme}

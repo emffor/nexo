@@ -4,8 +4,8 @@ import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import type { DatabaseDiagramViewport, DatabaseDiagramVisualState, DatabaseTable } from "../types/database";
 import { DB_TABLE_WIDTH, computeDatabaseTableHeight } from "../lib/databaseLayout";
-import { databaseNotePosition, databaseNoteHeight } from "../lib/databaseCanvas";
-import type { DatabaseStickyNote } from "../types/database";
+import { databaseGroupBounds, databaseNotePosition, databaseNoteHeight } from "../lib/databaseCanvas";
+import type { DatabaseStickyNote, DatabaseTableGroup } from "../types/database";
 import { clamp } from "../lib/databaseDiagramGeometry";
 
 const MIN_SCALE = 0.4;
@@ -20,10 +20,11 @@ interface DatabaseViewportOptions {
   size: { width: number; height: number };
   tables: DatabaseTable[];
   notes?: DatabaseStickyNote[];
+  groups?: DatabaseTableGroup[];
   onStateChange: (state: DatabaseDiagramVisualState) => void;
 }
 
-export function useDatabaseViewport({ stageRef, stateRef, state, size, tables, notes, onStateChange }: DatabaseViewportOptions) {
+export function useDatabaseViewport({ stageRef, stateRef, state, size, tables, notes, groups, onStateChange }: DatabaseViewportOptions) {
   const [viewportScale, setViewportScale] = useState(state.viewport?.scale ?? INITIAL_VIEWPORT.scale);
   const viewport = state.viewport ?? INITIAL_VIEWPORT;
   useEffect(() => {
@@ -133,7 +134,9 @@ export function useDatabaseViewport({ stageRef, stateRef, state, size, tables, n
         return null;
       }
 
-      const bounds = tables.reduce(
+      const collapsedGroups = stateRef.current.collapsedGroups ?? [];
+      const hiddenTables = new Set((groups ?? []).filter((group) => collapsedGroups.includes(group.name)).flatMap((group) => group.tables.map((member) => member.name)));
+      const bounds = tables.filter((table) => !hiddenTables.has(table.name)).reduce(
         (acc, table) => {
           const pos = positions[table.id];
           if (!pos) {
@@ -154,6 +157,14 @@ export function useDatabaseViewport({ stageRef, stateRef, state, size, tables, n
           maxY: Number.NEGATIVE_INFINITY,
         },
       );
+      for (const group of groups ?? []) {
+        const rect = databaseGroupBounds(group, tables, positions, collapsedGroups.includes(group.name));
+        if (!rect) continue;
+        bounds.minX = Math.min(bounds.minX, rect.x);
+        bounds.minY = Math.min(bounds.minY, rect.y);
+        bounds.maxX = Math.max(bounds.maxX, rect.x + rect.width);
+        bounds.maxY = Math.max(bounds.maxY, rect.y + rect.height);
+      }
       for (const [index, note] of (notes ?? []).entries()) {
         const position = stateRef.current.notePositions?.[note.name] ?? databaseNotePosition(positions, index);
         bounds.minX = Math.min(bounds.minX, position.x);
@@ -187,7 +198,7 @@ export function useDatabaseViewport({ stageRef, stateRef, state, size, tables, n
         scale: nextScale,
       };
     },
-    [size.height, size.width, tables, notes, stateRef],
+    [size.height, size.width, tables, notes, groups, stateRef],
   );
 
   const applyViewport = useCallback((next: DatabaseDiagramViewport) => {

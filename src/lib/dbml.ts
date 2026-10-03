@@ -167,6 +167,14 @@ function splitTopLevelComma(value: string): string[] {
   return splitTopLevelCommaWithRanges(value).map((part) => part.value.trim());
 }
 
+function readDbmlColor(settings: string, property: 'color' | 'headercolor'): string | undefined {
+  for (const part of splitTopLevelComma(settings)) {
+    const match = part.match(new RegExp(`^${property}\\s*:\\s*(#[0-9a-f]{6}|#[0-9a-f]{3})$`, 'i'));
+    if (match) return match[1];
+  }
+  return undefined;
+}
+
 function parseFlags(rawFlags: string): {
   isPrimaryKey: boolean;
   isNotNull: boolean;
@@ -335,6 +343,7 @@ function parseTables(masked: string, errors: string[]): DatabaseTable[] {
     tables.push({
       id: tableName,
       name: tableName,
+      headerColor: readDbmlColor(masked.slice(tableRegex.lastIndex, openBrace).match(/\[([\s\S]*)\]/)?.[1] ?? '', 'headercolor'),
       columns,
       note,
       sourceRange: { start: match.index, end: closeBrace + 1 },
@@ -755,7 +764,7 @@ function parseAnnotations(content: string, errors: string[]) {
     }
     const body = content.slice(regex.lastIndex, end);
     const name = unquote(match[2]);
-    const color = match[3]?.match(/color\s*:\s*(#[0-9a-f]{6}|#[0-9a-f]{3})\b/i)?.[1];
+    const color = readDbmlColor(match[3] ?? '', 'color');
     const notePattern = /\bNote\s*(?::|\{)\s*('''[\s\S]*?'''|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")\s*\}?/gi;
     const noteValue = (value: string) => value.startsWith("'''") ? value.slice(3, -3).trim() : unquote(value);
     if (match[1].toLowerCase() === 'note') {
@@ -798,4 +807,44 @@ export function parseDbml(content: string): DatabaseDiagramParseResult {
   markForeignKeys(tables, relations);
 
   return { tables, relations, records, errors, groups, notes, enums };
+}
+
+
+export type DatabaseColorTarget = { kind: 'Table' | 'TableGroup' | 'Note'; name: string };
+
+export function setDbmlColor(content: string, target: DatabaseColorTarget, color: string | null): string {
+  if (color !== null && !/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(color)) return content;
+  const masked = maskComments(content);
+  const structural = maskStrings(masked);
+  const headers = /\b(TableGroup|Table|Note)\s+("[^"]+"|'[^']+'|[\w.]+)(?:\s+as\s+\w+)?/gi;
+  for (const match of masked.matchAll(headers)) {
+    if (!structural.slice(match.index, match.index + match[1].length).trim() || match[1].toLowerCase() !== target.kind.toLowerCase() || unquote(match[2]) !== target.name) continue;
+    const property = target.kind === 'Table' ? 'headercolor' : 'color';
+    const headerEnd = match.index + match[0].length;
+    const offset = structural.slice(headerEnd).search(/\S/);
+    if (offset < 0) return content;
+    const start = headerEnd + offset;
+    if (structural[start] === '[') {
+      const end = structural.indexOf(']', start);
+      if (end < 0 || !/^\s*\{/.test(structural.slice(end + 1))) return content;
+      const settings = content.slice(start + 1, end);
+      const parts = splitTopLevelCommaWithRanges(settings, start + 1);
+      const existing = parts.find((part) => new RegExp(`^${property}\\s*:`, 'i').test(part.value));
+      if (existing && color) {
+        return applyReplacements(content, [{ range: existing, value: `${property}: ${color}` }]);
+      }
+      if (existing) {
+        const index = parts.indexOf(existing);
+        const range = parts.length === 1 ? { start, end: end + 1 }
+          : index < parts.length - 1 ? { start: existing.start, end: parts[index + 1].start }
+          : { start: parts[index - 1].end, end: existing.end };
+        return applyReplacements(content, [{ range, value: '' }]);
+      }
+      if (!color) return content;
+      return applyReplacements(content, [{ range: { start: end, end }, value: `${settings.trim() ? ', ' : ''}${property}: ${color}` }]);
+    }
+    if (!color || structural[start] !== '{') return content;
+    return applyReplacements(content, [{ range: { start, end: start }, value: `[${property}: ${color}] ` }]);
+  }
+  return content;
 }

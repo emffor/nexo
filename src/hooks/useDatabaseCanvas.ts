@@ -45,6 +45,7 @@ type InteractionMode = "select" | "pan";
 export function useDatabaseCanvas({
   tables,
   notes,
+  groups,
   relations,
   theme,
   state,
@@ -284,7 +285,7 @@ export function useDatabaseCanvas({
 
   const { viewportScale, handleStageDragEnd, handleWheel, handleZoom,
     buildFitViewport, applyViewport, handleFitToContent } = useDatabaseViewport({
-      stageRef, stateRef, state, size, tables, notes, onStateChange,
+      stageRef, stateRef, state, size, tables, notes, groups, onStateChange,
     });
 
   const handleApplyAutoLayout = useCallback(
@@ -436,12 +437,12 @@ export function useDatabaseCanvas({
   const stageBg = colors.canvas;
   const tableBg = colors.surface;
   const tableBorder = colors.line;
-  const headerBg = colors.raised;
+  const headerBg = isDark ? colors.raised : "#eaf0f2";
   const headerText = colors.heading;
   const rowText = colors.text;
   const typeText = colors.muted;
-  const edgeColor = colors.edge;
-  const activeEdgeColor = colors.accent;
+  const edgeColor = isDark ? "#d7a27c" : "#c78c62";
+  const activeEdgeColor = isDark ? "#ffd1a8" : "#a75d2c";
   const badgeBg = colors.tagBg;
   const badgeText = colors.tag;
   const rowHighlight = colors.accentSoft;

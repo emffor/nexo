@@ -33,6 +33,7 @@ export interface DatabaseDiagramPanelProps {
   notes?: DatabaseStickyNote[];
   enums?: DatabaseEnum[];
   content?: string;
+  onContentChange?: (content: string) => void;
   tables: DatabaseTable[];
   relations: DatabaseRelation[];
   theme: AppTheme;

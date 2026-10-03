@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseDbml, renameDbmlColumn, renameDbmlTable } from './dbml';
+import { parseDbml, renameDbmlColumn, renameDbmlTable, setDbmlColor } from './dbml';
 
 describe('parseDbml', () => {
   it('parseia tabelas com colunas e flags', () => {
@@ -247,4 +247,42 @@ it('preserva notas multilinha de tabela e offsets para renomear colunas', () => 
   expect(parsed.tables[0].note).toContain('https://example.com');
   expect(parsed.tables[0].columns.map((column) => column.name)).toEqual(['id', 'nome']);
   expect(renameDbmlColumn(content, 'users', 'nome', 'name')).toContain("name varchar [note: 'Nome público']");
+});
+
+
+it('altera e remove cores preservando notas, aliases, campos e referências', () => {
+  const source = `Table "public.users" as U [note: 'a, b', headercolor : #abc] {
+ id int [pk]
+}
+Ref: public.users.id > orders.user_id`;
+  const target = { kind: 'Table' as const, name: 'public.users' };
+  const colored = setDbmlColor(source, target, '#334155');
+  expect(colored).toContain("[note: 'a, b', headercolor: #334155]");
+  expect(parseDbml(colored).tables[0].headerColor).toBe('#334155');
+  expect(setDbmlColor(colored, target, null)).toContain("[note: 'a, b']");
+  expect(colored).toContain('Ref: public.users.id > orders.user_id');
+  expect(setDbmlColor(source, target, 'invalid')).toBe(source);
+});
+
+it('persiste cores de grupos e notas e ignora exemplos dentro de strings', () => {
+  const source = `Note exemplo { 'Table users { id int }' }
+Table users { id int }
+TableGroup vendas {
+ users
+}`;
+  const table = setDbmlColor(source, { kind: 'Table', name: 'users' }, '#dbeafe');
+  expect(table).toContain("Note exemplo { 'Table users { id int }' }");
+  const group = setDbmlColor(table, { kind: 'TableGroup', name: 'vendas' }, '#fed7aa');
+  const note = setDbmlColor(group, { kind: 'Note', name: 'exemplo' }, '#ede9fe');
+  expect(parseDbml(note).groups[0].color).toBe('#fed7aa');
+  expect(parseDbml(note).notes[0].color).toBe('#ede9fe');
+  expect(parseDbml(setDbmlColor(note, { kind: 'Table', name: 'users' }, null)).tables[0].headerColor).toBeUndefined();
+});
+
+it('não interpreta menções a cores em notas como configurações e preserva delimitadores citados', () => {
+  const source = `Table users [note: 'Use [headercolor: #abc] neste exemplo'] { id int }`;
+  expect(parseDbml(source).tables[0].headerColor).toBeUndefined();
+  const next = setDbmlColor(source, { kind: 'Table', name: 'users' }, '#fed7aa');
+  expect(next).toContain("[note: 'Use [headercolor: #abc] neste exemplo', headercolor: #fed7aa]");
+  expect(parseDbml(next).tables[0].headerColor).toBe('#fed7aa');
 });

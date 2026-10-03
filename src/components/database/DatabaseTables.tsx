@@ -11,6 +11,10 @@ import {
   Rect,
   Text
 } from "react-konva";
+import { DatabaseCanvasIcon } from "./DatabaseCanvasIcon";
+import type { DatabaseColorTarget } from "../../lib/dbml";
+import type { DatabaseInspection } from "./DatabaseInspector";
+import { databaseColorText } from "../../lib/databaseCanvas";
 import { isRelationEndpoint } from "../../lib/databaseDiagramGeometry";
 import {
   DB_HEADER_HEIGHT,
@@ -20,6 +24,7 @@ import {
 } from "../../lib/databaseLayout";
 import { UI_CODE_FONT_FAMILY, UI_FONT_FAMILY, UI_RADIUS } from "../../lib/uiTheme";
 import type {
+  DatabaseEnum,
   DatabaseRelation,
   DatabaseTable,
   DatabaseTablePosition
@@ -27,6 +32,9 @@ import type {
 
 interface DatabaseTablesProps {
   tables: DatabaseTable[];
+  enums: DatabaseEnum[];
+  onOpenColor?: (target: DatabaseColorTarget) => void;
+  onInspect: (inspection: DatabaseInspection) => void;
   visualPositions: Record<string, DatabaseTablePosition>;
   selectedTableId: string | null;
   setSelectedTableId: Dispatch<SetStateAction<string | null>>;
@@ -57,6 +65,9 @@ interface DatabaseTablesProps {
 
 export function DatabaseTables({
   tables,
+  enums,
+  onOpenColor,
+  onInspect,
   visualPositions,
   selectedTableId,
   setSelectedTableId,
@@ -91,6 +102,7 @@ export function DatabaseTables({
         return null;
       }
       const height = computeDatabaseTableHeight(table.columns.length);
+      const tableHeaderText = table.headerColor ? databaseColorText(table.headerColor) : headerText;
       const isTableSelected = selectedTableId === table.id;
       return (
         <Group
@@ -140,18 +152,18 @@ export function DatabaseTables({
             width={DB_TABLE_WIDTH}
             height={DB_HEADER_HEIGHT}
             cornerRadius={[UI_RADIUS, UI_RADIUS, 0, 0]}
-            fill={headerBg}
+            fill={table.headerColor ?? headerBg}
             perfectDrawEnabled={false}
           />
           <Text
-            x={12}
-            y={9}
-            width={DB_TABLE_WIDTH - (table.records ? 72 : 24)}
+            x={32}
+            y={13}
+            width={DB_TABLE_WIDTH - (table.records ? 146 : 106)}
             text={table.name}
             fontSize={13}
             fontStyle="600"
-            fontFamily={UI_FONT_FAMILY}
-            fill={headerText}
+            fontFamily={UI_CODE_FONT_FAMILY}
+            fill={tableHeaderText}
             ellipsis
             onClick={(event) => {
               event.cancelBubble = true;
@@ -171,10 +183,13 @@ export function DatabaseTables({
             }}
             perfectDrawEnabled={false}
           />
+          <Text x={12} y={12} text="▦" fontSize={16} fill={tableHeaderText} listening={false} />
+          {onOpenColor && <DatabaseCanvasIcon x={DB_TABLE_WIDTH - 34} y={6} color={tableHeaderText} kind="palette" onClick={() => onOpenColor({ kind: 'Table', name: table.name })} />}
+          {table.note && <DatabaseCanvasIcon x={DB_TABLE_WIDTH - 64} y={6} color={tableHeaderText} kind="note" onClick={() => onInspect({ title: table.name, text: table.note })} />}
           {table.records && table.records.rows.length > 0 ? (
             <Text
-              x={DB_TABLE_WIDTH - 52}
-              y={9}
+              x={DB_TABLE_WIDTH - 108}
+              y={14}
               width={40}
               align="right"
               text="REC"
@@ -192,7 +207,8 @@ export function DatabaseTables({
           {table.columns.map((column, colIdx) => {
             const y = DB_HEADER_HEIGHT + colIdx * DB_ROW_HEIGHT;
             const isLastRow = colIdx === table.columns.length - 1;
-            const flagsX = DB_TABLE_WIDTH - 12;
+            const enumType = enums.find((entry) => entry.name === column.type || entry.name === `${table.name.includes('.') ? table.name.split('.').slice(0, -1).join('.') : 'public'}.${column.type}` || `public.${entry.name}` === column.type);
+            const flagsX = DB_TABLE_WIDTH - (column.note ? 40 : 12);
             const badges = [
               column.isPrimaryKey ? "PK" : null,
               column.isForeignKey ? "FK" : null,
@@ -208,7 +224,7 @@ export function DatabaseTables({
               activeEditor.tableId === table.id &&
               activeEditor.columnName === column.name;
             const reservedBadgeWidth =
-              badges.length > 0 ? badges.length * 26 - 4 : 0;
+              (badges.length > 0 ? badges.length * 26 - 4 : 0) + (column.note ? 28 : 0);
             return (
               <Group
                 key={column.id}
@@ -246,8 +262,10 @@ export function DatabaseTables({
                   y={(DB_ROW_HEIGHT - 12) / 2}
                   text={column.name}
                   fontSize={12}
-                  fontStyle={column.isPrimaryKey ? "600" : "400"}
-                  fontFamily={UI_FONT_FAMILY}
+                  width={DB_TABLE_WIDTH / 2 - 20}
+                  ellipsis
+                  fontStyle="600"
+                  fontFamily={UI_CODE_FONT_FAMILY}
                   fill={rowText}
                   onMouseEnter={(event) => {
                     const stage = event.target.getStage();
@@ -269,12 +287,16 @@ export function DatabaseTables({
                   width={DB_TABLE_WIDTH / 2 - 16 - reservedBadgeWidth}
                   align="right"
                   text={column.type}
+                  textDecoration={enumType ? 'underline' : undefined}
+                  onClick={enumType ? (event) => { event.cancelBubble = true; onInspect({ title: enumType.name, values: enumType.values }); } : undefined}
+                  onTap={enumType ? (event) => { event.cancelBubble = true; onInspect({ title: enumType.name, values: enumType.values }); } : undefined}
                   fontSize={11}
                   fontFamily={UI_CODE_FONT_FAMILY}
                   fill={typeText}
                   ellipsis
                   perfectDrawEnabled={false}
                 />
+                {column.note && <DatabaseCanvasIcon x={DB_TABLE_WIDTH - 34} y={2} color={isDark ? '#f2ba80' : '#b56d32'} kind="note" onClick={() => onInspect({ title: `${table.name}.${column.name}`, text: column.note })} />}
                 {badges.map((badge, badgeIndex) => (
                   <Group
                     key={badge}
@@ -290,7 +312,7 @@ export function DatabaseTables({
                       width={22}
                       height={14}
                       cornerRadius={UI_RADIUS}
-                      fill={badgeBg}
+                      fill={badge === "PK" ? (isDark ? "#4b3b20" : "#fff3d9") : badge === "FK" ? (isDark ? "#233c48" : "#e7f2f7") : badgeBg}
                       perfectDrawEnabled={false}
                     />
                     <Text
@@ -302,7 +324,7 @@ export function DatabaseTables({
                       fontSize={9}
                       fontStyle="700"
                       fontFamily={UI_FONT_FAMILY}
-                      fill={badgeText}
+                      fill={badge === "PK" ? (isDark ? "#f5d08a" : "#a3712e") : badge === "FK" ? (isDark ? "#9dd5e9" : "#42788c") : badgeText}
                       perfectDrawEnabled={false}
                     />
                   </Group>

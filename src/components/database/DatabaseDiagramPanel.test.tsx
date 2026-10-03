@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { forwardRef, type ReactNode } from 'react';
+import { forwardRef, useState, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { parseDbml } from '../../lib/dbml';
 import { isDatabasePathBlocked } from '../../lib/databaseRouting';
@@ -475,7 +475,7 @@ TableGroup vendas {
 }
 Note lembrete { 'Revise as chaves' }`);
   render(<DatabaseDiagramPanel {...parsed} content="Table users { id int }" state={{ positions: { users: { x: 60, y: 100 } } }} onStateChange={vi.fn()} theme="light" />);
-  expect(screen.getByText('vendas')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '▾ vendas' })).toBeInTheDocument();
   expect(screen.getByText('Revise as chaves')).toBeInTheDocument();
   const grid = screen.getByRole('button', { name: 'Grade' });
   expect(grid).toHaveAttribute('aria-pressed', 'true');
@@ -486,4 +486,47 @@ Note lembrete { 'Revise as chaves' }`);
   expect(screen.getByText('ativo · inativo')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Ajuda' }));
   expect(screen.getByRole('region', { name: 'Ajuda do diagrama' })).toHaveTextContent('TableGroup vendas');
+});
+
+
+it('recolhe e expande grupos preservando posições e relações', () => {
+  const parsed = parseDbml(content + '\nTableGroup contas {\n users\n}');
+  const changed = vi.fn();
+  function Harness() {
+    const [state, setState] = useState<DatabaseDiagramVisualState>({ positions: { users: { x: 60, y: 100 }, posts: { x: 540, y: 100 } } });
+    return <DatabaseDiagramPanel {...parsed} state={state} onStateChange={(next) => { changed(next); setState(next); }} theme="light" />;
+  }
+  render(<Harness />);
+  expect(screen.getByRole('button', { name: 'users' })).toBeInTheDocument();
+  const initialRelations = screen.getAllByRole('button', { name: 'Selecionar relação' }).length;
+  fireEvent.click(screen.getByRole('button', { name: '▾ contas' }));
+  expect(screen.queryByRole('button', { name: 'users' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Selecionar relação' })).not.toBeInTheDocument();
+  expect(changed.mock.lastCall?.[0]).toMatchObject({ collapsedGroups: ['contas'], positions: { users: { x: 60, y: 100 } } });
+  fireEvent.click(screen.getByRole('button', { name: '▸ contas' }));
+  expect(screen.getByRole('button', { name: 'users' })).toBeInTheDocument();
+  expect(screen.getAllByRole('button', { name: 'Selecionar relação' })).toHaveLength(initialRelations);
+});
+
+it('aplica e restaura cores pelo controle acessível e consulta enum no campo', () => {
+  const source = `Enum status {\n ativo\n inativo\n}\nTable users {\n id int [pk]\n status status\n email varchar [note: 'Email de contato']\n}`;
+  const changed = vi.fn();
+  function Harness() {
+    const [dbml, setDbml] = useState(source);
+    return <DatabaseDiagramPanel {...parseDbml(dbml)} content={dbml} onContentChange={(next) => { changed(next); setDbml(next); }} state={{ positions: { users: { x: 60, y: 100 } } }} onStateChange={vi.fn()} theme="light" />;
+  }
+  render(<Harness />);
+  fireEvent.click(screen.getByRole('button', { name: 'Estrutura' }));
+  fireEvent.click(screen.getByText('users', { selector: 'summary' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Cor da tabela users' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar cor #334155' }));
+  expect(parseDbml(changed.mock.lastCall![0]).tables[0].headerColor).toBe('#334155');
+  fireEvent.click(screen.getByRole('button', { name: 'Restaurar cor padrão' }));
+  expect(parseDbml(changed.mock.lastCall![0]).tables[0].headerColor).toBeUndefined();
+  fireEvent.click(screen.getByRole('button', { name: 'Fechar detalhes' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ver nota de email' }));
+  expect(screen.getByRole('dialog', { name: 'users.email' })).toHaveTextContent('Email de contato');
+  fireEvent.click(screen.getByRole('button', { name: 'Fechar detalhes' }));
+  fireEvent.click(screen.getByRole('button', { name: 'status' }));
+  expect(screen.getByRole('dialog', { name: 'status' })).toHaveTextContent('ativo');
 });

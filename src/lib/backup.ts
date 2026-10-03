@@ -300,7 +300,8 @@ function parseDatabaseVisualState(value: unknown): DatabaseDiagramVisualState | 
         ? [[key, { x: point.x, y: point.y }]] : [];
     }));
   }
-  return { positions, relationPaths, viewport, ...(notePositions ? { notePositions } : {}) };
+  const collapsedGroups = Array.isArray(raw.collapsedGroups) ? raw.collapsedGroups.filter((name): name is string => typeof name === 'string') : undefined;
+  return { positions, relationPaths, viewport, ...(collapsedGroups ? { collapsedGroups } : {}), ...(notePositions ? { notePositions } : {}) };
 }
 
 function parseDatabaseDiagram(

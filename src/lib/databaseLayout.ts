@@ -5,9 +5,9 @@ import type {
   DatabaseTablePosition,
 } from '../types/database';
 
-export const DB_TABLE_WIDTH = 240;
-export const DB_HEADER_HEIGHT = 32;
-export const DB_ROW_HEIGHT = 26;
+export const DB_TABLE_WIDTH = 320;
+export const DB_HEADER_HEIGHT = 40;
+export const DB_ROW_HEIGHT = 32;
 export const DB_TABLE_PADDING_BOTTOM = 8;
 export const DB_GRID_OFFSET = 60;
 export const DB_GRID_GAP_X = 80;

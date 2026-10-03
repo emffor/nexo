@@ -180,3 +180,13 @@ it('preserva posições de notas no backup do banco', () => {
   } }));
   expect(parsed.databaseDiagram?.state.notePositions).toEqual({ lembrete: { x: 520, y: 90 } });
 });
+
+
+it('preserva grupos recolhidos e as cores contidas no DBML', () => {
+  const content = 'Table users [headercolor: #334155] { id int }';
+  const parsed = parseBackupFile(JSON.stringify({ version: 1, items: [], databaseDiagram: {
+    content, state: { positions: {}, collapsedGroups: ['contas', 42] },
+  } }));
+  expect(parsed.databaseDiagram?.state.collapsedGroups).toEqual(['contas']);
+  expect(parsed.databaseDiagram?.content).toBe(content);
+});

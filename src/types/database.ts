@@ -39,6 +39,7 @@ export interface DatabaseTable {
   id: string;
   name: string;
   columns: DatabaseColumn[];
+  headerColor?: string;
   note?: string;
   records?: DatabaseRecordSet;
   sourceRange?: DatabaseSourceRange;
@@ -118,6 +119,7 @@ export interface DatabaseRelationPathState {
 
 export interface DatabaseDiagramVisualState {
   positions: Record<string, DatabaseTablePosition>;
+  collapsedGroups?: string[];
   notePositions?: Record<string, DatabaseTablePosition>;
   relationPaths?: Record<string, DatabaseRelationPathState>;
   viewport?: DatabaseDiagramViewport;
