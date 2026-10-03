@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Nexo">
-  <rect width="32" height="32" rx="4" fill="#ffffff"/>
-  <g transform="translate(2 4)" fill="#000000">
-    <path d="M24.8841 0L28 5.37805L24.8841 10.7561H18.6524L15.5366 5.37805L18.6524 0Z"/>
-    <path d="M9.34756 0L20.189 18.6951L17.0732 24.0732H10.8415L0 5.37805L3.11585 0Z"/>
+  <rect width="32" height="32" rx="4" fill="#ffffff" />
+  <g transform="translate(4 4) scale(0.75)">
+    <rect x="3" y="3" width="6" height="26" rx="3" fill="#000000" />
+    <rect x="23" y="3" width="6" height="26" rx="3" fill="#000000" />
+    <path d="M6 9L26 23" stroke="#4976F4" stroke-width="4" stroke-linecap="round" />
+    <circle cx="6" cy="9" r="4" fill="#4976F4" />
+    <circle cx="26" cy="23" r="4" fill="#4976F4" />
   </g>
 </svg>
