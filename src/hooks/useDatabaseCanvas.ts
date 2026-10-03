@@ -44,6 +44,7 @@ type InteractionMode = "select" | "pan";
 
 export function useDatabaseCanvas({
   tables,
+  notes,
   relations,
   theme,
   state,
@@ -283,7 +284,7 @@ export function useDatabaseCanvas({
 
   const { viewportScale, handleStageDragEnd, handleWheel, handleZoom,
     buildFitViewport, applyViewport, handleFitToContent } = useDatabaseViewport({
-      stageRef, stateRef, state, size, tables, onStateChange,
+      stageRef, stateRef, state, size, tables, notes, onStateChange,
     });
 
   const handleApplyAutoLayout = useCallback(

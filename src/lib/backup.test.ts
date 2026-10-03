@@ -173,3 +173,10 @@ describe('backup', () => {
     expect(restored.projects[0].items).toHaveLength(2);
   });
 });
+
+it('preserva posições de notas no backup do banco', () => {
+  const parsed = parseBackupFile(JSON.stringify({ version: 1, items: [], databaseDiagram: {
+    content: "Note lembrete { 'Revisar' }", state: { positions: {}, notePositions: { lembrete: { x: 520, y: 90 }, invalida: { x: 'a', y: 0 } } },
+  } }));
+  expect(parsed.databaseDiagram?.state.notePositions).toEqual({ lembrete: { x: 520, y: 90 } });
+});

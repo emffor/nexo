@@ -43,9 +43,16 @@ function maskWithSpaces(value: string): string {
   return value.replace(/[^\r\n]/g, ' ');
 }
 
+// Keep offsets intact so visual renames can safely patch the original DBML.
+const DBML_STRING_OR_COMMENT = /'''[\s\S]*?'''|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`|\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/g;
+
 function maskComments(content: string): string {
-  const withoutBlocks = content.replace(/\/\*[\s\S]*?\*\//g, maskWithSpaces);
-  return withoutBlocks.replace(/\/\/[^\r\n]*/g, maskWithSpaces);
+  return content.replace(DBML_STRING_OR_COMMENT, (token) =>
+    token.startsWith('/') ? maskWithSpaces(token) : token);
+}
+
+function maskStrings(content: string): string {
+  return content.replace(DBML_STRING_OR_COMMENT, maskWithSpaces);
 }
 
 function splitLinesWithStart(content: string, baseStart = 0): ParsedLine[] {
@@ -197,6 +204,7 @@ function countBraceDelta(value: string): number {
 }
 
 function findMatchingBrace(content: string, openIndex: number): number {
+  content = maskStrings(content);
   let depth = 0;
   for (let index = openIndex; index < content.length; index += 1) {
     const ch = content[index];
@@ -290,7 +298,11 @@ function parseTables(masked: string, errors: string[]): DatabaseTable[] {
     }
 
     const tableName = unquote(rawName);
-    const body = masked.slice(openBrace + 1, closeBrace);
+    const rawBody = masked.slice(openBrace + 1, closeBrace);
+    const tableNotePattern = /(?:^|\n)[\t ]*Note\s*(?::|\{)\s*('''[\s\S]*?'''|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")\s*\}?/gi;
+    const rawNote = [...rawBody.matchAll(tableNotePattern)][0]?.[1];
+    const note = rawNote?.startsWith("'''") ? rawNote.slice(3, -3).trim() : rawNote ? unquote(rawNote) : undefined;
+    const body = rawBody.replace(tableNotePattern, maskWithSpaces);
     const columns: DatabaseColumn[] = [];
     let columnIndex = 0;
     let skipDepth = 0;
@@ -324,6 +336,7 @@ function parseTables(masked: string, errors: string[]): DatabaseTable[] {
       id: tableName,
       name: tableName,
       columns,
+      note,
       sourceRange: { start: match.index, end: closeBrace + 1 },
       nameSourceRange: {
         start: nameStart,
@@ -631,6 +644,13 @@ export function renameDbmlTable(
       replacements.push({ range: table.nameSourceRange, value: normalized });
     }
   }
+  for (const group of parsed.groups) {
+    for (const member of group.tables) {
+      if (member.name === currentName && member.sourceRange) {
+        replacements.push({ range: member.sourceRange, value: normalized });
+      }
+    }
+  }
   for (const record of parsed.records) {
     if (record.tableName === currentName && record.tableNameSourceRange) {
       replacements.push({
@@ -717,9 +737,52 @@ export function renameDbmlColumn(
   return applyReplacements(content, replacements);
 }
 
+function parseAnnotations(content: string, errors: string[]) {
+  const groups: DatabaseDiagramParseResult['groups'] = [];
+  const notes: DatabaseDiagramParseResult['notes'] = [];
+  const enums: DatabaseDiagramParseResult['enums'] = [];
+  const regex = /\b(TableGroup|Enum|Note)\s+("[^"]+"|[\w.]+)\s*(?:\[([^\]]*)\])?\s*\{/gi;
+  let core = content;
+  const structuralContent = maskStrings(content);
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(content))) {
+    // Ignore constructs embedded inside strings (including sticky-note examples).
+    if (!structuralContent.slice(match.index, match.index + match[1].length).trim()) continue;
+    const end = findMatchingBrace(content, regex.lastIndex - 1);
+    if (end < 0) {
+      errors.push(`${match[1]} "${match[2]}" sem fechamento`);
+      continue;
+    }
+    const body = content.slice(regex.lastIndex, end);
+    const name = unquote(match[2]);
+    const color = match[3]?.match(/color\s*:\s*(#[0-9a-f]{6}|#[0-9a-f]{3})\b/i)?.[1];
+    const notePattern = /\bNote\s*(?::|\{)\s*('''[\s\S]*?'''|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")\s*\}?/gi;
+    const noteValue = (value: string) => value.startsWith("'''") ? value.slice(3, -3).trim() : unquote(value);
+    if (match[1].toLowerCase() === 'note') {
+      notes.push({ name, text: noteValue(body.trim()), color });
+    } else if (match[1].toLowerCase() === 'enum') {
+      enums.push({ name, values: splitLinesWithStart(body).flatMap((line) => {
+        const token = readToken(line.text.trim());
+        return token ? [unquote(token)] : [];
+      }) });
+    } else {
+      const note = [...body.matchAll(notePattern)][0]?.[1] ?? match[3]?.match(/note\s*:\s*('[^']*'|"[^"]*")/i)?.[1];
+      const members = body.replace(notePattern, maskWithSpaces);
+      groups.push({ name, color, note: note ? noteValue(note) : undefined,
+        tables: splitLinesWithStart(members, regex.lastIndex).flatMap((line) => {
+          const trimmed = trimLine(line);
+          return trimmed ? [{ name: unquote(trimmed.text), sourceRange: { start: trimmed.start, end: trimmed.start + trimmed.text.length } }] : [];
+        }) });
+    }
+    core = core.slice(0, match.index) + maskWithSpaces(content.slice(match.index, end + 1)) + core.slice(end + 1);
+    regex.lastIndex = end + 1;
+  }
+  return { core, groups, notes, enums };
+}
+
 export function parseDbml(content: string): DatabaseDiagramParseResult {
-  const masked = maskComments(content);
   const errors: string[] = [];
+  const { core: masked, groups, notes, enums } = parseAnnotations(maskComments(content), errors);
   const tables = parseTables(masked, errors);
   const records = parseRecords(masked);
   const relations = parseRelations(masked, errors);
@@ -734,5 +797,5 @@ export function parseDbml(content: string): DatabaseDiagramParseResult {
 
   markForeignKeys(tables, relations);
 
-  return { tables, relations, records, errors };
+  return { tables, relations, records, errors, groups, notes, enums };
 }

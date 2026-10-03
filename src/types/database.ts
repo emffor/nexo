@@ -39,6 +39,7 @@ export interface DatabaseTable {
   id: string;
   name: string;
   columns: DatabaseColumn[];
+  note?: string;
   records?: DatabaseRecordSet;
   sourceRange?: DatabaseSourceRange;
   nameSourceRange?: DatabaseSourceRange;
@@ -63,7 +64,28 @@ export interface DatabaseRelation {
   toColumnSourceRange?: DatabaseSourceRange;
 }
 
+export interface DatabaseTableGroup {
+  name: string;
+  tables: DatabaseRecordColumn[];
+  note?: string;
+  color?: string;
+}
+
+export interface DatabaseStickyNote {
+  name: string;
+  text: string;
+  color?: string;
+}
+
+export interface DatabaseEnum {
+  name: string;
+  values: string[];
+}
+
 export interface DatabaseDiagramParseResult {
+  groups: DatabaseTableGroup[];
+  notes: DatabaseStickyNote[];
+  enums: DatabaseEnum[];
   tables: DatabaseTable[];
   relations: DatabaseRelation[];
   records: DatabaseRecordSet[];
@@ -96,6 +118,7 @@ export interface DatabaseRelationPathState {
 
 export interface DatabaseDiagramVisualState {
   positions: Record<string, DatabaseTablePosition>;
+  notePositions?: Record<string, DatabaseTablePosition>;
   relationPaths?: Record<string, DatabaseRelationPathState>;
   viewport?: DatabaseDiagramViewport;
 }

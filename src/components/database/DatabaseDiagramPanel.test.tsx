@@ -462,3 +462,28 @@ describe('DatabaseDiagramPanel', () => {
     expect(nextPoints[2].x).toBe(startX + 24);
   });
 });
+
+it('mostra grupos, notas, enums e ajuda e alterna a grade', async () => {
+  const parsed = parseDbml(`Table users { id int }
+Enum status {
+ ativo
+ inativo
+}
+TableGroup vendas {
+ users
+ Note: 'Tabelas do módulo'
+}
+Note lembrete { 'Revise as chaves' }`);
+  render(<DatabaseDiagramPanel {...parsed} content="Table users { id int }" state={{ positions: { users: { x: 60, y: 100 } } }} onStateChange={vi.fn()} theme="light" />);
+  expect(screen.getByText('vendas')).toBeInTheDocument();
+  expect(screen.getByText('Revise as chaves')).toBeInTheDocument();
+  const grid = screen.getByRole('button', { name: 'Grade' });
+  expect(grid).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(grid);
+  expect(grid).toHaveAttribute('aria-pressed', 'false');
+  fireEvent.click(screen.getByRole('button', { name: 'Estrutura' }));
+  expect(screen.getByText('Enums (1)')).toBeInTheDocument();
+  expect(screen.getByText('ativo · inativo')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Ajuda' }));
+  expect(screen.getByRole('region', { name: 'Ajuda do diagrama' })).toHaveTextContent('TableGroup vendas');
+});

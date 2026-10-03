@@ -1,4 +1,7 @@
 "use client";
+import { useState } from "react";
+import { downloadTextFile } from "../../lib/textFiles";
+import { DatabaseAnnotations } from "./DatabaseAnnotations";
 import { AUTO_LAYOUT_OPTIONS } from "../../lib/databaseCanvas";
 import type { DatabaseDiagramPanelProps } from "../../types/databaseCanvas";
 
@@ -144,6 +147,10 @@ function HandIcon() {
 }
 
 export default function DatabaseDiagramPanel({
+  groups = [],
+  notes = [],
+  enums = [],
+  content = "",
   tables,
   relations,
   theme,
@@ -154,6 +161,10 @@ export default function DatabaseDiagramPanel({
   edgeStyle = "square",
   resetSignal = 0,
 }: DatabaseDiagramPanelProps) {
+  const [showGrid, setShowGrid] = useState(true);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const {
     containerRef,
     size,
@@ -213,13 +224,84 @@ export default function DatabaseDiagramPanel({
     editorLeft,
     editorTop,
     recordsTable,
-  } = useDatabaseCanvas({ tables, relations, theme, state, onStateChange, onRenameTable, onRenameColumn, edgeStyle, resetSignal });
+  } = useDatabaseCanvas({ tables, notes, relations, theme, state, onStateChange, onRenameTable, onRenameColumn, edgeStyle, resetSignal });
   return (
     <div
       ref={containerRef}
       className="nexo-surface nexo-canvas-surface relative h-full min-h-[480px] w-full overflow-hidden rounded-2xl border border-[var(--ui-line)] bg-[var(--ui-surface)] shadow-sm"
       style={{ backgroundColor: stageBg }}
     >
+      {showGrid && <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{
+        backgroundImage: 'linear-gradient(var(--ui-line) 1px, transparent 1px), linear-gradient(90deg, var(--ui-line) 1px, transparent 1px)',
+        backgroundSize: `${20 * viewportScale}px ${20 * viewportScale}px`,
+        backgroundPosition: `${state.viewport?.x ?? 0}px ${state.viewport?.y ?? 0}px`, opacity: 0.4,
+      }} />}
+      <div className="absolute right-3 top-3 z-40 flex max-w-[calc(100%-1.5rem)] flex-wrap justify-end gap-1 rounded-xl border border-[var(--ui-line)] bg-[var(--ui-surface)] p-1 text-xs">
+        <button type="button" className="toolbar-button px-3 py-2" aria-pressed={showGrid} onClick={() => setShowGrid(!showGrid)}>Grade</button>
+        <button type="button" className="toolbar-button px-3 py-2" aria-pressed={showDetails} onClick={() => setShowDetails(!showDetails)}>Estrutura</button>
+        <button type="button" className="toolbar-button px-3 py-2" onClick={() => onStateChange({ ...state, viewport: { x: 0, y: 0, scale: 1 } })}>Zoom 100%</button>
+        <button type="button" className="toolbar-button px-3 py-2" onClick={() => downloadTextFile('diagrama.dbml', content)}>DBML ↓</button>
+        <button type="button" className="toolbar-button px-3 py-2" onClick={() => {
+          try {
+            const stage = stageRef.current;
+            if (!stage) return;
+            const anchor = document.createElement('a');
+            const canvas = stage.toCanvas({ pixelRatio: 2 });
+            const context = canvas.getContext('2d');
+            if (!context) throw new Error('Canvas indisponível');
+            context.globalCompositeOperation = 'destination-over';
+            if (showGrid) {
+              const spacing = 40 * viewportScale;
+              context.strokeStyle = tableBorder;
+              context.globalAlpha = 0.4;
+              context.beginPath();
+              for (let x = ((stage.x() * 2) % spacing + spacing) % spacing; x < canvas.width; x += spacing) {
+                context.moveTo(x, 0);
+                context.lineTo(x, canvas.height);
+              }
+              for (let y = ((stage.y() * 2) % spacing + spacing) % spacing; y < canvas.height; y += spacing) {
+                context.moveTo(0, y);
+                context.lineTo(canvas.width, y);
+              }
+              context.stroke();
+              context.globalAlpha = 1;
+            }
+            context.fillStyle = stageBg;
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            anchor.href = canvas.toDataURL('image/png');
+            anchor.download = 'diagrama.png';
+            anchor.click();
+            setExportError(null);
+          } catch { setExportError('Não foi possível exportar a imagem.'); }
+        }} title="Exportar área visível em PNG">PNG ↓</button>
+        <button type="button" className="toolbar-button px-3 py-2" aria-expanded={showHelp} onClick={() => setShowHelp(!showHelp)}>Ajuda</button>
+      </div>
+      {exportError && <p role="alert" className="absolute right-4 top-16 z-50 bg-[var(--ui-surface)] p-3 text-sm">{exportError}</p>}
+      {showHelp && <section aria-label="Ajuda do diagrama" className="absolute right-4 top-16 z-50 max-h-[70%] w-80 max-w-[calc(100%-2rem)] overflow-auto rounded-xl border border-[var(--ui-line)] bg-[var(--ui-surface)] p-4 text-xs leading-6 text-[var(--ui-text)]">
+        <div className="flex justify-between"><strong>Modelagem do banco</strong><button type="button" onClick={() => setShowHelp(false)}>Fechar</button></div>
+        <p>Arraste tabelas e notas. Use o modo mão para mover o canvas. Ctrl/⌘ + rolagem controla o zoom. Organizar distribui as tabelas; Ajustar enquadra o conteúdo.</p>
+        <p>Desfaça e refaça alterações pelos botões do editor ou Ctrl/⌘ Z e Ctrl/⌘ Shift Z no editor. PNG exporta a área visível; DBML exporta o código completo.</p>
+        <pre className="overflow-auto rounded-lg bg-[var(--ui-raised)] p-2">{`Enum status {
+  ativo
+  inativo
+}
+
+TableGroup vendas {
+  usuarios
+  pedidos
+  Note: 'Tabelas do módulo'
+}
+
+Note lembrete {
+  'Revise os relacionamentos'
+}`}</pre>
+      </section>}
+      {showDetails && <section aria-label="Estrutura do banco" className="absolute right-4 top-16 z-40 max-h-[70%] w-72 max-w-[calc(100%-2rem)] overflow-auto rounded-xl border border-[var(--ui-line)] bg-[var(--ui-surface)] p-4 text-xs text-[var(--ui-text)]">
+        <div className="mb-3 flex justify-between"><strong>Estrutura do banco</strong><button type="button" onClick={() => setShowDetails(false)}>Fechar</button></div>
+        {tables.map((table) => <details key={table.id} className="mb-3"><summary className="cursor-pointer font-semibold">{table.name}</summary>{table.note && <p className="mt-2 whitespace-pre-wrap text-[var(--ui-muted)]">{table.note}</p>}<ul className="mt-2 space-y-2">{table.columns.map((column) => <li key={column.id}>{column.name} · {column.type}{column.note && <p className="text-[var(--ui-muted)]">{column.note}</p>}</li>)}</ul></details>)}
+        <h3 className="mb-2 font-semibold">Enums ({enums.length})</h3>
+        {enums.map((entry) => <details key={entry.name} className="mb-3"><summary className="cursor-pointer">{entry.name}</summary><p className="mt-1 text-[var(--ui-muted)]">{entry.values.join(' · ')}</p></details>)}
+      </section>}
       <Stage
         ref={stageRef}
         width={size.width}
@@ -236,6 +318,9 @@ export default function DatabaseDiagramPanel({
           }
         }}
       >
+        <Layer>
+          <DatabaseAnnotations groups={groups} notes={notes} tables={tables} state={state} onStateChange={onStateChange} positions={visualPositions} foreground={headerText} />
+        </Layer>
         <Layer>
           <DatabaseRelations
             relations={relations}
@@ -296,7 +381,7 @@ export default function DatabaseDiagramPanel({
         </Layer>
       </Stage>
 
-      {tables.length === 0 ? (
+      {tables.length === 0 && notes.length === 0 ? (
         <div
           className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-[var(--ui-muted)]"
         >

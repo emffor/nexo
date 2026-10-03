@@ -32,3 +32,11 @@ export const AUTO_LAYOUT_OPTIONS: {
       icon: "grid",
     },
   ];
+
+export function databaseNotePosition(positions: Record<string, { x: number; y: number }>, index: number) {
+  return { x: Math.max(0, ...Object.values(positions).map((position) => position.x + 300)) + 60, y: 60 + index * 220 };
+}
+
+export function databaseNoteHeight(text: string) {
+  return 54 + text.split('\n').reduce((count, line) => count + Math.max(1, Math.ceil(line.length / 28)), 0) * 18;
+}

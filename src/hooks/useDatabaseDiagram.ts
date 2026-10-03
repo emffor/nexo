@@ -31,6 +31,12 @@ export interface UseDatabaseDiagramResult {
   databaseDiagram: DatabaseDiagramRecord | null;
   databaseParseResult: DatabaseDiagramParseResult;
   databaseResetSignal: number;
+  canUndoDatabase: boolean;
+  canRedoDatabase: boolean;
+  undoDatabase: () => void;
+  redoDatabase: () => void;
+  databaseSaveStatus: 'saved' | 'saving' | 'error';
+
   getCurrentDatabaseDiagram: () => Promise<DatabaseDiagramRecord>;
   onDatabaseContentChange: (next: string) => void;
   onDatabaseStateChange: (next: DatabaseDiagramVisualState) => void;
@@ -65,6 +71,16 @@ export function useDatabaseDiagram({
     useState<DatabaseDiagramRecord | null>(null);
   const [databaseResetSignal, setDatabaseResetSignal] = useState(0);
   const [isContentStable, setIsContentStable] = useState(true);
+
+  const historyRef = useRef<{ past: DatabaseDiagramRecord[]; future: DatabaseDiagramRecord[] }>({ past: [], future: [] });
+  const [historyCounts, setHistoryCounts] = useState({ past: 0, future: 0 });
+  const [databaseSaveStatus, setDatabaseSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+  const lastContentEditRef = useRef(0);
+  const resetHistory = useCallback(() => {
+    historyRef.current = { past: [], future: [] };
+    setHistoryCounts({ past: 0, future: 0 });
+    lastContentEditRef.current = 0;
+  }, []);
 
   const databaseDiagramRef = useRef<DatabaseDiagramRecord | null>(null);
   const pendingSnapshotRef = useRef<DatabaseDiagramRecord | null>(null);
@@ -104,7 +120,11 @@ export function useDatabaseDiagram({
           await saveDatabaseDiagramRecord(buildPersistableRecord(snapshot), projectId);
           await touchProject(projectId);
           hasAutosaveErrorRef.current = false;
+          if (!pendingSnapshotRef.current && databaseDiagramRef.current === snapshot) {
+            setDatabaseSaveStatus('saved');
+          }
         } catch {
+          setDatabaseSaveStatus('error');
           if (!hasAutosaveErrorRef.current) {
             hasAutosaveErrorRef.current = true;
             onAutosaveErrorRef.current?.();
@@ -132,6 +152,7 @@ export function useDatabaseDiagram({
 
   const scheduleSnapshotSave = useCallback(
     (snapshot: DatabaseDiagramRecord) => {
+      setDatabaseSaveStatus('saving');
       pendingSnapshotRef.current = snapshot;
       clearAutosaveTimer();
       autosaveTimerRef.current = setTimeout(() => {
@@ -163,6 +184,7 @@ export function useDatabaseDiagram({
   const applyDatabaseUpdate = useCallback(
     (
       updater: (current: DatabaseDiagramRecord) => DatabaseDiagramRecord,
+      historyMode: 'record' | 'content' | 'skip' = 'record',
     ): DatabaseDiagramRecord | null => {
       const current = databaseDiagramRef.current;
       if (!current) {
@@ -170,6 +192,16 @@ export function useDatabaseDiagram({
       }
 
       const next = updater(current);
+      if (next === current) return current;
+      if (historyMode !== 'skip') {
+        const now = Date.now();
+        if (historyMode !== 'content' || now - lastContentEditRef.current > 650) {
+          historyRef.current.past = [...historyRef.current.past.slice(-99), current];
+        }
+        lastContentEditRef.current = historyMode === 'content' ? now : 0;
+        historyRef.current.future = [];
+        setHistoryCounts({ past: historyRef.current.past.length, future: 0 });
+      }
       databaseDiagramRef.current = next;
       setDatabaseDiagram(next);
       scheduleSnapshotSave(next);
@@ -180,6 +212,7 @@ export function useDatabaseDiagram({
 
   useEffect(() => {
     let active = true;
+    resetHistory();
     databaseDiagramRef.current = null;
     setDatabaseDiagram(null);
 
@@ -195,7 +228,7 @@ export function useDatabaseDiagram({
     return () => {
       active = false;
     };
-  }, [markContentAsStable, projectId]);
+  }, [markContentAsStable, projectId, resetHistory]);
 
   useEffect(() => {
     const handlePageHide = () => {
@@ -226,7 +259,7 @@ export function useDatabaseDiagram({
     });
 
     if (nextState !== current.state) {
-      applyDatabaseUpdate((record) => ({ ...record, state: nextState }));
+      applyDatabaseUpdate((record) => ({ ...record, state: nextState }), 'skip');
     }
   }, [applyDatabaseUpdate, databaseParseResult, isContentStable]);
 
@@ -244,7 +277,7 @@ export function useDatabaseDiagram({
   const onDatabaseContentChange = useCallback(
     (next: string) => {
       markContentAsEditing();
-      applyDatabaseUpdate((current) => ({ ...current, content: next }));
+      applyDatabaseUpdate((current) => current.content === next ? current : ({ ...current, content: next }), 'content');
     },
     [applyDatabaseUpdate, markContentAsEditing],
   );
@@ -255,6 +288,20 @@ export function useDatabaseDiagram({
     },
     [applyDatabaseUpdate],
   );
+
+  const travelHistory = useCallback((direction: 'past' | 'future') => {
+    const current = databaseDiagramRef.current;
+    const history = historyRef.current;
+    const snapshot = history[direction].pop();
+    if (!current || !snapshot) return;
+    history[direction === 'past' ? 'future' : 'past'].push(current);
+    lastContentEditRef.current = 0;
+    markContentAsStable();
+    applyDatabaseUpdate(() => snapshot, 'skip');
+    setHistoryCounts({ past: history.past.length, future: history.future.length });
+  }, [applyDatabaseUpdate, markContentAsStable]);
+  const undoDatabase = useCallback(() => travelHistory('past'), [travelHistory]);
+  const redoDatabase = useCallback(() => travelHistory('future'), [travelHistory]);
 
   const onRenameDatabaseTable = useCallback(
     (tableName: string, nextName: string): boolean => {
@@ -346,6 +393,7 @@ export function useDatabaseDiagram({
 
   const replaceDatabaseDiagramRecord = useCallback(
     async (record: Partial<DatabaseDiagramRecord> & { content: string }) => {
+      resetHistory();
       cancelPendingSnapshot();
       markContentAsStable();
       const next = await saveDatabaseDiagramRecord(record, projectId);
@@ -354,10 +402,11 @@ export function useDatabaseDiagram({
       setDatabaseDiagram(next);
       return next;
     },
-    [cancelPendingSnapshot, markContentAsStable, projectId],
+    [cancelPendingSnapshot, markContentAsStable, projectId, resetHistory],
   );
 
   const resetDatabaseDiagramToDefault = useCallback(async () => {
+    resetHistory();
     cancelPendingSnapshot();
     markContentAsStable();
     const next = await resetDatabaseDiagram(projectId);
@@ -366,9 +415,14 @@ export function useDatabaseDiagram({
     setDatabaseDiagram(next);
     setDatabaseResetSignal((value) => value + 1);
     return next;
-  }, [cancelPendingSnapshot, markContentAsStable, projectId]);
+  }, [cancelPendingSnapshot, markContentAsStable, projectId, resetHistory]);
 
   return {
+    canUndoDatabase: historyCounts.past > 0,
+    canRedoDatabase: historyCounts.future > 0,
+    undoDatabase,
+    redoDatabase,
+    databaseSaveStatus,
     databaseDiagram,
     databaseParseResult,
     databaseResetSignal,

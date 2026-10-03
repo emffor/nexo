@@ -7,6 +7,25 @@ import {
   type UseDatabaseDiagramResult,
 } from './useDatabaseDiagram';
 
+// Exercise the hook against an isolated persistence adapter, never the live API.
+vi.mock('../lib/databaseDiagramStore', async () => {
+  const { db } = await import('../lib/db');
+  const { DEFAULT_DATABASE_DBML } = await import('../types/database');
+  return {
+    getDatabaseDiagram: async () => (await db.databaseDiagrams.get('main')) ?? {
+      id: 'main', title: 'Diagrama', content: DEFAULT_DATABASE_DBML,
+      state: { positions: {} }, createdAt: '2026-01-01', updatedAt: '2026-01-01',
+    },
+    saveDatabaseDiagramRecord: async (patch: object) => {
+      const next = { ...(await db.databaseDiagrams.get('main')), ...patch, id: 'main' };
+      await db.databaseDiagrams.put(next as import('../types/database').DatabaseDiagramRecord);
+      return next;
+    },
+    resetDatabaseDiagram: vi.fn(),
+  };
+});
+vi.mock('../lib/projects', () => ({ touchProject: vi.fn().mockResolvedValue(undefined) }));
+
 function Harness({
   onReady,
   onAutosaveError,
@@ -87,4 +106,27 @@ describe('useDatabaseDiagram', () => {
       expect(latest?.databaseDiagram?.state.viewport).toEqual(savedViewport);
     });
   });
+});
+
+it('desfaz e refaz conteúdo, renomeação e posição de notas juntos', async () => {
+  let latest: UseDatabaseDiagramResult | undefined;
+  render(<Harness onReady={(result) => { latest = result; }} />);
+  await waitFor(() => expect(latest?.databaseDiagram).not.toBeNull());
+  act(() => latest?.onDatabaseContentChange('Table users { id integer [pk] }\nTableGroup vendas {\n users\n}'));
+  await waitFor(() => expect(latest?.databaseDiagram?.state.positions.users).toBeDefined());
+  act(() => latest?.onRenameDatabaseTable('users', 'clientes'));
+  expect(latest?.databaseParseResult.groups[0].tables[0].name).toBe('clientes');
+  act(() => latest?.undoDatabase());
+  expect(latest?.databaseParseResult.tables[0].name).toBe('users');
+  act(() => latest?.redoDatabase());
+  expect(latest?.databaseParseResult.tables[0].name).toBe('clientes');
+  act(() => latest?.onDatabaseStateChange({ ...latest.databaseDiagram!.state, notePositions: { lembrete: { x: 700, y: 80 } } }));
+  act(() => latest?.undoDatabase());
+  expect(latest?.databaseDiagram?.state.notePositions).toBeUndefined();
+  act(() => latest?.redoDatabase());
+  expect(latest?.databaseDiagram?.state.notePositions?.lembrete.x).toBe(700);
+  await waitFor(async () => expect((await db.databaseDiagrams.get('main'))?.state.notePositions?.lembrete.x).toBe(700));
+  act(() => latest?.undoDatabase());
+  act(() => latest?.onDatabaseContentChange('Table nova { id integer }'));
+  expect(latest?.canRedoDatabase).toBe(false);
 });

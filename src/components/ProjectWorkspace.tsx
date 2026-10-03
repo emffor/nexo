@@ -92,6 +92,11 @@ export function ProjectWorkspace({
     databaseDiagram,
     databaseParseResult,
     databaseResetSignal,
+    canUndoDatabase,
+    canRedoDatabase,
+    undoDatabase,
+    redoDatabase,
+    databaseSaveStatus,
     onDatabaseContentChange,
     onDatabaseStateChange,
     onRenameDatabaseTable,
@@ -208,6 +213,11 @@ export function ProjectWorkspace({
               theme={theme}
               onChange={onDatabaseContentChange}
               errors={databaseParseResult.errors}
+              onUndo={undoDatabase}
+              onRedo={redoDatabase}
+              canUndo={canUndoDatabase}
+              canRedo={canRedoDatabase}
+              saveStatus={databaseSaveStatus}
             />
           ) : viewMode === "diagram" ? (
             <DiagramSidebar
@@ -252,6 +262,10 @@ export function ProjectWorkspace({
         rightPanel={
           viewMode === "database" ? (
             <DatabaseDiagramPanel
+              groups={databaseParseResult.groups}
+              notes={databaseParseResult.notes}
+              enums={databaseParseResult.enums}
+              content={databaseDiagram?.content ?? ""}
               tables={databaseParseResult.tables}
               relations={databaseParseResult.relations}
               theme={theme}

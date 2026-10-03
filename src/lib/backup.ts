@@ -291,7 +291,16 @@ function parseDatabaseVisualState(value: unknown): DatabaseDiagramVisualState | 
     }
   }
 
-  return { positions, relationPaths, viewport };
+  let notePositions: DatabaseDiagramVisualState['notePositions'];
+  if (raw.notePositions && typeof raw.notePositions === 'object') {
+    notePositions = Object.fromEntries(Object.entries(raw.notePositions).flatMap(([key, entry]) => {
+      if (!entry || typeof entry !== 'object') return [];
+      const point = entry as Record<string, unknown>;
+      return typeof point.x === 'number' && Number.isFinite(point.x) && typeof point.y === 'number' && Number.isFinite(point.y)
+        ? [[key, { x: point.x, y: point.y }]] : [];
+    }));
+  }
+  return { positions, relationPaths, viewport, ...(notePositions ? { notePositions } : {}) };
 }
 
 function parseDatabaseDiagram(

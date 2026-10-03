@@ -4,6 +4,8 @@ import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import type { DatabaseDiagramViewport, DatabaseDiagramVisualState, DatabaseTable } from "../types/database";
 import { DB_TABLE_WIDTH, computeDatabaseTableHeight } from "../lib/databaseLayout";
+import { databaseNotePosition, databaseNoteHeight } from "../lib/databaseCanvas";
+import type { DatabaseStickyNote } from "../types/database";
 import { clamp } from "../lib/databaseDiagramGeometry";
 
 const MIN_SCALE = 0.4;
@@ -17,10 +19,11 @@ interface DatabaseViewportOptions {
   state: DatabaseDiagramVisualState;
   size: { width: number; height: number };
   tables: DatabaseTable[];
+  notes?: DatabaseStickyNote[];
   onStateChange: (state: DatabaseDiagramVisualState) => void;
 }
 
-export function useDatabaseViewport({ stageRef, stateRef, state, size, tables, onStateChange }: DatabaseViewportOptions) {
+export function useDatabaseViewport({ stageRef, stateRef, state, size, tables, notes, onStateChange }: DatabaseViewportOptions) {
   const [viewportScale, setViewportScale] = useState(state.viewport?.scale ?? INITIAL_VIEWPORT.scale);
   const viewport = state.viewport ?? INITIAL_VIEWPORT;
   useEffect(() => {
@@ -126,7 +129,7 @@ export function useDatabaseViewport({ stageRef, stateRef, state, size, tables, o
 
   const buildFitViewport = useCallback(
     (positions: DatabaseDiagramVisualState["positions"]) => {
-      if (tables.length === 0) {
+      if (tables.length === 0 && !notes?.length) {
         return null;
       }
 
@@ -151,6 +154,13 @@ export function useDatabaseViewport({ stageRef, stateRef, state, size, tables, o
           maxY: Number.NEGATIVE_INFINITY,
         },
       );
+      for (const [index, note] of (notes ?? []).entries()) {
+        const position = stateRef.current.notePositions?.[note.name] ?? databaseNotePosition(positions, index);
+        bounds.minX = Math.min(bounds.minX, position.x);
+        bounds.minY = Math.min(bounds.minY, position.y);
+        bounds.maxX = Math.max(bounds.maxX, position.x + 240);
+        bounds.maxY = Math.max(bounds.maxY, position.y + databaseNoteHeight(note.text));
+      }
       if (!Number.isFinite(bounds.minX) || !Number.isFinite(bounds.maxX)) {
         return null;
       }
@@ -177,7 +187,7 @@ export function useDatabaseViewport({ stageRef, stateRef, state, size, tables, o
         scale: nextScale,
       };
     },
-    [size.height, size.width, tables],
+    [size.height, size.width, tables, notes, stateRef],
   );
 
   const applyViewport = useCallback((next: DatabaseDiagramViewport) => {

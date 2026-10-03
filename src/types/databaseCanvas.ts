@@ -1,5 +1,5 @@
 import type { AppTheme, DiagramEdgeStyle } from "../lib/preferences";
-import type { DatabaseDiagramVisualState, DatabaseRelation, DatabaseRelationPathState, DatabaseTable } from "./database";
+import type { DatabaseDiagramVisualState, DatabaseRelation, DatabaseRelationPathState, DatabaseTable, DatabaseTableGroup, DatabaseStickyNote, DatabaseEnum } from "./database";
 
 export type ActiveEditor =
   | { type: "table"; tableId: string; draft: string; error: string | null }
@@ -29,6 +29,10 @@ export type CurveDragSnapshot = {
 };
 
 export interface DatabaseDiagramPanelProps {
+  groups?: DatabaseTableGroup[];
+  notes?: DatabaseStickyNote[];
+  enums?: DatabaseEnum[];
+  content?: string;
   tables: DatabaseTable[];
   relations: DatabaseRelation[];
   theme: AppTheme;

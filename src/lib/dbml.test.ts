@@ -204,3 +204,47 @@ describe('parseDbml', () => {
     expect(renamed).not.toContain('user_id integer');
   });
 });
+
+it('interpreta grupos, enums e notas multilinha sem confundir exemplos com tabelas', () => {
+  const content = `Enum prec_status {
+    rascunho
+    "em revisão"
+  }
+  Table prec_servicos { id bigint [pk] }
+  TableGroup precificacao [color: #e8c45a] {
+    prec_servicos
+    Note: 'Tabelas do módulo'
+  }
+  Note lembrete {
+    '''Veja https://example.com
+    Table falsa { id int }
+    Revise as chaves'''
+  }`;
+  const parsed = parseDbml(content);
+  expect(parsed.errors).toEqual([]);
+  expect(parsed.tables.map((table) => table.name)).toEqual(['prec_servicos']);
+  expect(parsed.enums[0].values).toEqual(['rascunho', 'em revisão']);
+  expect(parsed.groups[0]).toMatchObject({ name: 'precificacao', color: '#e8c45a', note: 'Tabelas do módulo', tables: [{ name: 'prec_servicos' }] });
+  expect(parsed.notes[0].text).toContain('https://example.com');
+  const renamed = renameDbmlTable(content, 'prec_servicos', 'servicos');
+  expect(parseDbml(renamed).groups[0].tables[0].name).toBe('servicos');
+  expect(parseDbml(renamed).notes).toEqual(parsed.notes);
+});
+
+it('reporta anotações incompletas durante a edição', () => {
+  expect(parseDbml('TableGroup vendas {\n users').errors).toContain('TableGroup "vendas" sem fechamento');
+});
+
+it('preserva notas multilinha de tabela e offsets para renomear colunas', () => {
+  const content = `Table users {
+  Note: '''Dados {internos}
+  Consulte https://example.com'''
+  id int [pk]
+  nome varchar [note: 'Nome público']
+}`;
+  const parsed = parseDbml(content);
+  expect(parsed.errors).toEqual([]);
+  expect(parsed.tables[0].note).toContain('https://example.com');
+  expect(parsed.tables[0].columns.map((column) => column.name)).toEqual(['id', 'nome']);
+  expect(renameDbmlColumn(content, 'users', 'nome', 'name')).toContain("name varchar [note: 'Nome público']");
+});
